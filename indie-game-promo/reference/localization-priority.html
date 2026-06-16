@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — 在地化優先級與成本估算</title>
+<style>
+  :root {
+    --bg: #1b1916; --text: #e2dbd0; --muted: #9b8e7a;
+    --accent: #d4725a; --border: #3a3530; --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text); background: var(--bg);
+    line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3em; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.5em; color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 1.8em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.88rem; }
+  th, td { padding: 0.45em 0.6em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 4px; border-radius: 2px; }
+  ul, ol { margin: 0.4em 0 0.4em 1.5em; }
+  li { margin: 0.3em 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  .tier { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; }
+  .t1 { background: #4a3020; color: #f0a060; }
+  .t2 { background: #2a3a2a; color: #80c880; }
+  .t3 { background: #2a2a3a; color: #8088c0; }
+</style>
+</head>
+<body>
+
+<h1>Steam 在地化 — 快速參考</h1>
+<p class="subtitle">語系優先級、成本估算與執行檢查表</p>
+
+<h2>語系優先級（2026）</h2>
+<table>
+  <tr><th>優先級</th><th>語系</th><th>Steam 用戶佔比</th><th>特性</th></tr>
+  <tr><td><span class="tier t1">P0</span></td><td>簡體中文</td><td>~30%</td><td>最大單一語系。注意中國市場用語vs台灣用語。</td></tr>
+  <tr><td><span class="tier t1">P0</span></td><td>英文</td><td>~35%</td><td>全球通用。母語等級校對不可省略。</td></tr>
+  <tr><td><span class="tier t1">P1</span></td><td>俄語</td><td>~8%</td><td>高付費意願、低退款率。文本通常比英文長30%。</td></tr>
+  <tr><td><span class="tier t1">P1</span></td><td>德語</td><td>~6%</td><td>對機翻容忍度極低，務必使用專業譯者。</td></tr>
+  <tr><td><span class="tier t1">P1</span></td><td>日語</td><td>~5%</td><td>注意禮貌語體。Steam 日本用戶持續成長。</td></tr>
+  <tr><td><span class="tier t2">P2</span></td><td>西班牙語</td><td>~4%</td><td>含西班牙+拉丁美洲。社群/多人遊戲優先考慮。</td></tr>
+  <tr><td><span class="tier t2">P2</span></td><td>韓語</td><td>~3%</td><td>韓國 Steam 市場成長迅速。</td></tr>
+  <tr><td><span class="tier t2">P2</span></td><td>巴西葡萄牙語</td><td>~3%</td><td>巴西玩家對在地化需求強烈，社群活躍。</td></tr>
+  <tr><td><span class="tier t3">P3</span></td><td>法語/義語/波蘭語等</td><td>各 ~1-3%</td><td>視遊戲類型受眾分佈決定。</td></tr>
+</table>
+
+<h2>階段式在地化成本估算</h2>
+<table>
+  <tr><th>階段</th><th>內容範圍</th><th>每語系預估成本</th><th>ROI</th></tr>
+  <tr><td>1. 商店頁面</td><td>短描述、長描述、宣傳詞、標籤</td><td>$200–800</td><td>最高 — 解鎖演算法推薦</td></tr>
+  <tr><td>2. 遊戲 UI</td><td>選單、提示、教學、HUD</td><td>$500–2,000</td><td>中 — 降低退款與負評</td></tr>
+  <tr><td>3. 敘事文本</td><td>對話、劇情、道具描述</td><td>視文本量，$2,000–20,000+</td><td>視類型 — 敘事類最高</td></tr>
+</table>
+
+<h2>執行檢查表</h2>
+<ol>
+  <li>統計商店頁面所有文本的總字數</li>
+  <li>在 ProZ.com / Upwork 取得各語系翻譯報價</li>
+  <li>確認 Steamworks 後台每個標籤都有對應語系翻譯</li>
+  <li>截圖中如有嵌入文字，為每個語系製作獨立版本</li>
+  <li>英文文本務必經過母語者校對（proofread）</li>
+  <li>在地化完成後，在該語系 Steam 區域手動檢查頁面顯示</li>
+</ol>
+
+<hr>
+<p style="color: var(--muted); font-size: 0.85rem;">← 回到 <a href="../lessons/0004-localization.html">Lesson 0004: 商店頁面在地化</a></p>
+
+</body>
+</html>

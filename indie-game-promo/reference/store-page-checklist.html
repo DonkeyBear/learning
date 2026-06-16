@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — Steam 商店頁面建置檢查表</title>
+<style>
+  :root {
+    --bg: #1b1916; --text: #e2dbd0; --muted: #9b8e7a;
+    --accent: #d4725a; --border: #3a3530; --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text); background: var(--bg);
+    line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3em; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.5em; color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 1.8em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.88rem; }
+  th, td { padding: 0.45em 0.6em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 4px; border-radius: 2px; }
+  ul, ol { margin: 0.4em 0 0.4em 1.5em; }
+  li { margin: 0.3em 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  .checklist li { list-style: none; margin: 0.6em 0; }
+  .checklist li::before { content: "☐ "; color: var(--muted); }
+  .warning { background: #2a2518; border-left: 3px solid #d4a017; padding: 0.6em 1em; margin: 1em 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>Steam 商店頁面建置 — 快速參考</h1>
+<p class="subtitle">Coming Soon 頁面上線所需的一切規格與檢查項目</p>
+
+<h2>膠囊圖片規格</h2>
+<table>
+  <tr><th>名稱</th><th>尺寸 (px)</th><th>主要場景</th><th>設計口訣</th></tr>
+  <tr><td>Header Capsule</td><td>460 × 215</td><td>搜尋結果、推薦區塊</td><td>最常見。標題在 230×107 仍需可讀</td></tr>
+  <tr><td>Small Capsule</td><td>231 × 87</td><td>探索佇列、好友清單</td><td>Logo 放大填滿，捨棄背景細節</td></tr>
+  <tr><td>Main Capsule</td><td>616 × 353</td><td>商店頁面頂部</td><td>最大尺寸，設計語言需與 Small 一致</td></tr>
+  <tr><td>Vertical Capsule</td><td>374 × 448</td><td>圖書館、Steam Deck</td><td>不要裁切橫式版——重新設計直式</td></tr>
+</table>
+
+<h2>UTM 命名紀律</h2>
+<table>
+  <tr><th>參數</th><th>用途</th><th>範例值</th></tr>
+  <tr><td><code>utm_source</code></td><td>流量來源平台</td><td><code>reddit</code>, <code>tiktok</code>, <code>youtube</code>, <code>twitter</code>, <code>discord</code></td></tr>
+  <tr><td><code>utm_medium</code></td><td>內容格式</td><td><code>social</code>, <code>video</code>, <code>email</code>, <code>streamer</code></td></tr>
+  <tr><td><code>utm_campaign</code></td><td>活動/貼文</td><td><code>devlog_01</code>, <code>nextfest_oct</code>, <code>launch_week</code></td></tr>
+  <tr><td><code>utm_content</code></td><td>A/B 測試變體</td><td><code>post_a</code>, <code>capsule_v2</code></td></tr>
+</table>
+
+<h2>最小可行頁面檢查表</h2>
+<ol class="checklist">
+  <li>遊戲名稱已確定（拼寫、空格、大小寫）</li>
+  <li>Header Capsule (460×215) 已上傳</li>
+  <li>Small Capsule (231×87) 已上傳（與 Header 不同裁切）</li>
+  <li>Main Capsule (616×353) 已上傳</li>
+  <li>Vertical Capsule (374×448) 已上傳</li>
+  <li>至少 5 個精確類型標籤已設定</li>
+  <li>簡短描述已撰寫（≤ 200 字元，傳達「是什麼 + 為什麼好玩」）</li>
+  <li>至少 5 張實機截圖（非渲染圖）</li>
+  <li>至少 1 部預告片（前 5 秒 = 實機遊玩）</li>
+  <li>UTM 命名規則文件已建立</li>
+  <li>頁面已提交審核</li>
+</ol>
+
+<div class="warning">
+  <strong>⚠️ 審核時間提醒：</strong>Steam 頁面審核通常需要 2-5 個工作日。如果你計畫配合某個外部活動（如發布開發日誌或參加線上展會），請預留審核緩衝時間。
+</div>
+
+<hr>
+<p style="color: var(--muted); font-size: 0.85rem;">← 回到 <a href="../lessons/0002-steam-page-early-setup.html">Lesson 0002: Steam 商店頁面早期建置</a></p>
+
+</body>
+</html>

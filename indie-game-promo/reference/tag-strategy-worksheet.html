@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — 標籤策略工作表</title>
+<style>
+  :root {
+    --bg: #1b1916; --text: #e2dbd0; --muted: #9b8e7a;
+    --accent: #d4725a; --border: #3a3530; --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text); background: var(--bg);
+    line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3em; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.5em; color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 1.8em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.88rem; }
+  th, td { padding: 0.45em 0.6em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 4px; border-radius: 2px; }
+  ul, ol { margin: 0.4em 0 0.4em 1.5em; }
+  li { margin: 0.3em 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  .tag { display: inline-block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 8px; font-size: 0.82rem; margin: 2px; }
+</style>
+</head>
+<body>
+
+<h1>標籤策略 — 快速參考</h1>
+<p class="subtitle">三層標籤結構、競品逆向工程方法與常見錯誤</p>
+
+<h2>三層標籤結構</h2>
+<table>
+  <tr><th>層級</th><th>數量</th><th>目的</th><th>來源</th></tr>
+  <tr><td>基礎類型標籤</td><td>5~8</td><td>與同類型競品建立關聯，驅動「更多類似商品」</td><td>5-10 款競品的共同標籤</td></tr>
+  <tr><td>精細子類型</td><td>5~8</td><td>定義遊戲獨特定位，區別於同類型競品</td><td>深入 Steam 子標籤樹尋找高精度標籤</td></tr>
+  <tr><td>氛圍情緒</td><td>3~6</td><td>防止演算法錯誤匹配受眾，定義遊戲感受</td><td>問自己「玩家應該感受到什麼」</td></tr>
+</table>
+
+<h2>競品標籤逆向工程流程</h2>
+<ol>
+  <li>在 Steam 上打開 5 款競品頁面</li>
+  <li>點擊標籤區域的「+」展開全部標籤</li>
+  <li>記錄每款競品的完整標籤列表（目標 20 個）</li>
+  <li>標記出在 ≥ 3 款競品中出現的標籤 → 這就是你的基礎層</li>
+  <li>找出競品沒有、但你有的標籤 → 差異化層</li>
+  <li>在 SteamDB 搜尋你的標籤組合，檢查「鄰居」品質</li>
+</ol>
+
+<h2>常見錯誤</h2>
+<table>
+  <tr><th>錯誤</th><th>後果</th><th>修正</th></tr>
+  <tr><td>只用籠統標籤（「動作」、「冒險」）</td><td>淹沒在數萬款同標籤遊戲中，無法被精準發現</td><td>深入子標籤層級，如「精準平台跳躍」</td></tr>
+  <tr><td>漏掉情緒標籤</td><td>演算法錯誤匹配受眾（溫馨遊戲推薦給硬核玩家）</td><td>加入 3-6 個描述遊戲「感受」的標籤</td></tr>
+  <tr><td>未填滿 20 個</td><td>浪費演算法可利用的向量維度</td><td>永遠填滿全部 20 個欄位</td></tr>
+  <tr><td>與劣質遊戲標籤重疊過高</td><td>出現在垃圾遊戲的「更多類似商品」中</td><td>增加精細子類型與情緒標籤，拉開向量距離</td></tr>
+  <tr><td>忽略標籤在地化</td><td>非英語玩家看不到你的遊戲</td><td>為每個支援語系提供標籤翻譯</td></tr>
+</table>
+
+<h2>高價值標籤類型（2026 年趨勢）</h2>
+<p>以下類型的標籤在 2026 年表現出較高的受眾精準度：</p>
+<ul>
+  <li><strong>玩法機制標籤</strong>：Roguelike、卡牌戰鬥、塔防、潛行、節奏</li>
+  <li><strong>結構標籤</strong>：開放世界、線性、章節制、無盡模式</li>
+  <li><strong>視角標籤</strong>：第一人稱、等角視角、橫向捲軸、俯視角</li>
+  <li><strong>情感標籤</strong>：治癒系、懸疑、恐怖、哲學、荒誕</li>
+  <li><strong>受眾標籤</strong>：休閒、硬核、多人、單人、合作</li>
+</ul>
+
+<hr>
+<p style="color: var(--muted); font-size: 0.85rem;">← 回到 <a href="../lessons/0003-tag-strategy.html">Lesson 0003: 標籤策略與演算法推薦</a></p>
+
+</body>
+</html>

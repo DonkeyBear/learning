@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0001 — React Native 執行時架構心智模型</title>
+<style>
+  :root {
+    --bg: #161618;
+    --text: #e4e4e4;
+    --muted: #8b8b8b;
+    --accent: #5e9eff;
+    --accent-dim: #1e2a3a;
+    --border: #2e2e32;
+    --code-bg: #1e1e22;
+    --surface: #1c1c20;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+    font-size: 17px;
+  }
+  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: -0.02em; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.75rem 0; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: var(--code-bg);
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1rem;
+    margin: 1.25rem 0;
+    background: var(--accent-dim);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95rem;
+    color: #a0a8c0;
+  }
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.75rem;
+    margin: 1.5rem 0;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .box {
+    display: inline-block;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    text-align: center;
+    background: var(--surface);
+    font-weight: 600;
+  }
+  .box-native { border-color: var(--success); }
+  .box-bridge { border-color: var(--warning); }
+  .box-js { border-color: var(--accent); }
+
+  /* Quiz */
+  .quiz { margin: 2.5rem 0; }
+  .quiz-question {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .quiz-question p { margin: 0 0 0.75rem; font-weight: 600; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.5rem; }
+  .quiz-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .quiz-option.correct { border-color: var(--success); background: #064e3b; color: #6ee7b7; }
+  .quiz-option.wrong { border-color: var(--danger); background: #7f1d1d; color: #fca5a5; }
+  .quiz-feedback {
+    margin-top: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: #064e3b; color: #6ee7b7; }
+  .quiz-feedback.wrong { background: #7f1d1d; color: #fca5a5; }
+
+  /* Practice */
+  .practice {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+  }
+  .practice h3 { margin-top: 0; }
+  .callout {
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.5rem 0;
+  }
+  .callout strong { color: var(--accent); }
+  /* Fill-in-blank, match, order */
+  .fib-input:focus { outline: none; border-color: var(--accent); }
+  .match-btn.matched { cursor: default; }
+  .order-item { transition: all 0.15s; }
+  .order-item:hover { border-color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+
+<h1>📱 Lesson 0001 — React Native 執行時架構心智模型</h1>
+<p class="meta">約 15 分鐘 · 難度：基礎 · 建立於 2026-06-12</p>
+
+<h2>為什麼這很重要</h2>
+<p>
+  你已經會用 React 寫網頁。瀏覽器給你 DOM，React 操作 DOM。但手機上<strong>沒有 DOM</strong>。
+  React Native 的核心問題就是：<strong>JavaScript 如何驅動真正的 iOS/Android 原生元件？</strong>
+</p>
+<p>
+  如果你不理解這個問題的答案，當 bug 發生在 JS 和 native 的邊界時，你會完全無從下手。這堂課建立的
+  心智模型，是後續所有學習的地基。
+</p>
+
+<h2>🌐 先回想：React Web 的模型</h2>
+
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+┌─────────────────────────────────┐
+│          Browser (單一 Process)   │
+│                                 │
+│  ┌──────────┐    ┌───────────┐  │
+│  │ JS Engine │───▶│  DOM API  │  │
+│  │ (V8)      │    │           │  │
+│  └──────────┘    └───────────┘  │
+│       │                │        │
+│       │          ┌─────▼──────┐ │
+│       │          │  Render    │ │
+│       └──────────▶  Pipeline  │ │
+│                  └────────────┘ │
+└─────────────────────────────────┘
+</pre>
+</div>
+
+<p>
+  關鍵特點：<strong>JS 和 DOM 在同一個 process 裡</strong>。React 呼叫 <code>document.createElement</code>，
+  瀏覽器同步建立 DOM node。JS 可以直接讀取佈局資訊（<code>getBoundingClientRect</code>），
+  一切都是同步的、在同一個 thread。
+</p>
+
+<h2>📲 React Native：三個世界</h2>
+
+<p>React Native 把這個模型拆成了<strong>三個獨立的執行環境</strong>：</p>
+
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+┌──────────────────┐       ┌──────────────────┐
+│  🧵 JS Thread    │       │  🧵 Native Thread │
+│  (Hermes / JSC)  │       │  (Main / UI)      │
+│                  │       │                  │
+│  React           │       │  UIView          │
+│  Components      │       │  ViewGroup       │
+│  State / Props   │       │  Layout          │
+│  Business Logic  │       │  Gestures        │
+│                  │       │                  │
+└────────┬─────────┘       └────────┬─────────┘
+         │                          │
+         │    ┌─────────────────┐   │
+         └────│  🌉 JSI / Bridge  │───┘
+              │  (C++ Layer)     │
+              └─────────────────┘
+                      │
+              ┌───────▼────────┐
+              │ 🧵 Shadow Tree │
+              │ (Yoga Layout)  │
+              └────────────────┘
+</pre>
+</div>
+
+<p>核心差異：</p>
+
+<ul>
+  <li><strong>JS Thread</strong>：跑你的 React 程式碼、狀態管理、API 呼叫邏輯。使用 Hermes（Meta 為 mobile 優化的 JS engine）而非 V8。</li>
+  <li><strong>Native Main Thread（UI Thread）</strong>：跑真正的原生 UI — iOS 的 UIView、Android 的 ViewGroup。手勢、動畫、畫面繪製都在這裡。</li>
+  <li><strong>JSI / Bridge（C++ Layer）</strong>：JS 和 Native 之間的翻譯層。這是 RN 最重要的基础设施。</li>
+  <li><strong>Shadow Tree</strong>：在背景 thread 計算 layout（用 Yoga 排版引擎），結果再送到 UI thread。</li>
+</ul>
+
+<div class="callout">
+  <strong>💡 關鍵心智轉換：</strong><br>
+  Web: <code>JS → DOM API → 畫面</code>（全在同一 process）<br>
+  RN: <code>JS → JSI/C++橋樑 → 原生元件</code>（跨 thread、跨語言）
+</div>
+
+<h2>🏗️ 舊架構 vs 新架構（New Architecture）</h2>
+
+<p>這是你在閱讀 RN 文章時最容易困惑的地方。從 2024 年 10 月（RN 0.76）起，<strong>新架構已經是預設</strong>。但很多教學仍描述舊架構。</p>
+
+<h3>舊架構：Async Bridge</h3>
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+JS Thread                  Bridge                  Native Thread
+─────────                  ──────                  ─────────────
+onPress()                    │                        │
+  ──JSON serialize──▶       │    ──JSON parse──▶     │
+  │                          │    (排隊、非同步)        │  createView()
+  ◀──JSON serialize──       │    ◀──JSON parse──     │
+  setState()                 │                        │
+</pre>
+</div>
+
+<p>問題：</p>
+<ul>
+  <li><strong>所有通訊都要 JSON 序列化/反序列化</strong> — 大量資料時很慢</li>
+  <li><strong>非同步</strong> — JS 不能同步讀取 native 的 layout 資訊</li>
+  <li><strong>所有 native module 在啟動時就全部載入</strong> — 拖慢啟動速度</li>
+</ul>
+
+<h3>新架構：JSI + Fabric + TurboModules</h3>
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+JS (Hermes) ◀──── C++ JSI Layer ────▶ Native (ObjC/Kotlin)
+    │                                       │
+    │  JavaScript 可以直接持有              │
+    │  C++ HostObject 的 reference          │
+    │                                       │
+    └──────── 同步雙向呼叫 ─────────────────┘
+</pre>
+</div>
+
+<p>四大支柱：</p>
+<ol>
+  <li><strong>JSI (JavaScript Interface)</strong>：輕量 C++ 層，取代舊 bridge。JS 可以直接呼叫 native 方法，<strong>同步</strong>、不需要 JSON 序列化。</li>
+  <li><strong>Fabric</strong>：新的渲染引擎。Shadow Tree 在 C++ 層計算，支援 React 18 Concurrent Mode。</li>
+  <li><strong>TurboModules</strong>：新的 native module 系統。lazy-load（用到才載入）、type-safe（透過 Codegen）。</li>
+  <li><strong>Codegen</strong>：從 TypeScript 規格自動產生 native binding，消滅手寫膠水碼。</li>
+</ol>
+
+<div class="callout">
+  <strong>🔑 對你來說：</strong><br>
+  用 Expo + 新架構開發，你大部分時候<strong>不需要手寫 native 程式碼</strong>。但當你遇到效能瓶頸或需要自訂原生功能時，理解 JSI 如何運作會讓你從「會用」升級到「懂原理」。
+</div>
+
+<h2>🔄 一個 Touch 事件的完整旅程（新架構）</h2>
+
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+1. 使用者點擊按鈕
+      │
+2. iOS/Android 捕捉觸控事件
+      │
+3. Fabric 找到對應元件，透過 JSI 傳給 Hermes
+      │  (直接 C++ 呼叫，無序列化)
+      │
+4. React 處理事件 (你的 onPress handler)
+      │  可能 setState → re-render
+      │
+5. Fabric diff Shadow Tree，Yoga 計算 layout
+      │
+6. Mounting layer 把變更套用到原生 view
+      │
+7. 使用者看到 UI 更新 ✅  (全部在 16ms 內完成，維持 60fps)
+</pre>
+</div>
+
+<h2>📦 Expo 在這個架構中的位置</h2>
+
+<p>
+  Expo 不是「RN 之上的另一層抽象」，它是一套<strong>開發工具鏈</strong>：
+</p>
+<ul>
+  <li><strong>Expo SDK</strong>：預先包裝好的 native module 集合（相機、定位、推播等），你不用自己寫 native 端</li>
+  <li><strong>Expo Go</strong>：開發用 app，讓你不用 Xcode/Android Studio 就能在手機上預覽</li>
+  <li><strong>EAS (Expo Application Services)</strong>：雲端建置、OTA 更新、商店上傳</li>
+  <li><strong>expo prebuild</strong>：從 app.json 自動產生 ios/ 和 android/ 原生專案目錄</li>
+</ul>
+
+<p>Expo app 跑的是<strong>同一個 RN runtime</strong>，使用同樣的 Hermes engine、同樣的 Fabric renderer。</p>
+
+<hr>
+
+<!-- ==================== QUIZ SYSTEM ==================== -->
+<div id="quiz-root">
+  <div id="score-bar" style="display:none; position: sticky; top: 0; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+    <span style="font-weight: 700;">📊 你的進度</span>
+    <span id="score-text" style="font-size: 0.9rem; color: var(--muted);">尚未開始</span>
+    <div style="flex: 1; max-width: 200px; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+      <div id="score-fill" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+    </div>
+    <button onclick="resetAll()" style="background: var(--border); color: var(--text); border: none; padding: 0.35rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: inherit;">🔄 全部重做</button>
+  </div>
+
+  <h2>🧠 第一階段：選擇題</h2>
+  <p>選出最佳答案。答錯會顯示解釋，答對也會告訴你為什麼對。</p>
+
+  <div class="quiz" id="mc-section"></div>
+
+  <h2>✍️ 第二階段：填空題</h2>
+  <p>在輸入框中打入正確的詞彙。大小寫不重要，但拼字要正確。</p>
+
+  <div class="quiz" id="fib-section"></div>
+
+  <h2>🔗 第三階段：配對題</h2>
+  <p>把左邊的項目拖到右邊對應的位置（或點擊選取後再點擊目標位置）。</p>
+
+  <div class="quiz" id="match-section"></div>
+
+  <h2>📋 第四階段：排序題</h2>
+  <p>將 touch 事件的步驟按正確順序排列。</p>
+
+  <div class="quiz" id="order-section"></div>
+
+  <h2>🛠️ 第五階段：自由回想 — 畫出架構圖</h2>
+  <div class="practice">
+    <h3>紙筆練習（無自動評分）</h3>
+    <p>拿出紙筆（或用 Excalidraw / tldraw），<strong>不要看著上面的圖</strong>，憑記憶畫出 RN 的三層架構圖：</p>
+    <ol>
+      <li>JS Thread 那一層有哪些東西？</li>
+      <li>中間的橋樑層叫什麼？新架構用什麼取代了舊的 Async Bridge？</li>
+      <li>Native Thread 負責什麼？</li>
+      <li>在圖上標出一個 touch 事件的流向（7 步驟）</li>
+    </ol>
+    <p>畫完後，對照上面的圖修正。這個圖你會在很多 RN 除錯場景中用到。</p>
+    <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; cursor: pointer; font-size: 0.9rem; color: var(--muted);">
+      <input type="checkbox" id="diagram-done" onchange="updateScore()"> 我完成了這個練習
+    </label>
+  </div>
+
+  <div id="final-score-box" style="display:none; background: var(--surface); border: 2px solid var(--success); border-radius: 12px; padding: 1.5rem; margin-top: 2rem; text-align: center;"></div>
+</div>
+
+<hr>
+
+<h2>📚 延伸閱讀（Primary Sources）</h2>
+<ul>
+  <li>
+    <a href="https://reactnative.dev/blog/2024/10/23/the-new-architecture-is-here" target="_blank">
+      React Native 官方部落格：The New Architecture is Here (2024/10)
+    </a>
+    — 理解新架構四大支柱的權威來源
+  </li>
+  <li>
+    <a href="https://reactnative.dev/architecture/fabric-renderer" target="_blank">
+      React Native 官方文件：Fabric Renderer Architecture
+    </a>
+    — 深入渲染管線
+  </li>
+  <li>
+    <a href="https://globaldev.tech/blog/react-native-architecture" target="_blank">
+      GlobalDev: React Native Architecture in 2025
+    </a>
+    — 新舊架構對比的補充閱讀
+  </li>
+</ul>
+
+<h2>🔗 相關課程</h2>
+<ul>
+  <li>Lesson 0002：Expo 開發環境設定與第一個專案（待發布）</li>
+  <li>Lesson 0003：JSX 在 RN 中如何變成原生元件（待發布）</li>
+  <li><a href="../reference/rn-architecture-cheatsheet.html">Reference：RN Architecture Cheatsheet</a>（待發布）</li>
+</ul>
+
+<hr>
+
+<footer>
+  <p>
+    <strong>有疑問？</strong> 直接在這堂課的對話中追問我。我是你的教師，可以解釋任何不清楚的地方。<br>
+    這堂課是 <a href="../MISSION.md">Mission: React Native Mastery for Mobile Engineering Transition</a> 的一部分。
+  </p>
+</footer>
+
+<script>
+// ========== SCORE TRACKING ==========
+const TOTAL_POINTS = 18; // 6 MC + 4 FIB + 4 match + 3 order + 1 diagram
+let scores = { mc: 0, fib: 0, match: 0, order: 0, diagram: 0 };
+
+function updateScore() {
+  if (document.getElementById('diagram-done')?.checked) scores.diagram = 1; else scores.diagram = 0;
+  const total = scores.mc + scores.fib + scores.match + scores.order + scores.diagram;
+  const pct = Math.round((total / TOTAL_POINTS) * 100);
+  document.getElementById('score-text').textContent = `${total} / ${TOTAL_POINTS} 分 (${pct}%)`;
+  document.getElementById('score-fill').style.width = `${pct}%`;
+
+  if (total === TOTAL_POINTS) {
+    document.getElementById('final-score-box').style.display = 'block';
+    document.getElementById('final-score-box').innerHTML = `
+      <h3 style="margin:0 0 0.5rem;">🎉 滿分！你完全掌握了 RN 執行時架構</h3>
+      <p style="margin:0; color: var(--muted);">Lesson 0002 已經準備好等你。</p>`;
+  } else if (total >= TOTAL_POINTS * 0.7) {
+    document.getElementById('final-score-box').style.display = 'block';
+    document.getElementById('final-score-box').innerHTML = `
+      <h3 style="margin:0 0 0.5rem;">👍 不錯，接近掌握了</h3>
+      <p style="margin:0; color: var(--muted);">回顧標示紅色的部分，再試一次。</p>`;
+  }
+}
+
+function resetAll() {
+  scores = { mc: 0, fib: 0, match: 0, order: 0, diagram: 0 };
+  document.getElementById('final-score-box').style.display = 'none';
+  document.getElementById('diagram-done').checked = false;
+  document.getElementById('mc-section').innerHTML = '';
+  document.getElementById('fib-section').innerHTML = '';
+  document.getElementById('match-section').innerHTML = '';
+  document.getElementById('order-section').innerHTML = '';
+  buildMC();
+  buildFIB();
+  buildMatch();
+  buildOrder();
+  updateScore();
+  window.scrollTo({ top: document.getElementById('quiz-root').offsetTop - 20, behavior: 'smooth' });
+}
+
+// ========== MULTIPLE CHOICE ==========
+const MC_QUESTIONS = [
+  {
+    q: 'Q1: React Native 的 JS 程式碼預設跑在哪個 JS engine？',
+    opts: ['V8 (跟 Chrome 一樣)', 'SpiderMonkey (Firefox 的 engine)', 'Hermes (Meta 為 mobile 優化的 engine)', 'JavaScriptCore (Safari 的 engine，RN 只用這個)'],
+    ans: 2,
+    explain: 'RN 從 0.64 開始預設使用 Hermes — Meta 專為 mobile 設計的 JS engine，特色是 AOT compilation、較小的記憶體 footprint 和更快的啟動速度。iOS 上也可以用 JSC，但 Hermes 是預設。'
+  },
+  {
+    q: 'Q2: 舊架構的 Async Bridge 最主要的效能瓶頸是什麼？',
+    opts: ['網路延遲太高', '所有 JS↔Native 通訊都要 JSON 序列化，且非同步', 'JS thread 和 UI thread 在同一個 process', 'React 的 virtual DOM diff 太慢'],
+    ans: 1,
+    explain: '舊 bridge 的每個呼叫都要經過 JSON.stringify → 排隊 → JSON.parse，大量資料（如長列表圖片）時序列化成本極高，且非同步意味著 JS 無法即時取得 native layout 資訊。'
+  },
+  {
+    q: 'Q3: 新架構中，哪個組件讓 JS 可以直接同步呼叫 native 方法？',
+    opts: ['Async Bridge', 'Fabric Renderer', 'JSI (JavaScript Interface)', 'Codegen'],
+    ans: 2,
+    explain: 'JSI 是輕量 C++ 層，讓 JS 可以直接持有 C++ HostObject 的 reference，雙向同步呼叫，不需要 JSON 序列化。這是新架構最核心的改進。'
+  },
+  {
+    q: 'Q4: 為什麼 RN 的 JS thread 不能直接操作 UI？',
+    opts: ['因為 React 不支援 native UI', '手機沒有 DOM，UI 由原生 thread 控制，JS 必須透過 C++ 橋樑溝通', '因為 JS 效能不夠快', '因為 Apple 不允許 JS 在 iOS 上執行'],
+    ans: 1,
+    explain: '瀏覽器有 DOM API 讓 JS 直接操作畫面，但手機平台沒有。iOS 的 UIView 和 Android 的 ViewGroup 只能由各自的原生 main thread 操作，JS thread 是獨立的執行環境。'
+  },
+  {
+    q: 'Q5: TurboModules 相較於舊 Native Modules 的優勢是什麼？',
+    opts: ['只能用 JavaScript 寫', '需要手動註冊所有方法', 'Lazy-load、type-safe、直接 C++ 呼叫而非 JSON bridge', '只能用在 Android'],
+    ans: 2,
+    explain: '舊 module 在啟動時全部載入（拖慢 TTI），TurboModules 則是用到才載入（lazy-load），搭配 Codegen 自動產生 type-safe 的 native binding。'
+  },
+  {
+    q: 'Q6: Expo 在 RN 架構中的角色是什麼？',
+    opts: ['RN 之上的另一層 runtime 抽象', '一套開發工具鏈（SDK、建置、部署），底層跑一樣的 RN runtime', '取代 Hermes 的 JS engine', '只是一個 UI 元件庫'],
+    ans: 1,
+    explain: 'Expo 不是 runtime 抽象，而是開發工具鏈。Expo app 跑的是同一個 RN runtime（同樣的 Hermes、同樣的 Fabric renderer）。Expo SDK 是預封裝的 native module 集合。'
+  }
+];
+
+function buildMC() {
+  const section = document.getElementById('mc-section');
+  MC_QUESTIONS.forEach((item, idx) => {
+    const div = document.createElement('div'); div.className = 'quiz-question';
+    div.innerHTML = `<p>${item.q}</p><div class="quiz-options">${item.opts.map((o, i) =>
+      `<button class="quiz-option" data-answer="${i === item.ans ? 'correct' : 'wrong'}" onclick="handleMC(this, ${idx}, '${'mc-fb-'+idx}')">${o}</button>`
+    ).join('')}</div><div class="quiz-feedback" id="mc-fb-${idx}"></div>`;
+    section.appendChild(div);
+  });
+}
+
+function handleMC(btn, qIdx, fbId) {
+  const parent = btn.parentElement;
+  const feedback = document.getElementById(fbId);
+  const qId = 'mc-' + qIdx;
+  if (btn.dataset.locked === 'true') return;
+  parent.querySelectorAll('.quiz-option').forEach(b => { b.disabled = true; b.dataset.locked = 'true'; });
+
+  const isCorrect = btn.dataset.answer === 'correct';
+  if (isCorrect) {
+    btn.classList.add('correct');
+    feedback.className = 'quiz-feedback correct show';
+    feedback.textContent = '✅ 正確！' + MC_QUESTIONS[qIdx].explain;
+    if (!sessionStorage.getItem(qId)) { scores.mc++; sessionStorage.setItem(qId, '1'); }
+  } else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.quiz-option').forEach(b => { if (b.dataset.answer === 'correct') b.classList.add('correct'); });
+    feedback.className = 'quiz-feedback wrong show';
+    feedback.textContent = '❌ 不對。' + MC_QUESTIONS[qIdx].explain;
+    sessionStorage.removeItem(qId);
+  }
+  updateScore();
+}
+
+// ========== FILL IN THE BLANK ==========
+const FIB_QUESTIONS = [
+  { q: 'RN 的 JS code 跑在名為 ______ 的 JS engine 上。', ans: 'hermes', hint: '五個英文字母，Meta 開發的' },
+  { q: '新架構中，取代 Async Bridge 的 C++ 層叫做 ______（縮寫）。', ans: 'jsi', hint: 'JavaScript Interface 的縮寫，三個英文字母' },
+  { q: '計算 Flexbox layout 的 C++ 排版引擎叫做 ______。', ans: 'yoga', hint: '跟一種運動同名，四個英文字母' },
+  { q: '新架構從 TypeScript 規格自動產生 native code 的工具叫 ______。', ans: 'codegen', hint: 'Code + Gen(eration)，七個英文字母' }
+];
+
+function buildFIB() {
+  const section = document.getElementById('fib-section');
+  FIB_QUESTIONS.forEach((item, idx) => {
+    const div = document.createElement('div'); div.className = 'quiz-question';
+    div.innerHTML = `
+      <p>${item.q}</p>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <input type="text" class="fib-input" data-idx="${idx}" placeholder="輸入你的答案..."
+          style="flex:1; padding:0.6rem 0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:0.95rem; font-family:inherit;"
+          onkeydown="if(event.key==='Enter') checkFIB(${idx})">
+        <button onclick="checkFIB(${idx})" style="padding:0.6rem 1.2rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-family:inherit; white-space:nowrap;">檢查</button>
+      </div>
+      <div class="quiz-feedback" id="fib-fb-${idx}"></div>`;
+    section.appendChild(div);
+  });
+}
+
+function checkFIB(idx) {
+  const input = document.querySelector(`.fib-input[data-idx="${idx}"]`);
+  const feedback = document.getElementById('fib-fb-' + idx);
+  const qId = 'fib-' + idx;
+  if (input.dataset.locked === 'true') return;
+
+  const userAns = input.value.trim().toLowerCase();
+  const correct = FIB_QUESTIONS[idx].ans;
+  input.disabled = true; input.dataset.locked = 'true';
+
+  if (userAns === correct) {
+    input.style.borderColor = 'var(--success)'; input.style.background = '#064e3b';
+    feedback.className = 'quiz-feedback correct show';
+    feedback.textContent = `✅ 正確！答案是 "${FIB_QUESTIONS[idx].ans}"。`;
+    if (!sessionStorage.getItem(qId)) { scores.fib++; sessionStorage.setItem(qId, '1'); }
+  } else {
+    input.style.borderColor = 'var(--danger)'; input.style.background = '#7f1d1d';
+    feedback.className = 'quiz-feedback wrong show';
+    feedback.textContent = `❌ 你的答案 "${userAns || '(空白)'}" 不正確。提示：${FIB_QUESTIONS[idx].hint}`;
+    sessionStorage.removeItem(qId);
+  }
+  updateScore();
+}
+
+// ========== MATCH PAIRS ==========
+const MATCH_LEFT = ['舊架構 JS↔Native 通訊', '新架構 JS↔Native 通訊', '舊架構渲染器', '新架構渲染器'];
+const MATCH_RIGHT = ['Async Bridge (JSON, 非同步)', 'JSI (C++, 同步)', 'UIManager (Paper)', 'Fabric (Shadow Tree)'];
+let matchSelected = null;
+
+function buildMatch() {
+  const section = document.getElementById('match-section');
+  const div = document.createElement('div'); div.className = 'quiz-question';
+  const shuffledLeft = [...MATCH_LEFT].sort(() => Math.random() - 0.5);
+  const shuffledRight = [...MATCH_RIGHT].sort(() => Math.random() - 0.5);
+
+  div.innerHTML = `
+    <p>點擊左邊的項目，再點擊右邊對應的項目來配對。</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.75rem;">
+      <div id="match-left-col">${shuffledLeft.map((l, i) =>
+        `<button class="match-btn match-left" data-left="${l}" data-idx="${i}" onclick="selectLeft(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;">${l}</button>`
+      ).join('')}</div>
+      <div id="match-right-col">${shuffledRight.map((r, i) =>
+        `<button class="match-btn match-right" data-right="${r}" data-idx="${i}" onclick="selectRight(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;">${r}</button>`
+      ).join('')}</div>
+    </div>
+    <div class="quiz-feedback" id="match-fb" style="margin-top:0.75rem;"></div>`;
+  section.appendChild(div);
+  // reset match score tracking
+  window._matchCorrect = 0;
+}
+
+const CORRECT_PAIRS = {
+  '舊架構 JS↔Native 通訊': 'Async Bridge (JSON, 非同步)',
+  '新架構 JS↔Native 通訊': 'JSI (C++, 同步)',
+  '舊架構渲染器': 'UIManager (Paper)',
+  '新架構渲染器': 'Fabric (Shadow Tree)'
+};
+
+function selectLeft(btn) {
+  if (btn.classList.contains('matched')) return;
+  document.querySelectorAll('.match-left').forEach(b => b.style.outline = 'none');
+  btn.style.outline = '2px solid var(--accent)';
+  matchSelected = btn;
+}
+
+function selectRight(btn) {
+  if (!matchSelected) return;
+  if (btn.classList.contains('matched')) return;
+  const leftVal = matchSelected.dataset.left;
+  const rightVal = btn.dataset.right;
+  const correct = CORRECT_PAIRS[leftVal] === rightVal;
+
+  if (correct) {
+    matchSelected.classList.add('matched'); matchSelected.style.background = '#064e3b'; matchSelected.style.borderColor = 'var(--success)'; matchSelected.style.color = '#6ee7b7'; matchSelected.disabled = true;
+    btn.classList.add('matched'); btn.style.background = '#064e3b'; btn.style.borderColor = 'var(--success)'; btn.style.color = '#6ee7b7'; btn.disabled = true;
+    matchSelected.style.outline = 'none';
+    window._matchCorrect = (window._matchCorrect || 0) + 1;
+    if (window._matchCorrect >= 4) {
+      document.getElementById('match-fb').className = 'quiz-feedback correct show';
+      document.getElementById('match-fb').textContent = '✅ 全部配對正確！';
+      if (!sessionStorage.getItem('match-done')) { scores.match = 4; sessionStorage.setItem('match-done', '1'); }
+      updateScore();
+    }
+  } else {
+    matchSelected.style.outline = '2px solid var(--danger)';
+    setTimeout(() => { matchSelected.style.outline = 'none'; }, 500);
+  }
+  matchSelected = null;
+}
+
+// ========== ORDERING ==========
+const ORDER_STEPS = [
+  'Fabric 找到對應元件，透過 JSI 傳給 Hermes',
+  '使用者點擊按鈕',
+  'React 處理事件（onPress handler）',
+  'iOS/Android 捕捉觸控事件',
+  'Mounting layer 把變更套用到原生 view',
+  'Fabric diff Shadow Tree，Yoga 計算 layout',
+  '使用者看到 UI 更新'
+];
+// correct indices in ORDER_STEPS after sorting: step2=0, step4=1, step1=2, step3=3, step6=4, step5=5, step7=6
+// Let me re-think: the correct order per the lesson:
+// 1.使用者點擊按鈕 → 2.iOS/Android捕捉 → 3.Fabric找到元件透過JSI傳給Hermes → 4.React處理事件 → 5.Fabric diff+Yoga layout → 6.Mounting套用變更 → 7.使用者看到更新
+// So correct indices relative to ORDER_STEPS array:
+// "使用者點擊按鈕" = idx 1 → position 0
+// "iOS/Android 捕捉觸控事件" = idx 3 → position 1
+// "Fabric 找到對應元件..." = idx 0 → position 2
+// "React 處理事件..." = idx 2 → position 3
+// "Fabric diff Shadow Tree..." = idx 5 → position 4
+// "Mounting layer 把變更套用到原生 view" = idx 4 → position 5
+// "使用者看到 UI 更新" = idx 6 → position 6
+// So correct order array is [1, 3, 0, 2, 5, 4, 6]
+const ORDER_CORRECT = [1, 3, 0, 2, 5, 4, 6];
+let orderSlots = [];
+
+function buildOrder() {
+  const section = document.getElementById('order-section');
+  const shuffled = [...ORDER_STEPS].sort(() => Math.random() - 0.5);
+  const div = document.createElement('div'); div.className = 'quiz-question';
+  div.innerHTML = `
+    <p>將 touch 事件的步驟按正確順序排列（1 = 最早發生，7 = 最後發生）：</p>
+    <div id="order-items" style="display:flex; flex-direction:column; gap:0.35rem; margin:0.75rem 0;">
+      ${shuffled.map((s, i) => `<div class="order-item" data-text="${s}" data-orig="${ORDER_STEPS.indexOf(s)}" style="padding:0.6rem 0.9rem; border:1px solid var(--border); border-radius:6px; background:var(--bg); cursor:pointer; font-size:0.9rem; user-select:none;" onclick="selectOrder(this)"><span class="order-num" style="display:inline-block; width:1.5rem; color:var(--muted);">-</span> ${s}</div>`).join('')}
+    </div>
+    <button onclick="checkOrder()" style="padding:0.6rem 1.5rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-family:inherit;">✅ 確認順序</button>
+    <button onclick="resetOrder()" style="padding:0.6rem 1rem; background:var(--border); color:var(--text); border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; font-family:inherit; margin-left:0.5rem;">🔄 重排</button>
+    <div class="quiz-feedback" id="order-fb" style="margin-top:0.75rem;"></div>`;
+  section.appendChild(div);
+  orderSlots = [];
+}
+
+function selectOrder(item) {
+  const numSpan = item.querySelector('.order-num');
+  const currentNum = parseInt(numSpan.textContent);
+  if (!isNaN(currentNum)) {
+    // deselect: remove from orderSlots
+    orderSlots = orderSlots.filter(s => s !== item);
+    numSpan.textContent = '-';
+    item.style.background = 'var(--bg)';
+    item.style.borderColor = 'var(--border)';
+  } else {
+    orderSlots.push(item);
+    numSpan.textContent = orderSlots.length;
+    item.style.background = 'var(--accent-dim)';
+    item.style.borderColor = 'var(--accent)';
+  }
+}
+
+function resetOrder() {
+  orderSlots = [];
+  document.querySelectorAll('.order-item').forEach(item => {
+    item.querySelector('.order-num').textContent = '-';
+    item.style.background = 'var(--bg)';
+    item.style.borderColor = 'var(--border)';
+  });
+  document.getElementById('order-fb').className = 'quiz-feedback';
+}
+
+function checkOrder() {
+  const fb = document.getElementById('order-fb');
+  if (orderSlots.length !== 7) {
+    fb.className = 'quiz-feedback wrong show';
+    fb.textContent = `❌ 你只排了 ${orderSlots.length} 個步驟，需要排滿 7 個。`;
+    return;
+  }
+  const userOrder = orderSlots.map(s => parseInt(s.dataset.orig));
+  const correct = userOrder.every((v, i) => v === ORDER_CORRECT[i]);
+  if (correct) {
+    fb.className = 'quiz-feedback correct show';
+    fb.textContent = '✅ 完全正確！你掌握了 touch 事件的完整流程。';
+    if (!sessionStorage.getItem('order-done')) { scores.order = 3; sessionStorage.setItem('order-done', '1'); }
+    // lock items
+    document.querySelectorAll('.order-item').forEach(el => { el.style.pointerEvents = 'none'; el.style.opacity = '0.7'; });
+  } else {
+    fb.className = 'quiz-feedback wrong show';
+    fb.textContent = '❌ 順序不正確。提示：觸控事件由 OS 先捕捉，然後才傳入 JS，最後才由 mounting layer 更新原生 view。';
+    sessionStorage.removeItem('order-done');
+  }
+  updateScore();
+}
+
+// ========== INIT ==========
+buildMC();
+buildFIB();
+buildMatch();
+buildOrder();
+updateScore();
+</script>
+
+</body>
+</html>

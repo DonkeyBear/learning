@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0002 — Steam 商店頁面早期建置</title>
+<style>
+  :root {
+    --bg: #1b1916;
+    --text: #e2dbd0;
+    --muted: #9b8e7a;
+    --accent: #d4725a;
+    --border: #3a3530;
+    --highlight: #272320;
+    --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25em; line-height: 1.3; }
+  h2 { font-size: 1.3rem; margin: 2em 0 0.5em; color: var(--accent); }
+  h3 { font-size: 1.05rem; margin: 1.5em 0 0.4em; }
+  p { margin: 0.8em 0; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 1.5em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  .nav a { color: var(--accent); text-decoration: none; }
+  .nav a:hover { color: #e89375; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1.2em 0; padding: 0.6em 1em;
+    background: var(--highlight); font-style: italic;
+  }
+  blockquote cite { display: block; margin-top: 0.4em; font-size: 0.85rem; color: var(--muted); font-style: normal; }
+  .practice {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.2em 1.5em; margin: 1.5em 0;
+  }
+  .practice h3 { margin-top: 0; color: var(--accent); }
+  ol, ul { margin: 0.5em 0 0.5em 1.5em; }
+  li { margin: 0.4em 0; }
+  code { font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 2px; }
+  .step { font-weight: 600; color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .nav { display: flex; justify-content: space-between; margin-top: 3em; font-size: 0.9rem; }
+  .callout {
+    background: #2a221f; border-left: 3px solid var(--accent);
+    padding: 0.8em 1.2em; margin: 1.5em 0; font-size: 0.92rem;
+  }
+  .callout strong { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.88rem; }
+  th, td { padding: 0.5em 0.7em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .quiz { margin: 1em 0; }
+  .quiz .question { font-weight: 600; margin: 1.2em 0 0.4em; }
+  .quiz label { display: block; padding: 0.3em 0; cursor: pointer; }
+  .quiz input[type="radio"] { margin-right: 0.5em; accent-color: var(--accent); }
+  .quiz .feedback { display: none; margin-top: 0.5em; padding: 0.6em 1em; border-radius: 3px; font-size: 0.9rem; }
+  .quiz .correct { background: #1a3322; color: #6bde80; }
+  .quiz .incorrect { background: #3a1a1a; color: #f07a6a; }
+</style>
+</head>
+<body>
+
+<h1>Lesson 0002<br>Steam 商店頁面的早期建置</h1>
+<p class="subtitle">越早上線，越早開始收集數據——即使你只有一張圖和一段描述</p>
+
+<div class="callout">
+  <strong>🎯 與 Mission 的關聯：</strong>你的 framework 已完成，這是建置 Steam 商店頁面的最佳時機。Gemini 報告明確指出：「Steam 的演算法並不會懲罰上線時間過長的頁面」，相反地，越早開設 Coming Soon 頁面，你積累願望清單和進行行銷實驗的窗口就越長。
+</div>
+
+<h2>知識：為什麼商店頁面要「現在」就上線？</h2>
+
+<p>多數開發者的直覺是：等遊戲做得夠漂亮了、有像樣的截圖和預告片了，再來開商店頁面。這個直覺<strong>是錯的</strong>。</p>
+
+<p>Steam 的演算法對頁面壽命（page age）是中性的——它不會因為一個頁面掛了很久還沒發行就降低其權重。但它會獎勵那些<em>持續累積訊號</em>的頁面：願望清單的增長速度、外部流量來源的多樣性、社群互動的頻率。而這些訊號都需要時間來積累。</p>
+
+<blockquote>
+  商店頁面的上線時間越長，開發者收集願望清單、累積初始動能以及進行各項宣傳實驗的窗口期就越寬裕。
+  <cite>— Gemini Deep Research 報告</cite>
+</blockquote>
+
+<p>這裡有一個關鍵的心理轉換需要發生：不要再把商店頁面視為「遊戲完成後的展示櫥窗」，而要把它視為<strong>「需求捕獲機制」</strong>——一個在開發過程中持續運轉、幫你收集潛在玩家意圖的漏斗入口。</p>
+
+<h3>「最小可行頁面」清單</h3>
+
+<p>你不需要等遊戲完成才上線。以下是上線 Coming Soon 頁面的最低需求：</p>
+
+<table>
+  <tr><th>元素</th><th>最低標準</th><th>為什麼它必須存在</th></tr>
+  <tr>
+    <td>遊戲名稱</td>
+    <td>最終確定的名稱（或至少是可對外公開的臨時名稱）</td>
+    <td>名稱是 Steam 搜尋索引的核心。頻繁改名會分散搜尋權重。</td>
+  </tr>
+  <tr>
+    <td>膠囊圖片</td>
+    <td>至少一套完整的 Capsule Art（Header + Small + Main + Vertical）</td>
+    <td>這是玩家在搜尋結果和首頁對你遊戲的<em>唯一</em>視覺印象。詳見下方。</td>
+  </tr>
+  <tr>
+    <td>類型標籤</td>
+    <td>至少 5-10 個精確標籤（最終目標是 20 個）</td>
+    <td>演算法靠標籤決定你的遊戲出現在哪些推薦區塊。錯誤標籤 = 錯誤受眾。</td>
+  </tr>
+  <tr>
+    <td>簡短描述</td>
+    <td>2-3 句精準傳達「這是什麼遊戲 + 為什麼好玩」</td>
+    <td>Steam 首頁的懸停預覽會顯示這段文字。前 200 個字元是生死線。</td>
+  </tr>
+  <tr>
+    <td>至少 5 張截圖</td>
+    <td>純實機畫面（Gameplay），不要純渲染圖或 UI 介面截圖</td>
+    <td>Steam 要求最少 5 張。玩家第一眼就找實機畫面來判斷「這遊戲長怎樣」。</td>
+  </tr>
+  <tr>
+    <td>預告片</td>
+    <td>15-30 秒，前 5 秒直接切入實機遊玩，不要 Logo 動畫</td>
+    <td>大多數玩家在 5 秒內決定是否關掉影片。</td>
+  </tr>
+</table>
+
+<h2>知識：膠囊圖片的生存法則</h2>
+
+<p>膠囊圖片（Capsule Art）是 Steam 上 ROI 最高的單一資產。它同時出現在：搜尋結果、首頁推薦、探索佇列、願望清單通知郵件、以及玩家的好友動態中。</p>
+
+<p>四個關鍵尺寸，四種不同的設計約束：</p>
+
+<table>
+  <tr><th>尺寸</th><th>名稱</th><th>主要出現場景</th><th>設計要點</th></tr>
+  <tr>
+    <td>460×215</td>
+    <td>Header Capsule</td>
+    <td>搜尋結果、推薦區塊（主要）</td>
+    <td>這是最常被看到的尺寸。標題文字必須在縮小到 230×107 時仍可讀。</td>
+  </tr>
+  <tr>
+    <td>231×87</td>
+    <td>Small Capsule</td>
+    <td>探索佇列側邊欄、好友清單</td>
+    <td><strong>官方允許不同裁切版本。</strong>最佳策略：直接將遊戲 Logo 放大填滿整個空間，捨棄複雜背景。</td>
+  </tr>
+  <tr>
+    <td>616×353</td>
+    <td>Main Capsule</td>
+    <td>商店頁面頂部</td>
+    <td>這是最大尺寸，可以放入更多美術細節。但設計語言必須與小膠囊保持一致。</td>
+  </tr>
+  <tr>
+    <td>374×448</td>
+    <td>Vertical Capsule</td>
+    <td>Steam 圖書館、Deck UI</td>
+    <td>直式布局。別直接裁切橫式膠囊——重新設計一個適合縱向的版本。</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <strong>🔑 關鍵戰術（Gemini 報告未強調的細節）：</strong>Small Capsule 的 231×87 在搜尋結果中會被縮小到約 120×45 像素。在這個極限尺寸下，<strong>遊戲標題文字必須保持絕對清晰</strong>。測試方法：把你的 Small Capsule 縮小到一個拇指指甲的大小，如果你還能辨識出遊戲名稱，就合格了。
+</div>
+
+<h2>知識：UTM 追蹤——從第一天就該做的事</h2>
+
+<p>Gemini 報告將流量歸因稱為「獨立開發團隊面臨的最大痛點」。解決方案是在<strong>每一條</strong>對外發布的 Steam 連結上附加 UTM 參數。</p>
+
+<p>這不是可選的加分項——沒有 UTM 追蹤，你所有的行銷努力都是<strong>盲飛</strong>。你永遠不知道昨天的 Reddit 貼文和今天的 TikTok 影片哪個帶來了更多願望清單。</p>
+
+<p>一個標準的 UTM 標記 Steam 連結如下：</p>
+
+<code style="display:block;padding:0.6em 1em;margin:0.5em 0;word-break:break-all;">
+  https://store.steampowered.com/app/YOUR_APP_ID/?utm_source=reddit&utm_medium=social&utm_campaign=devlog_01&utm_content=post_a
+</code>
+
+<p>UTM 參數命名紀律（一旦定下就絕不更改）：</p>
+
+<table>
+  <tr><th>參數</th><th>用途</th><th>命名規則範例</th></tr>
+  <tr><td><code>utm_source</code></td><td>流量來源平台</td><td><code>reddit</code>, <code>tiktok</code>, <code>youtube</code>, <code>twitter</code>, <code>discord</code>, <code>email</code></td></tr>
+  <tr><td><code>utm_medium</code></td><td>內容格式類型</td><td><code>social</code>, <code>video</code>, <code>email</code>, <code>streamer</code></td></tr>
+  <tr><td><code>utm_campaign</code></td><td>特定活動或貼文</td><td><code>devlog_01</code>, <code>nextfest_2026_oct</code>, <code>launch_week</code></td></tr>
+  <tr><td><code>utm_content</code></td><td>A/B 測試變體</td><td><code>post_a</code>, <code>post_b</code>, <code>capsule_v1</code>, <code>capsule_v2</code></td></tr>
+</table>
+
+<div class="callout">
+  <strong>⚠️ 常見犯規：</strong>在不同的貼文中重複使用相同的 UTM 標記，導致數據無法區分。記住：UTM 的粒度就是你能分析的精細度。如果你在 Reddit 發了三篇不同風格的貼文，每篇都該有獨立的 <code>utm_campaign</code> 或 <code>utm_content</code>。
+</div>
+
+<h2>技能實踐：建立你的最小可行商店頁面</h2>
+
+<div class="practice">
+<h3>🛠 動手做：Coming Soon 頁面上線檢查表</h3>
+
+<p><strong>前置步驟：</strong></p>
+<ol>
+  <li>如果你還沒有 Steamworks 帳號，前往 <a href="https://partner.steamgames.com/" target="_blank">partner.steamgames.com</a> 註冊。你需要支付 $100 美元的 Steam Direct 費用（每個遊戲）。</li>
+  <li>建立你的 App ID 並進入商店頁面編輯介面。</li>
+</ol>
+
+<p><strong>今天就可以完成的項目：</strong></p>
+<ol>
+  <li><strong>遊戲名稱</strong>——確認拼寫、空格、大小寫。這之後改動會影響搜尋權重。</li>
+  <li><strong>5-10 個標籤</strong>——參考 <a href="../reference/market-analysis-worksheet.html">市場分析工作表</a> 中你對標作品的標籤，先填入最核心的類型與子類型標籤。</li>
+  <li><strong>簡短描述</strong>——兩句話：第一句說這是什麼遊戲；第二句說為什麼好玩。不超過 200 字元。</li>
+  <li><strong>至少一套膠囊圖片</strong>——即使請不起美術，用 Canva 或 Figma 做一個「遊戲 Logo + 純色背景」的版本，也好過沒有。</li>
+  <li><strong>5 張實機截圖</strong>——現在就截。即使 UI 還沒打磨，也比用渲染概念圖誠實且有效。</li>
+  <li><strong>規劃你的 UTM 命名規則</strong>——寫下一個命名 convention 文件。未來每一篇貼文都嚴格遵循它。</li>
+</ol>
+
+<p>做完後，你的頁面不需要立刻發布（publish），但應該填到可以提交審核的程度。Steam 的頁面審核通常需要 2-5 個工作日。</p>
+</div>
+
+<h2>自我測驗</h2>
+
+<div class="quiz">
+  <div class="question">1. 為什麼應該「在遊戲完成前」就開設 Coming Soon 頁面？</div>
+  <label><input type="radio" name="q1" value="A" onchange="checkQ1(this)"> A. Steam 演算法會獎勵頁面壽命長的遊戲，給予更高的排序權重</label>
+  <label><input type="radio" name="q1" value="B" onchange="checkQ1(this)"> B. 演算法不懲罰舊頁面，但需要時間積累願望清單和進行行銷實驗</label>
+  <label><input type="radio" name="q1" value="C" onchange="checkQ1(this)"> C. Valve 規定商店頁面必須在遊戲發行前至少六個月上線</label>
+  <div class="feedback" id="q1-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">2. 預告片最關鍵的法則是什麼？</div>
+  <label><input type="radio" name="q2" value="A" onchange="checkQ2(this)"> A. 長度不超過 2 分鐘，否則玩家會失去耐心</label>
+  <label><input type="radio" name="q2" value="B" onchange="checkQ2(this)"> B. 前 5 秒直接切入實機遊玩畫面，不放 Logo 動畫</label>
+  <label><input type="radio" name="q2" value="C" onchange="checkQ2(this)"> C. 使用電影級 CGI 渲染來展示遊戲世界觀</label>
+  <div class="feedback" id="q2-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">3. UTM 參數中，<code>utm_campaign</code> 最適合用來追蹤什麼？</div>
+  <label><input type="radio" name="q3" value="A" onchange="checkQ3(this)"> A. 流量來自哪個平台（如 Reddit、TikTok）</label>
+  <label><input type="radio" name="q3" value="B" onchange="checkQ3(this)"> B. 特定的活動或單篇貼文（如 devlog_01）</label>
+  <label><input type="radio" name="q3" value="C" onchange="checkQ3(this)"> C. 遊戲的 Steam App ID</label>
+  <div class="feedback" id="q3-feedback"></div>
+</div>
+
+<script>
+function showFeedback(id, correct, explanation) {
+  const fb = document.getElementById(id);
+  fb.style.display = 'block';
+  fb.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+  fb.textContent = (correct ? '✓ 正確。' : '✗ 不正確。') + ' ' + explanation;
+}
+function checkQ1(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q1-feedback', false, 'Steam 演算法對頁面壽命是中性的——它不因頁面舊就給更高權重，關鍵是持續累積的訊號（願望清單增長等）。');
+  else if (v === 'B') showFeedback('q1-feedback', true, '頁面掛得久不會被懲罰，而累積願望清單和進行行銷實驗都需要時間。越早上線，緩衝越長。');
+  else showFeedback('q1-feedback', false, 'Valve 沒有這種規定。事實上，有些遊戲的 Coming Soon 頁面掛了數年才發行。');
+}
+function checkQ2(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q2-feedback', false, '長度確實重要，但前 5 秒切入實機畫面是更優先的法則——多數人在你 Logo 還沒播完就關掉了。');
+  else if (v === 'B') showFeedback('q2-feedback', true, '研究顯示多數玩家在 5 秒內決定是否繼續觀看。Logo 動畫和標題字幕是流量殺手。');
+  else showFeedback('q2-feedback', false, 'CGI 渲染如果與實際遊戲畫面差距太大，會產生「虛假廣告」的負面感受，反而損害信任。');
+}
+function checkQ3(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q3-feedback', false, '平台是 utm_source 的職責，不是 utm_campaign。');
+  else if (v === 'B') showFeedback('q3-feedback', true, 'utm_campaign 用於標記特定活動或單篇內容，這是分析不同貼文/活動成效的最小粒度。');
+  else showFeedback('q3-feedback', false, 'App ID 已經在 Steam 連結的路徑中，不需要用 UTM 重複記錄。');
+}
+</script>
+
+<h2>推薦原始來源</h2>
+<ul>
+  <li><strong>閱讀</strong>：<a href="https://howtomarketagame.com/2023/11/07/steam-capsule-art-guide/" target="_blank">Chris Zukowski — Steam Capsule Art Guide</a> — 膠囊圖片設計的權威指南，包含大量成功/失敗案例對比。</li>
+  <li><strong>閱讀</strong>：<a href="https://partner.steamgames.com/doc/store/coming_soon" target="_blank">Steamworks 官方文件 — Coming Soon 頁面</a> — Valve 對早期頁面建置的技術規格與政策。</li>
+  <li><strong>工具</strong>：<a href="https://partner.steamgames.com/doc/marketing/utm_analytics" target="_blank">Steamworks UTM Analytics 文檔</a> — 官方對 UTM 追蹤的說明與後台介面使用方式。</li>
+</ul>
+
+<hr>
+
+<div class="callout">
+  <strong>💬 下一堂課可以討論：</strong>你的商店頁面上線了嗎？把 Capsule Art 帶來給我看，我們可以討論它是否傳達了正確的類型訊號。你也可以問：「我的標籤策略合理嗎？」、「簡短描述夠不夠有吸引力？」或者任何你在建置過程中卡住的技術問題。
+</div>
+
+<div class="nav">
+  <a href="0001-genre-market-fit.html">← Lesson 0001: 類型市場適配度</a>
+  <a href="0003-tag-strategy.html">Lesson 0003: 標籤策略與演算法推薦 →</a>
+</div>
+
+</body>
+</html>

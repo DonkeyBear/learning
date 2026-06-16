@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theme Reference — Dark Mode Base</title>
+<style>
+  /*
+    Theme: Dark Mode Base
+    Use for: All lessons and reference documents in learn-react-native
+    Copy the :root block below into every new HTML file.
+    Last updated: 2026-06-12
+  */
+  :root {
+    --bg: #161618;
+    --text: #e4e4e4;
+    --muted: #8b8b8b;
+    --accent: #5e9eff;
+    --accent-dim: #1e2a3a;
+    --border: #2e2e32;
+    --code-bg: #1e1e22;
+    --surface: #1c1c20;
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+    font-size: 17px;
+  }
+  h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.75rem 0; }
+  .meta { color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: var(--code-bg);
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+  pre {
+    background: #111113;
+    color: #d4d4d4;
+    padding: 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1rem;
+    margin: 1.25rem 0;
+    background: var(--accent-dim);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95rem;
+    color: #a0a8c0;
+  }
+  .callout {
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.5rem 0;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* Quiz */
+  .quiz-question {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .quiz-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .quiz-option.correct { border-color: var(--success); background: #064e3b; color: #6ee7b7; }
+  .quiz-option.wrong { border-color: var(--danger); background: #7f1d1d; color: #fca5a5; }
+  .quiz-feedback { margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.9rem; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: #064e3b; color: #6ee7b7; }
+  .quiz-feedback.wrong { background: #7f1d1d; color: #fca5a5; }
+
+  /* Practice */
+  .practice {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: var(--accent-dim); font-weight: 600; }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 0.1em 0.5em; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+  .tag-new { background: #064e3b; color: #6ee7b7; }
+  .tag-old { background: #7f1d1d; color: #fca5a5; }
+  .tag-core { background: var(--accent-dim); color: var(--accent); }
+
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.75rem;
+    margin: 1.5rem 0;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  /* Fill-in-blank, match, order */
+  .fib-input:focus { outline: none; border-color: var(--accent); }
+  .match-btn.matched { cursor: default; }
+  .order-item { transition: all 0.15s; }
+  .order-item:hover { border-color: var(--accent); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+  <h1>🎨 Dark Mode Theme Base</h1>
+  <p class="meta">Reference · 建立於 2026-06-12</p>
+  <p>這是所有課件與參考文件的共用深色主題。每個新 HTML 文件應複製 <code>:root</code> 變數區塊和基礎樣式。</p>
+  <p>使用方式：建立新課件時，從此檔複製 <code>&lt;style&gt;</code> 區塊作為起點。</p>
+</body>
+</html>

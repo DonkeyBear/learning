@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0004 — 商店頁面在地化</title>
+<style>
+  :root {
+    --bg: #1b1916;
+    --text: #e2dbd0;
+    --muted: #9b8e7a;
+    --accent: #d4725a;
+    --border: #3a3530;
+    --highlight: #272320;
+    --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25em; line-height: 1.3; }
+  h2 { font-size: 1.3rem; margin: 2em 0 0.5em; color: var(--accent); }
+  h3 { font-size: 1.05rem; margin: 1.5em 0 0.4em; }
+  p { margin: 0.8em 0; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 1.5em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  .nav a { color: var(--accent); text-decoration: none; }
+  .nav a:hover { color: #e89375; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1.2em 0; padding: 0.6em 1em;
+    background: var(--highlight); font-style: italic;
+  }
+  blockquote cite { display: block; margin-top: 0.4em; font-size: 0.85rem; color: var(--muted); font-style: normal; }
+  .practice {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.2em 1.5em; margin: 1.5em 0;
+  }
+  .practice h3 { margin-top: 0; color: var(--accent); }
+  ol, ul { margin: 0.5em 0 0.5em 1.5em; }
+  li { margin: 0.4em 0; }
+  code { font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 2px; }
+  .step { font-weight: 600; color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .nav { display: flex; justify-content: space-between; margin-top: 3em; font-size: 0.9rem; }
+  .callout {
+    background: #2a221f; border-left: 3px solid var(--accent);
+    padding: 0.8em 1.2em; margin: 1.5em 0; font-size: 0.92rem;
+  }
+  .callout strong { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.88rem; }
+  th, td { padding: 0.5em 0.7em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .quiz { margin: 1em 0; }
+  .quiz .question { font-weight: 600; margin: 1.2em 0 0.4em; }
+  .quiz label { display: block; padding: 0.3em 0; cursor: pointer; }
+  .quiz input[type="radio"] { margin-right: 0.5em; accent-color: var(--accent); }
+  .quiz .feedback { display: none; margin-top: 0.5em; padding: 0.6em 1em; border-radius: 3px; font-size: 0.9rem; }
+  .quiz .correct { background: #1a3322; color: #6bde80; }
+  .quiz .incorrect { background: #3a1a1a; color: #f07a6a; }
+  .priority { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 0.82rem; font-weight: 600; }
+  .p0 { background: #4a3020; color: #f0a060; }
+  .p1 { background: #2a3a2a; color: #80c880; }
+  .p2 { background: #2a2a3a; color: #8088c0; }
+</style>
+</head>
+<body>
+
+<h1>Lesson 0004<br>商店頁面在地化</h1>
+<p class="subtitle">每少一個語系，你就對數千萬玩家隱形</p>
+
+<div class="callout">
+  <strong>🎯 與 Mission 的關聯：</strong>超過 60% 的 Steam 用戶使用非英語介面。Steam 的演算法會優先將遊戲展示給「該遊戲支援語系」的玩家。對你（中文母語開發者）來說，簡中已覆蓋，但你還需要至少覆蓋英文 + 另外 4 種語言，才能解鎖全球自然流量。
+</div>
+
+<h2>知識：語系是 Steam 演算法的隱形開關</h2>
+
+<p>Steamworks 官方文件中的一句話，是獨立開發者最常忽略的致命資訊：</p>
+
+<blockquote>
+  Steam 將更有可能把您的遊戲展示給使用該遊戲支援語系的玩家。
+  <cite>— Steamworks 開發者文件</cite>
+</blockquote>
+
+<p>這句話的反面是：<strong>如果你的遊戲只支援英文，那它在全球 60% 以上的非英語用戶面前直接從演算法推薦系統中蒸發。</strong>不是排在比較後面——是根本不出現。</p>
+
+<p>這不是猜測，是硬性的過濾邏輯。Steam 的推薦系統在決定將一款遊戲推送給某個玩家時，會先檢查這款遊戲是否支援該玩家使用的語言。不支援？跳過。就這麼簡單。</p>
+
+<h2>知識：最小可行在地化——先翻頁面，再翻遊戲</h2>
+
+<p>多數獨立開發者的直覺是：「我沒錢翻譯整款遊戲，所以在地化這件事我先跳過。」這是一個全有或全無的思維陷阱。</p>
+
+<p>正確的策略是<strong>階段式在地化</strong>：</p>
+
+<table>
+  <tr><th>階段</th><th>內容</th><th>預算級距</th><th>影響</th></tr>
+  <tr>
+    <td><span class="priority p0">第一優先</span></td>
+    <td>商店頁面文本（短描述、長描述、截圖文字、宣傳詞）<br>+ 標籤翻譯</td>
+    <td>$200–800 / 語系<br>（僅數百字的專業翻譯）</td>
+    <td>解鎖該語系玩家的<strong>全部</strong>推薦曝光</td>
+  </tr>
+  <tr>
+    <td><span class="priority p1">第二優先</span></td>
+    <td>遊戲內 UI（選單、提示、教學）</td>
+    <td>$500–2,000 / 語系</td>
+    <td>降低退款率、負評風險</td>
+  </tr>
+  <tr>
+    <td><span class="priority p2">第三優先</span></td>
+    <td>遊戲內敘事文本（對話、劇情、道具描述）</td>
+    <td>視文本量而定</td>
+    <td>將「可玩」提升為「沉浸」</td>
+  </tr>
+</table>
+
+<p>第一階段的 ROI 最高：花幾百美元翻譯商店頁面，就能讓你的遊戲出現在該語系數百萬玩家的推薦系統中。相較之下，花同樣的錢買廣告可能只能觸及幾千人。</p>
+
+<div class="callout">
+  <strong>⚠️ 常見翻車：</strong>在截圖上嵌入宣傳文字（例如「超過 100 種武器！」），卻只做了英文版。當德國或日本玩家看到這些他們讀不懂的英文截圖時，不只失去了吸引力，還可能產生「這遊戲不歡迎我」的負面感受。解法：截圖文字必須為<strong>每個語系</strong>製作獨立版本，或者——更好的做法——截圖中不要嵌入任何文字。
+</div>
+
+<h2>知識：五大語系的優先順序與特性</h2>
+
+<p>基於 2026 年的 Steam 流量分佈、用戶數量與市場轉化率，獨立遊戲的五個必備語系排序如下：</p>
+
+<table>
+  <tr><th>優先序</th><th>語系</th><th>Steam 用戶佔比</th><th>在地化要點</th></tr>
+  <tr>
+    <td>1</td>
+    <td><strong>簡體中文</strong></td>
+    <td>~30%（最大單一語系）</td>
+    <td>你的母語，無額外成本。確保用詞是中國市場慣用語而非台灣用語。</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><strong>英文</strong></td>
+    <td>~35%</td>
+    <td>全球通用。必須母語等級校對——文法錯誤會顯著降低信任感。</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><strong>俄語</strong></td>
+    <td>~8%</td>
+    <td>俄語玩家付費意願強、退款率低。必須用西里爾字母。注意文本長度（俄語通常比英文長 30%）。</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><strong>德語</strong></td>
+    <td>~6%</td>
+    <td>德國玩家偏好高品質在地化。機翻在德國市場特別容易引發負評。</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><strong>日語</strong></td>
+    <td>~5%</td>
+    <td>日本玩家對 Steam 的採用率持續成長。注意禮貌語體的文化適配。</td>
+  </tr>
+</table>
+
+<p>第六名是<strong>西班牙語</strong>（涵蓋西班牙與拉丁美洲），如果你的遊戲有較強的社群/多人元素，西語的 ROI 可能會超過德語或日語。</p>
+
+<h2>知識：2026 年的跨境趨勢——為什麼中文開發者佔有特殊優勢</h2>
+
+<p>Gemini 報告提到一個值得注意的趨勢：2025–2026 年間，中國市場輸出的 FMV（全動態影像）真人互動遊戲，透過積極的英文與多語系在地化，成功打入了西方玩家的市場。在當年達成 1,000+ 評價的敘事類遊戲中，有相當比例來自中國團隊。</p>
+
+<p>這對你意味著什麼？<strong>中文開發者不需要隱藏自己的文化背景</strong>。關鍵不是讓遊戲「看起來像西方做的」，而是做好在地化，讓全球玩家能夠無障礙地體驗你的內容。Steam 的全球用戶比任何單一市場都更願意接受來自不同文化的好遊戲——只要他們能讀懂。</p>
+
+<h2>技能實踐：規劃你的在地化路線</h2>
+
+<div class="practice">
+<h3>🛠 動手做：商店頁面在地化需求分析</h3>
+
+<ol>
+  <li><strong>統計你的商店頁面文本量。</strong>打開你的 Steam 商店頁面草稿（如果你已經建了），把以下內容複製到文字編輯器並統計字數：
+    <ul>
+      <li>簡短描述（Short Description）</li>
+      <li>詳細描述（Detailed Description）</li>
+      <li>所有截圖中的嵌入文字（如果有）</li>
+      <li>公告/新聞標題</li>
+    </ul>
+  </li>
+  <li><strong>取得翻譯報價。</strong>帶著總字數去 <a href="https://www.proz.com/" target="_blank">ProZ.com</a> 或 <a href="https://www.upwork.com/" target="_blank">Upwork</a> 尋找遊戲在地化自由譯者。取得英文、俄語、德語、日語四個語系的報價（簡中你自己來）。</li>
+  <li><strong>設定優先序與預算。</strong>如果你的預算只能負擔兩個語系的完整商店頁面翻譯，選英文 + 俄語（最大市場 + 最高轉化率）。</li>
+  <li><strong>檢查標籤在地化。</strong>在 Steamworks 後台的標籤設定中，確認每個標籤都有對應語系的翻譯版本。標籤不翻譯 = 該語系的演算法推薦依然無法正確運作。</li>
+</ol>
+</div>
+
+<h2>自我測驗</h2>
+
+<div class="quiz">
+  <div class="question">1. Steam 演算法如何處理不支援某語系的遊戲？</div>
+  <label><input type="radio" name="q1" value="A" onchange="checkQ1(this)"> A. 仍會推薦給該語系玩家，但排在支援該語系的遊戲之後</label>
+  <label><input type="radio" name="q1" value="B" onchange="checkQ1(this)"> B. 不會推薦給該語系的玩家——直接跳過</label>
+  <label><input type="radio" name="q1" value="C" onchange="checkQ1(this)"> C. 會自動用機器翻譯遊戲頁面後推薦給玩家</label>
+  <div class="feedback" id="q1-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">2. 預算有限時，第一優先的在地化內容是什麼？</div>
+  <label><input type="radio" name="q2" value="A" onchange="checkQ2(this)"> A. 遊戲內敘事文本（對話、劇情）</label>
+  <label><input type="radio" name="q2" value="B" onchange="checkQ2(this)"> B. 商店頁面文本與標籤</label>
+  <label><input type="radio" name="q2" value="C" onchange="checkQ2(this)"> C. 遊戲內 UI（選單、教學）</label>
+  <div class="feedback" id="q2-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">3. 為什麼截圖中嵌入宣傳文字會造成在地化問題？</div>
+  <label><input type="radio" name="q3" value="A" onchange="checkQ3(this)"> A. Steam 會拒絕上傳包含文字的截圖</label>
+  <label><input type="radio" name="q3" value="B" onchange="checkQ3(this)"> B. 截圖無法被 Steam 自動翻譯，每個語系需要獨立製作截圖版本</label>
+  <label><input type="radio" name="q3" value="C" onchange="checkQ3(this)"> C. 文字會降低截圖的檔案壓縮效率</label>
+  <div class="feedback" id="q3-feedback"></div>
+</div>
+
+<script>
+function showFeedback(id, correct, explanation) {
+  const fb = document.getElementById(id);
+  fb.style.display = 'block';
+  fb.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+  fb.textContent = (correct ? '✓ 正確。' : '✗ 不正確。') + ' ' + explanation;
+}
+function checkQ1(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q1-feedback', false, '這不是「排在後面」的問題。Steamworks 文件的說法是直接將遊戲展示給支援該語系的玩家——不支援就直接跳過。');
+  else if (v === 'B') showFeedback('q1-feedback', true, '不支援該語系 = 在該語系玩家的推薦系統中隱形。這就是為什麼就連商店頁面翻譯都有極高的 ROI。');
+  else showFeedback('q1-feedback', false, 'Steam 不會自動翻譯任何內容。所有在地化都必須由開發者手動提供。');
+}
+function checkQ2(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q2-feedback', false, '敘事文本量最大、成本最高，應放在最後階段。優先解鎖演算法曝光的瓶頸——商店頁面。');
+  else if (v === 'B') showFeedback('q2-feedback', true, '商店頁面文本量少（數百字），翻譯成本低，卻能解鎖該語系玩家的全部推薦曝光。ROI 最高。');
+  else showFeedback('q2-feedback', false, 'UI 在地化雖然重要，但優先級低於商店頁面——因為玩家需要先透過商店頁面被吸引進來，才會有 UI 體驗的問題。');
+}
+function checkQ3(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q3-feedback', false, 'Steam 不會因為截圖含文字就拒絕，但文字無法被自動翻譯或替換。');
+  else if (v === 'B') showFeedback('q3-feedback', true, '每種語言都需要對應的截圖版本——或最佳解法：截圖中不嵌入宣傳文字，只展示純實機畫面。');
+  else showFeedback('q3-feedback', false, '這不是壓縮效率的問題，而是多語系維護成本的問題。');
+}
+</script>
+
+<h2>推薦原始來源</h2>
+<ul>
+  <li><strong>閱讀</strong>：<a href="https://partner.steamgames.com/doc/store/localization" target="_blank">Steamworks 官方在地化文件</a> — Valve 對商店頁面在地化的技術規範與最佳實踐。</li>
+  <li><strong>閱讀</strong>：<a href="https://howtomarketagame.com/2024/01/15/steam-localization-guide/" target="_blank">Chris Zukowski — Steam Localization Guide</a> — 獨立遊戲在地化的實戰指南，包含各語系 ROI 數據。</li>
+  <li><strong>工具</strong>：<a href="https://www.proz.com/" target="_blank">ProZ.com</a> — 專業譯者平台，可找到有遊戲在地化經驗的自由譯者。</li>
+  <li><strong>數據</strong>：<a href="https://store.steampowered.com/hwsurvey/" target="_blank">Steam 硬體與軟體調查</a> — Steam 官方每月更新的用戶語言分佈數據。</li>
+</ul>
+
+<hr>
+
+<div class="callout">
+  <strong>💬 學習提示：</strong>在地化是一個「花小錢、賺大曝光」的槓桿。如果你已經完成了前面幾課的商店頁面內容（描述、截圖），可以統計一下總字數，然後跟我討論你的在地化預算規劃——我可以幫你評估哪些語系的優先級應該調整。
+</div>
+
+<div class="nav">
+  <a href="0003-tag-strategy.html">← Lesson 0003: 標籤策略與演算法推薦</a>
+  <a href="0005-wishlist-funnel.html">Lesson 0005: 願望清單漏斗與 UTM 實戰 →</a>
+</div>
+
+</body>
+</html>

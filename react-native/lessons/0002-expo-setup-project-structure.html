@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0002 — Expo 開發環境與專案結構</title>
+<style>
+  :root {
+    --bg: #161618; --text: #e4e4e4; --muted: #8b8b8b;
+    --accent: #5e9eff; --accent-dim: #1e2a3a; --border: #2e2e32;
+    --code-bg: #1e1e22; --surface: #1c1c20;
+    --success: #34d399; --danger: #f87171; --warning: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+    max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 6rem; font-size: 17px;
+  }
+  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: -0.02em; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.75rem 0; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+  code {
+    background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 4px;
+    font-size: 0.9em; font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  }
+  pre {
+    background: #111113; color: #d4d4d4; padding: 1.25rem; border-radius: 8px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  blockquote {
+    border-left: 3px solid var(--accent); padding: 0.5rem 1rem; margin: 1.25rem 0;
+    background: var(--accent-dim); border-radius: 0 6px 6px 0; font-size: 0.95rem; color: #a0a8c0;
+  }
+  .callout {
+    background: var(--accent-dim); border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0;
+  }
+  .callout strong { color: var(--accent); }
+  .diagram {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.75rem; margin: 1.5rem 0; font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.82rem; line-height: 1.6; overflow-x: auto;
+  }
+
+  /* Quiz system */
+  .quiz-question {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.5rem; margin: 1.25rem 0;
+  }
+  .quiz-option {
+    display: block; width: 100%; text-align: left; padding: 0.7rem 1rem;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+    color: var(--text); cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: all 0.15s;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .quiz-option.correct { border-color: var(--success); background: #064e3b; color: #6ee7b7; }
+  .quiz-option.wrong { border-color: var(--danger); background: #7f1d1d; color: #fca5a5; }
+  .quiz-feedback { margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.9rem; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: #064e3b; color: #6ee7b7; }
+  .quiz-feedback.wrong { background: #7f1d1d; color: #fca5a5; }
+  .practice {
+    background: var(--surface); border: 2px solid var(--accent); border-radius: 10px;
+    padding: 1.5rem; margin: 2rem 0;
+  }
+  .fib-input:focus { outline: none; border-color: var(--accent); }
+  .match-btn.matched { cursor: default; }
+  .order-item { transition: all 0.15s; }
+  .order-item:hover { border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: var(--accent-dim); font-weight: 600; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+
+<h1>🛠️ Lesson 0002 — Expo 開發環境與專案結構</h1>
+<p class="meta">約 30 分鐘 · 難度：基礎＋實作 · 建立於 2026-06-12</p>
+
+<h2>為什麼這很重要</h2>
+<p>
+  上堂課你學到了 RN 的 runtime 架構。現在你要把這個架構「叫出來」——在你的電腦上建立一個真正能跑的 Expo 專案。
+  這堂課不只教你下指令，而是要讓你理解<strong>每個檔案做什麼、為什麼這樣組織</strong>。
+  理解專案結構 = 知道 bug 發生時該看哪個檔案。
+</p>
+
+<h2>📋 前置需求</h2>
+<p>開始之前，確保你已安裝：</p>
+<ul>
+  <li><strong>Node.js 18+</strong> — 建議用 <code>nvm</code> 或 <code>fnm</code> 管理版本</li>
+  <li><strong>macOS</strong> 上建議安裝 <code>watchman</code>（檔案監控工具，Metro bundler 用它追蹤檔案變更）</li>
+  <li>一台<strong>實體手機</strong>安裝 Expo Go app，或 macOS 上的 Xcode Simulator / Android Emulator</li>
+</ul>
+
+<div class="callout">
+  <strong>💡 你需要 Xcode 或 Android Studio 嗎？</strong><br>
+  初期不需要。安裝 Expo Go app 在實體手機上，掃描 QR code 就能預覽。等到需要自訂 native module 時再安裝 dev client。<br>
+  但如果你要用 simulator：Xcode（macOS only）或 Android Studio（任何平台）還是要裝。
+</div>
+
+<h2>🚀 第一步：建立專案</h2>
+
+<p>打開終端機，執行：</p>
+
+<pre><code># 建立新專案
+npx create-expo-app@latest MyFirstApp
+
+# 進入專案目錄
+cd MyFirstApp
+
+# 啟動開發伺服器
+npx expo start</code></pre>
+
+<p><code>npx create-expo-app</code> 做了什麼？</p>
+<ol>
+  <li>下載最新的 Expo SDK template</li>
+  <li>產生 <code>package.json</code>（依賴清單）</li>
+  <li>產生 <code>app.json</code>（Expo 設定檔）</li>
+  <li>產生 <code>tsconfig.json</code>（TypeScript 設定）</li>
+  <li>產生 <code>App.tsx</code>（進入點元件）</li>
+  <li>執行 <code>npm install</code></li>
+</ol>
+
+<h2>📁 專案結構詳解</h2>
+
+<p>這是你剛建立的目錄結構。每個檔案都有它的角色：</p>
+
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+MyFirstApp/
+├── app.json              ← Expo 設定檔（app name、icon、splash...）
+├── App.tsx               ← 進入點元件（你的第一個畫面）
+├── package.json          ← npm 依賴與 scripts
+├── tsconfig.json         ← TypeScript 編譯設定
+├── node_modules/         ← 安裝的套件（不要手動修改）
+├── assets/               ← 靜態資源（圖片、字型）
+├── .gitignore            ← Git 忽略規則
+└── ...
+</pre>
+</div>
+
+<h3>核心檔案逐個看</h3>
+
+<table>
+  <tr><th>檔案</th><th>角色</th><th>你需要改嗎？</th></tr>
+  <tr>
+    <td><code>app.json</code></td>
+    <td>Expo 的中央設定檔。定義 app name、slug、version、icon、splash screen、platform-specific 設定</td>
+    <td>✅ 每個專案都會改</td>
+  </tr>
+  <tr>
+    <td><code>App.tsx</code></td>
+    <td>React Native 的根元件。相當於 web React 的 <code>index.tsx</code> + <code>App.tsx</code> 合體</td>
+    <td>✅ 你的程式碼起點</td>
+  </tr>
+  <tr>
+    <td><code>package.json</code></td>
+    <td>定義 npm scripts（<code>start</code>、<code>ios</code>、<code>android</code>）和依賴版本</td>
+    <td>⚠️ 加新套件時會改</td>
+  </tr>
+  <tr>
+    <td><code>tsconfig.json</code></td>
+    <td>TypeScript 編譯選項。Expo 預設有合理的設定</td>
+    <td>很少需要改</td>
+  </tr>
+</table>
+
+<h3>app.json 重點欄位</h3>
+
+<pre><code>{
+  "expo": {
+    "name": "MyFirstApp",        // app 顯示名稱
+    "slug": "MyFirstApp",        // URL-safe 識別碼（EAS 用）
+    "version": "1.0.0",          // app 版本
+    "orientation": "portrait",   // 螢幕方向
+    "icon": "./assets/icon.png", // app 圖示路徑
+    "userInterfaceStyle": "light", // 系統主題
+    "splash": {                  // 啟動畫面設定
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": { "supportsTablet": true },
+    "android": { "adaptiveIcon": { /* ... */ } },
+    "plugins": []                // Expo config plugins
+  }
+}</code></pre>
+
+<h2>🏃 第二步：在手機上執行</h2>
+
+<p>有三種方式可以預覽你的 app：</p>
+
+<table>
+  <tr><th>方式</th><th>優點</th><th>限制</th></tr>
+  <tr>
+    <td><strong>Expo Go (實體手機)</strong></td>
+    <td>最快、不用裝 Xcode/Android Studio</td>
+    <td>不能跑自訂 native module</td>
+  </tr>
+  <tr>
+    <td><strong>iOS Simulator</strong></td>
+    <td>Mac 內建、開發迭代快</td>
+    <td>Mac only、不能測相機/推播等硬體功能</td>
+  </tr>
+  <tr>
+    <td><strong>Android Emulator</strong></td>
+    <td>跨平台可用</td>
+    <td>啟動慢、佔記憶體</td>
+  </tr>
+</table>
+
+<div class="callout">
+  <strong>📱 最推薦初學者：</strong><br>
+  手機安裝 <strong>Expo Go</strong>（App Store / Google Play 搜尋），然後在終端機跑 <code>npx expo start</code>，掃描終端機顯示的 QR code。app 會立即在手機上開啟。
+</div>
+
+<h2>🖐️ 第三步：動手修改 App.tsx</h2>
+
+<p>打開 <code>App.tsx</code>，你會看到一個預設的 template。試著改成這樣：</p>
+
+<pre><code>import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View } from 'react-native';
+
+export default function App() {
+  return (
+    &lt;View style={styles.container}&gt;
+      &lt;Text style={styles.title}&gt;Hello, React Native!&lt;/Text&gt;
+      &lt;Text style={styles.subtitle}&gt;這是我的第一個 RN App&lt;/Text&gt;
+      &lt;StatusBar style="auto" /&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#161618',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#e4e4e4',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#8b8b8b',
+    marginTop: 8,
+  },
+});</code></pre>
+
+<p>存檔後，Expo Go 會自動熱重載（Fast Refresh）。這就是 RN 開發的日常 — 改 code → 存檔 → 手機即時看到變化。</p>
+
+<h2>🔄 Metro Bundler</h2>
+
+<p>當你跑 <code>npx expo start</code> 時，幕後發生的事：</p>
+
+<div class="diagram">
+<pre style="background:none;color:var(--text);padding:0;margin:0;">
+你的 code (App.tsx)
+      │
+      ▼
+┌─────────────┐
+│  Metro      │  ← JS bundler（類似 webpack / Vite，
+│  Bundler    │     但是專為 RN 設計）
+└──────┬──────┘
+       │ 打包成一個 JS bundle
+       ▼
+┌─────────────┐
+│  Hermes     │  ← 在手機上執行 bundle
+│  (手機上)    │
+└─────────────┘
+</pre>
+</div>
+
+<p>關鍵差異：</p>
+<ul>
+  <li>Web 用 Vite/webpack → 輸出 HTML+JS+CSS → 瀏覽器</li>
+  <li>RN 用 Metro → 輸出 JS bundle → Hermes（手機上的 JS engine）</li>
+  <li>Metro <strong>不做 tree-shaking、不做 code splitting</strong>（這些在 native 世界不適用）</li>
+  <li>Fast Refresh 是 Metro 的功能，不是 Expo 的功能</li>
+</ul>
+
+<div class="callout">
+  <strong>📝 命名慣例：</strong><br>
+  Expo SDK 版本號碼跟 RN 版本是對齊的。例如 Expo SDK 52 ≈ RN 0.76。用 <code>npx expo --version</code> 查看你安裝的版本。<br>
+  查相容性：<a href="https://docs.expo.dev/versions/latest/" target="_blank">docs.expo.dev/versions/latest/</a>
+</div>
+
+<hr>
+
+<!-- ==================== QUIZ SYSTEM ==================== -->
+<div id="quiz-root">
+  <div id="score-bar" style="position: sticky; top: 0; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+    <span style="font-weight: 700;">📊 你的進度</span>
+    <span id="score-text" style="font-size: 0.9rem; color: var(--muted);">尚未開始</span>
+    <div style="flex: 1; max-width: 200px; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+      <div id="score-fill" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+    </div>
+    <button onclick="resetAll()" style="background: var(--border); color: var(--text); border: none; padding: 0.35rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: inherit;">🔄 全部重做</button>
+  </div>
+
+  <h2>🧠 第一階段：選擇題</h2>
+  <div class="quiz" id="mc-section"></div>
+
+  <h2>✍️ 第二階段：填空題</h2>
+  <div class="quiz" id="fib-section"></div>
+
+  <h2>🔗 第三階段：檔案角色配對</h2>
+  <div class="quiz" id="match-section"></div>
+
+  <h2>🛠️ 第四階段：實作練習</h2>
+  <div class="practice">
+    <h3>動手做：建立你的第一個專案</h3>
+    <p>打開終端機，完成以下步驟：</p>
+    <ol>
+      <li>執行 <code>npx create-expo-app@latest LearnRN</code></li>
+      <li>進入目錄：<code>cd LearnRN</code></li>
+      <li>打開 <code>App.tsx</code>，把內容換成本課中的深色主題範例</li>
+      <li>執行 <code>npx expo start</code></li>
+      <li>用手機的 Expo Go 掃描 QR code 確認畫面正確顯示</li>
+      <li>回到 <code>App.tsx</code>，把 <code>title</code> 文字改成你的名字，存檔確認手機自動更新</li>
+    </ol>
+    <p style="margin-top: 1rem;">完成後，勾選以下檢查清單：</p>
+    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+      <input type="checkbox" class="practice-check" data-pts="1"> 專案成功建立並啟動
+    </label>
+    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+      <input type="checkbox" class="practice-check" data-pts="1"> Expo Go 上成功看到畫面
+    </label>
+    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+      <input type="checkbox" class="practice-check" data-pts="1"> 修改文字後手機自動更新（Fast Refresh）
+    </label>
+    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+      <input type="checkbox" class="practice-check" data-pts="1"> 能說出 app.json 和 App.tsx 各自做什麼
+    </label>
+  </div>
+
+  <div id="final-score-box" style="display:none; background: var(--surface); border: 2px solid var(--success); border-radius: 12px; padding: 1.5rem; margin-top: 2rem; text-align: center;"></div>
+</div>
+
+<hr>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://docs.expo.dev/get-started/create-a-project/" target="_blank">Expo 官方：Create a project</a> — 專案建立的權威文件</li>
+  <li><a href="https://docs.expo.dev/versions/latest/" target="_blank">Expo SDK Version Matrix</a> — 查 Expo/RN/React 版本對應關係</li>
+  <li><a href="https://reactnative.dev/docs/environment-setup" target="_blank">RN 官方：Environment Setup</a> — 了解 bare workflow 環境設定</li>
+</ul>
+
+<h2>🔗 相關課程</h2>
+<ul>
+  <li><a href="0001-react-native-runtime-architecture.html">← Lesson 0001：RN 執行時架構心智模型</a></li>
+  <li>Lesson 0003：Core Components 與 StyleSheet 深入（待發布）</li>
+  <li><a href="../reference/rn-architecture-cheatsheet.html">Reference：RN Architecture Cheatsheet</a></li>
+</ul>
+
+<hr>
+
+<footer>
+  <p>
+    <strong>有疑問？</strong> 在終端機中直接追問我。我是你的教師，可以幫你排除環境設定問題。<br>
+    這堂課是 <a href="../MISSION.md">Mission: React Native Mastery for Mobile Engineering Transition</a> 的一部分。
+  </p>
+</footer>
+
+<script>
+// ========== SCORE TRACKING ==========
+const TOTAL_POINTS = 13; // 5 MC + 4 FIB + 4 match
+let scores = { mc: 0, fib: 0, match: 0, practice: 0 };
+
+function updateScore() {
+  const checks = document.querySelectorAll('.practice-check:checked');
+  scores.practice = checks.length;
+  document.querySelectorAll('.practice-check').forEach(cb => {
+    cb.onchange = updateScore;
+  });
+  const total = scores.mc + scores.fib + scores.match + scores.practice;
+  const pct = Math.round((total / TOTAL_POINTS) * 100);
+  document.getElementById('score-text').textContent = `${total} / ${TOTAL_POINTS} 分 (${pct}%)`;
+  document.getElementById('score-fill').style.width = `${pct}%`;
+
+  const box = document.getElementById('final-score-box');
+  if (total >= TOTAL_POINTS) {
+    box.style.display = 'block';
+    box.innerHTML = `<h3 style="margin:0 0 0.5rem;">🎉 滿分！環境已就緒</h3><p style="margin:0; color: var(--muted);">你的開發環境已經設定完成，準備好寫真正的 RN 程式碼了。</p>`;
+  } else if (total >= TOTAL_POINTS * 0.7) {
+    box.style.display = 'block';
+    box.innerHTML = `<h3 style="margin:0 0 0.5rem;">👍 不錯，接近完成了</h3><p style="margin:0; color: var(--muted);">回顧標示紅色的部分，確保每個概念都清楚。</p>`;
+  }
+}
+
+function resetAll() {
+  scores = { mc: 0, fib: 0, match: 0, practice: 0 };
+  sessionStorage.clear();
+  document.getElementById('final-score-box').style.display = 'none';
+  document.querySelectorAll('.practice-check').forEach(cb => cb.checked = false);
+  document.getElementById('mc-section').innerHTML = '';
+  document.getElementById('fib-section').innerHTML = '';
+  document.getElementById('match-section').innerHTML = '';
+  buildMC(); buildFIB(); buildMatch();
+  updateScore();
+  window.scrollTo({ top: document.getElementById('quiz-root').offsetTop - 20, behavior: 'smooth' });
+}
+
+// ========== MULTIPLE CHOICE ==========
+const MC_QUESTIONS = [
+  {
+    q: 'Q1: 建立 Expo 專案的正確指令是什麼？',
+    opts: ['npm init expo-app', 'npx create-expo-app@latest', 'expo init my-app', 'npx react-native init'],
+    ans: 1,
+    explain: 'npx create-expo-app@latest 是官方推薦的建立方式（2025+）。它總是使用最新版的 Expo SDK template。expo init 是舊指令，已棄用。'
+  },
+  {
+    q: 'Q2: app.json 的主要用途是什麼？',
+    opts: ['定義 React component 的 props', '設定 app 名稱、icon、splash、平台特定選項等', '管理 npm 依賴版本', '定義 TypeScript 型別'],
+    ans: 1,
+    explain: 'app.json（或 app.config.js）是 Expo 的中央設定檔，控制 app 名稱、圖示、啟動畫面、權限、plugin 等。它相當於 bare RN 專案中 ios/ 和 android/ 目錄裡的許多原生設定檔的統一聲明。'
+  },
+  {
+    q: 'Q3: 哪個工具負責把 RN 的 JS/TS 程式碼打包成手機上可執行的 bundle？',
+    opts: ['Webpack', 'Vite', 'Metro', 'Babel（單獨使用）'],
+    ans: 2,
+    explain: 'Metro 是 RN 專用的 JS bundler，由 Meta 開發。它不做 tree-shaking 或 code splitting（這些在 mobile 上不適用），但支援 Fast Refresh 和 lazy bundle loading。'
+  },
+  {
+    q: 'Q4: Expo Go app 的主要限制是什麼？',
+    opts: ['不能顯示圖片', '不能使用 React Hooks', '不能跑自訂的 native module', '只能在 Android 上使用'],
+    ans: 2,
+    explain: 'Expo Go 內建了 Expo SDK 的所有 standard native module（相機、地圖等），但不包含你自訂的 native code。如果你寫了自訂 native module 或用了 Expo SDK 沒包進去的第三方 native library，就需要改用 dev client。'
+  },
+  {
+    q: 'Q5: 存檔後手機即時更新，這個功能叫什麼？靠誰實現？',
+    opts: ['Hot Module Replacement，靠 Vite', 'Fast Refresh，靠 Metro bundler', 'Live Reload，靠 WebSocket', 'Instant Update，靠 EAS'],
+    ans: 1,
+    explain: 'Fast Refresh 是 Metro bundler 的功能。它能在保持 component state 的情況下熱抽換程式碼。這跟 web 的 HMR 類似但實作不同——Metro 直接和 Hermes 通訊來更新模組。'
+  }
+];
+
+function buildMC() {
+  const section = document.getElementById('mc-section');
+  MC_QUESTIONS.forEach((item, idx) => {
+    const div = document.createElement('div'); div.className = 'quiz-question';
+    div.innerHTML = `<p>${item.q}</p><div class="quiz-options">${item.opts.map((o, i) =>
+      `<button class="quiz-option" data-answer="${i === item.ans ? 'correct' : 'wrong'}" onclick="handleMC(this, ${idx}, 'mc-fb-${idx}')">${o}</button>`
+    ).join('')}</div><div class="quiz-feedback" id="mc-fb-${idx}"></div>`;
+    section.appendChild(div);
+  });
+}
+
+function handleMC(btn, qIdx, fbId) {
+  const parent = btn.parentElement;
+  const feedback = document.getElementById(fbId);
+  const qId = 'mc-' + qIdx;
+  if (btn.dataset.locked === 'true') return;
+  parent.querySelectorAll('.quiz-option').forEach(b => { b.disabled = true; b.dataset.locked = 'true'; });
+  const isCorrect = btn.dataset.answer === 'correct';
+  if (isCorrect) {
+    btn.classList.add('correct');
+    feedback.className = 'quiz-feedback correct show';
+    feedback.textContent = '✅ 正確！' + MC_QUESTIONS[qIdx].explain;
+    if (!sessionStorage.getItem(qId)) { scores.mc++; sessionStorage.setItem(qId, '1'); }
+  } else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.quiz-option').forEach(b => { if (b.dataset.answer === 'correct') b.classList.add('correct'); });
+    feedback.className = 'quiz-feedback wrong show';
+    feedback.textContent = '❌ 不對。' + MC_QUESTIONS[qIdx].explain;
+    sessionStorage.removeItem(qId);
+  }
+  updateScore();
+}
+
+// ========== FILL IN THE BLANK ==========
+const FIB_QUESTIONS = [
+  { q: '建立 Expo 專案的指令是 npx ______-expo-app@latest。', ans: 'create', hint: '英文單字：創造（五個字母）' },
+  { q: 'Expo 的中央設定檔叫做 ______.json。', ans: 'app', hint: '三個英文字母，代表 application' },
+  { q: 'RN 的 JS bundler 叫做 ______。', ans: 'metro', hint: '跟大眾運輸系統同名，五個字母' },
+  { q: '手機上用來預覽 Expo app 的 app 叫做 Expo ______。', ans: 'go', hint: '兩個英文字母，英文的「去」' }
+];
+
+function buildFIB() {
+  const section = document.getElementById('fib-section');
+  FIB_QUESTIONS.forEach((item, idx) => {
+    const div = document.createElement('div'); div.className = 'quiz-question';
+    div.innerHTML = `
+      <p>${item.q}</p>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <input type="text" class="fib-input" data-idx="${idx}" placeholder="輸入你的答案..."
+          style="flex:1; padding:0.6rem 0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:0.95rem; font-family:inherit;"
+          onkeydown="if(event.key==='Enter') checkFIB(${idx})">
+        <button onclick="checkFIB(${idx})" style="padding:0.6rem 1.2rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-family:inherit; white-space:nowrap;">檢查</button>
+      </div>
+      <div class="quiz-feedback" id="fib-fb-${idx}"></div>`;
+    section.appendChild(div);
+  });
+}
+
+function checkFIB(idx) {
+  const input = document.querySelector(`.fib-input[data-idx="${idx}"]`);
+  const feedback = document.getElementById('fib-fb-' + idx);
+  const qId = 'fib-' + idx;
+  if (input.dataset.locked === 'true') return;
+  const userAns = input.value.trim().toLowerCase();
+  const correct = FIB_QUESTIONS[idx].ans;
+  input.disabled = true; input.dataset.locked = 'true';
+  if (userAns === correct) {
+    input.style.borderColor = 'var(--success)'; input.style.background = '#064e3b';
+    feedback.className = 'quiz-feedback correct show';
+    feedback.textContent = `✅ 正確！答案是 "${FIB_QUESTIONS[idx].ans}"。`;
+    if (!sessionStorage.getItem(qId)) { scores.fib++; sessionStorage.setItem(qId, '1'); }
+  } else {
+    input.style.borderColor = 'var(--danger)'; input.style.background = '#7f1d1d';
+    feedback.className = 'quiz-feedback wrong show';
+    feedback.textContent = `❌ 你的答案 "${userAns || '(空白)'}" 不正確。提示：${FIB_QUESTIONS[idx].hint}`;
+    sessionStorage.removeItem(qId);
+  }
+  updateScore();
+}
+
+// ========== MATCH PAIRS ==========
+const MATCH_LEFT = ['app.json', 'App.tsx', 'package.json', 'node_modules/'];
+const MATCH_RIGHT = ['App 設定（名稱、icon、splash）', '進入點元件（你的第一個畫面）', 'npm 依賴與 scripts', '安裝的第三方套件（不要手改）'];
+let matchSelected = null;
+
+const CORRECT_PAIRS = {
+  'app.json': 'App 設定（名稱、icon、splash）',
+  'App.tsx': '進入點元件（你的第一個畫面）',
+  'package.json': 'npm 依賴與 scripts',
+  'node_modules/': '安裝的第三方套件（不要手改）'
+};
+
+function buildMatch() {
+  const section = document.getElementById('match-section');
+  const div = document.createElement('div'); div.className = 'quiz-question';
+  const shuffledLeft = [...MATCH_LEFT].sort(() => Math.random() - 0.5);
+  const shuffledRight = [...MATCH_RIGHT].sort(() => Math.random() - 0.5);
+  div.innerHTML = `
+    <p>點擊左邊的檔案名稱，再點擊右邊對應的角色說明來配對。</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.75rem;">
+      <div id="match-left-col">${shuffledLeft.map((l, i) =>
+        `<button class="match-btn match-left" data-left="${l}" data-idx="${i}" onclick="selectLeft(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;"><code>${l}</code></button>`
+      ).join('')}</div>
+      <div id="match-right-col">${shuffledRight.map((r, i) =>
+        `<button class="match-btn match-right" data-right="${r}" data-idx="${i}" onclick="selectRight(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;">${r}</button>`
+      ).join('')}</div>
+    </div>
+    <div class="quiz-feedback" id="match-fb" style="margin-top:0.75rem;"></div>`;
+  section.appendChild(div);
+  window._matchCorrect = 0;
+}
+
+function selectLeft(btn) {
+  if (btn.classList.contains('matched')) return;
+  document.querySelectorAll('.match-left').forEach(b => b.style.outline = 'none');
+  btn.style.outline = '2px solid var(--accent)';
+  matchSelected = btn;
+}
+
+function selectRight(btn) {
+  if (!matchSelected) return;
+  if (btn.classList.contains('matched')) return;
+  const correct = CORRECT_PAIRS[matchSelected.dataset.left] === btn.dataset.right;
+  if (correct) {
+    matchSelected.classList.add('matched'); matchSelected.style.background = '#064e3b'; matchSelected.style.borderColor = 'var(--success)'; matchSelected.style.color = '#6ee7b7'; matchSelected.disabled = true;
+    btn.classList.add('matched'); btn.style.background = '#064e3b'; btn.style.borderColor = 'var(--success)'; btn.style.color = '#6ee7b7'; btn.disabled = true;
+    matchSelected.style.outline = 'none';
+    window._matchCorrect = (window._matchCorrect || 0) + 1;
+    if (window._matchCorrect >= 4) {
+      document.getElementById('match-fb').className = 'quiz-feedback correct show';
+      document.getElementById('match-fb').textContent = '✅ 全部配對正確！你完全理解了 Expo 專案結構。';
+      if (!sessionStorage.getItem('match-done')) { scores.match = 4; sessionStorage.setItem('match-done', '1'); }
+      updateScore();
+    }
+  } else {
+    matchSelected.style.outline = '2px solid var(--danger)';
+    setTimeout(() => { matchSelected.style.outline = 'none'; }, 500);
+  }
+  matchSelected = null;
+}
+
+// ========== INIT ==========
+buildMC(); buildFIB(); buildMatch(); updateScore();
+</script>
+
+</body>
+</html>

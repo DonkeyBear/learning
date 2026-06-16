@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — 類型市場分析工作表</title>
+<style>
+  :root {
+    --bg: #1b1916; --text: #e2dbd0; --muted: #9b8e7a;
+    --accent: #d4725a; --border: #3a3530; --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text); background: var(--bg);
+    line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.3em; }
+  h2 { font-size: 1.15rem; margin: 2em 0 0.5em; color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 1.8em; }
+  table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.88rem; }
+  th, td { padding: 0.45em 0.6em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 4px; border-radius: 2px; }
+  .formula { background: var(--code-bg); padding: 0.3em 0.6em; border-radius: 3px; font-family: "SF Mono", "Menlo", monospace; font-size: 0.9em; }
+  ul, ol { margin: 0.4em 0 0.4em 1.5em; }
+  li { margin: 0.3em 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  .warning { background: #2a2518; border-left: 3px solid #d4a017; padding: 0.6em 1em; margin: 1em 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>類型市場分析 — 快速參考</h1>
+<p class="subtitle">用於評估遊戲類型商業潛力的工作表與關鍵公式</p>
+
+<h2>核心公式</h2>
+
+<table>
+  <tr><th>指標</th><th>公式 / 來源</th><th>說明</th></tr>
+  <tr>
+    <td>願望清單估算</td>
+    <td><span class="formula">Wishlists ≈ Followers × 9.6</span></td>
+    <td>從公開的追隨者數逆推競爭對手的願望清單量</td>
+  </tr>
+  <tr>
+    <td>評價 → 銷量估算</td>
+    <td><span class="formula">Sales ≈ Reviews × 30~50</span></td>
+    <td>Steam 評價數乘以倍數（依類型而定，Boxleiter 法）。小品遊戲取下限，大眾類型取上限。</td>
+  </tr>
+  <tr>
+    <td>市場集中度</td>
+    <td><span class="formula">Mean Revenue / Median Revenue</span></td>
+    <td>比值 &gt; 3 表示贏者全拿；比值接近 1 表示健康長尾</td>
+  </tr>
+  <tr>
+    <td>類型競爭密度</td>
+    <td><span class="formula">該類型遊戲總數 / 中位數收入</span></td>
+    <td>定性比較：數字越大，競爭越擁擠</td>
+  </tr>
+</table>
+
+<h2>數據來源工具箱</h2>
+
+<table>
+  <tr><th>工具</th><th>用途</th><th>費用</th></tr>
+  <tr><td><a href="https://steamdb.info/">SteamDB</a></td><td>標籤遊戲數、價格歷史、同時上線人數</td><td>免費</td></tr>
+  <tr><td><a href="https://vginsights.com/">VG Insights</a></td><td>類型收入分佈、銷量估算、市場趨勢</td><td>有限免費層級</td></tr>
+  <tr><td><a href="https://games-stats.com/">Game Stats</a></td><td>Steam 數據儀表板、標籤分析</td><td>有限免費層級</td></tr>
+  <tr><td><a href="https://partner.steamgames.com/">Steamworks 後台</a></td><td>你自己的遊戲數據（UTM、願望清單、流量來源）</td><td>Steamworks 註冊後免費</td></tr>
+</table>
+
+<h2>對標作品分析清單</h2>
+<p>對每款對標作品，記錄以下資訊：</p>
+<ol>
+  <li><strong>遊戲名稱 + Steam App ID</strong></li>
+  <li><strong>發行日期</strong>（上市多久了？）</li>
+  <li><strong>Steam 評價總數</strong> + 評價百分比</li>
+  <li><strong>追隨者數量</strong> → 估算願望清單</li>
+  <li><strong>是否有知名 IP / 前作 / Kickstarter</strong>（如有，標記為「不可複製條件」）</li>
+  <li><strong>核心標籤</strong>（前 5 個）</li>
+  <li><strong>定價 + 歷史最低折扣</strong></li>
+  <li><strong>主要負評主題</strong>（技術問題？內容太少？設計缺陷？）</li>
+  <li><strong>是否有中文/俄語/日語在地化</strong></li>
+</ol>
+
+<h2>市場健康度判定矩陣</h2>
+
+<table>
+  <tr><th></th><th>中位數收入高</th><th>中位數收入低</th></tr>
+  <tr>
+    <td><strong>遊戲數量少</strong></td>
+    <td>🟢 藍海：最佳目標</td>
+    <td>🟡 利基市場：受眾有限但忠誠</td>
+  </tr>
+  <tr>
+    <td><strong>遊戲數量多</strong></td>
+    <td>🟡 競爭紅海但有回報</td>
+    <td>🔴 死亡陷阱：除非有極強差異化，否則避開</td>
+  </tr>
+</table>
+
+<div class="warning">
+  <strong>⚠️ 常見錯誤：</strong>將「我喜歡的類型」與「有商業潛力的類型」混為一談。Genre-Market Fit 分析的目的不是勸你放棄熱情，而是幫你在<em>熱情與市場的交集</em>中找到最優解。有時候，只需在類型邊界上做一個小的差異化調整（如：農場模擬 → 農場模擬 + 輕度 Roguelike 元素），就能從紅海切進藍海。
+</div>
+
+<hr>
+<p style="color: var(--muted); font-size: 0.85rem;">← 回到 <a href="../lessons/0001-genre-market-fit.html">Lesson 0001: 類型市場適配度</a></p>
+
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ref: Backlog Breakdown 速查表</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a1f;
+    --text: #c5c0b8;
+    --muted: #7a756e;
+    --accent: #c08080;
+    --border: #2c2c32;
+    --card: #1f1f25;
+    --table-stripe: #1c1c22;
+  }
+
+  body {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+    font-size: 0.9rem;
+  }
+
+  /* --- Reference badge --- */
+  .ref-badge {
+    display: inline-block; font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.15em 0.6em; border-radius: 3px;
+    background: #2c2c32; color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  h1 { font-family: 'Noto Serif TC', serif; font-size: 1.5rem; font-weight: 700; color: #e8e4dc; }
+  .subtitle { color: var(--muted); font-size: 0.8rem; margin-bottom: 1.75rem; }
+
+  h2 {
+    font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted);
+    margin: 1.75rem 0 0.5rem; padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* --- Tables (compact, scannable) --- */
+  table { width: 100%; border-collapse: collapse; margin: 0.4rem 0 0.75rem; font-size: 0.85rem; }
+  th { text-align: left; padding: 0.35rem 0.6rem; background: var(--card); border-bottom: 1px solid var(--border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  tr:last-child td { border-bottom: none; }
+
+  /* --- Badges --- */
+  .badge { display: inline-block; padding: 0.1em 0.45em; border-radius: 3px; font-size: 0.78rem; font-weight: 700; }
+  .badge-good { background: #1c2d21; color: #6baf7c; }
+  .badge-bad { background: #2d1c1f; color: #c06060; }
+  .badge-warn { background: #2d2618; color: #c0a040; }
+
+  /* --- Two column grid --- */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.4rem 0; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* --- Core principle quote --- */
+  .principle {
+    margin: 1rem 0; padding: 0.4rem 0.75rem;
+    border-left: 3px solid var(--accent);
+    font-style: italic; font-size: 0.85rem; color: var(--muted);
+  }
+
+  footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); }
+  footer a { color: var(--accent); }
+  a { color: var(--accent); }
+
+  /* --- Print --- */
+  @media print {
+    body { font-size: 8.5pt; padding: 0.4in; background: #fff; color: #222; max-width: 100%; }
+    h1 { font-size: 14pt; color: #222; }
+    h2 { font-size: 9pt; border-top-color: #ccc; }
+    table { font-size: 8pt; }
+    th { background: #eee; color: #333; }
+    tr:nth-child(even) td { background: #fafaf8; }
+    .badge-good { background: #e4f0e7; color: #4a8c5c; }
+    .badge-bad { background: #f5e6e6; color: #c44f4f; }
+    .badge-warn { background: #f5f0e6; color: #b5832e; }
+    .ref-badge { background: #eee; color: #666; }
+    .principle { color: #555; }
+  }
+</style>
+</head>
+<body>
+
+<span class="ref-badge">📄 Reference</span>
+<h1>Backlog Breakdown 速查表</h1>
+<p class="subtitle">關聯課程：Lesson 0001 · 最後更新：2026-06-13</p>
+
+<!-- ===== Two Boards ===== -->
+<h2>雙板系統</h2>
+
+<div class="two-col">
+  <table>
+    <tr><th colspan="2">📋 願景板 Vision Board</th></tr>
+    <tr><td>視角</td><td>玩家看到的最終體驗</td></tr>
+    <tr><td>粒度</td><td>Feature 層級</td></tr>
+    <tr><td>更新</td><td>每個工作週期結束後</td></tr>
+    <tr><td>範例</td><td>「玩家能組合道具解謎」</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">⚙️ 執行板 Execution Board</th></tr>
+    <tr><td>視角</td><td>開發者具體要執行的工作</td></tr>
+    <tr><td>粒度</td><td>2 小時 – 3 天的任務</td></tr>
+    <tr><td>更新</td><td>每天</td></tr>
+    <tr><td>範例</td><td>「繪製書架三種狀態的素材」</td></tr>
+  </table>
+</div>
+
+<!-- ===== Sizing ===== -->
+<h2>任務粒度判斷</h2>
+
+<table>
+  <tr><th></th><th>訊號</th><th>處理</th></tr>
+  <tr>
+    <td><span class="badge badge-bad">太大</span></td>
+    <td>無法估算、不知從何開始、拖好幾天還在「進行中」</td>
+    <td>依五維度繼續拆解</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-good">剛好</span></td>
+    <td>2h–3d 可完成、描述清楚、只有一個負責人</td>
+    <td>✅ 放進執行板</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-warn">太小</span></td>
+    <td>不到 2 小時、管理 overhead 不值得</td>
+    <td>合併到相關任務</td>
+  </tr>
+</table>
+
+<!-- ===== Five Dimensions ===== -->
+<h2>密室逃脫 · 任務拆解五維度</h2>
+
+<table>
+  <tr><th>維度</th><th>自問</th><th>產出物</th></tr>
+  <tr><td>🔍 謎題鏈</td><td>解謎邏輯？觸發順序？提示在哪？</td><td>腳本、狀態機、提示文字</td></tr>
+  <tr><td>🎨 場景素材</td><td>需要哪些視覺元素？幾種狀態？</td><td>背景、道具 sprite、UI 元件</td></tr>
+  <tr><td>💻 互動腳本</td><td>玩家做 X → 發生 Y？</td><td>點擊回應、道具組合、過場動畫</td></tr>
+  <tr><td>🔊 音效氛圍</td><td>哪些動作需要音效回饋？</td><td>BGM、SFX、環境音</td></tr>
+  <tr><td>🧪 測試</td><td>如何確認真的可以玩？</td><td>通關測試記錄、卡關點清單</td></tr>
+</table>
+
+<!-- ===== Anti-patterns ===== -->
+<h2>常見反模式</h2>
+
+<table>
+  <tr><th>反模式</th><th>危險</th><th>修正</th></tr>
+  <tr><td>「做 Level 1」</td><td>太模糊，不可估算、不可追蹤</td><td>拆成多個謎題 → 每個謎題再拆五維度</td></tr>
+  <tr><td>同時看兩塊板</td><td>PM 腦和工程師腦打架，頻繁換方向</td><td>工作時只開執行板</td></tr>
+  <tr><td>只估程式時間</td><td>低估美術／音效／測試耗時</td><td>每個 feature 五維度都掃一遍</td></tr>
+  <tr><td>WIP 塞滿</td><td>什麼都開始、什麼都沒完成</td><td>In Progress 上限 ≤ 3</td></tr>
+  <tr><td>花 >30min 選工具</td><td>偽裝成工作但零產出</td><td>先用 Trello，不夠再換</td></tr>
+</table>
+
+<!-- ===== Kanban Columns ===== -->
+<h2>執行板標準欄位</h2>
+
+<table>
+  <tr><th>欄位</th><th>意義</th><th>限制</th></tr>
+  <tr><td><strong>Backlog</strong></td><td>已拆好、隨時可開工的任務池</td><td>—</td></tr>
+  <tr><td><strong>Ready</strong></td><td>本週期打算執行的任務</td><td>—</td></tr>
+  <tr><td><strong>In Progress</strong></td><td>正在進行中</td><td>≤ 3 個</td></tr>
+  <tr><td><strong>Done</strong></td><td>已完成，無需再動</td><td>—</td></tr>
+</table>
+
+<div class="principle">
+  💡 工作時感到迷茫，不是因為不夠努力——而是下一個任務不夠小、不夠清楚。
+</div>
+
+<footer>
+  <p>📖 主要來源：<a href="https://cspages.ucalgary.ca/~bdstephe/585_W11/d504_project_management.pdf" target="_blank">Project Management for Game Development — U Calgary (p.19–30)</a> · <a href="../lessons/0001-work-breakdown.html">Lesson 0001</a></p>
+</footer>
+
+</body>
+</html>

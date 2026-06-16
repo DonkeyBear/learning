@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0001 — Java 開發環境設定</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* Header */
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+  h4 {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+  .card .icon { font-size: 1.2rem; margin-right: 0.4rem; }
+
+  /* Tip — "by the way" side knowledge */
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  /* Alt — non-IntelliJ alternative instructions */
+  .alt {
+    background: var(--surface-2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 0.8rem 0;
+    font-size: 0.88rem;
+  }
+  .alt .alt-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+  }
+  .alt p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .alt p:last-child { margin-bottom: 0; }
+  .alt code { font-size: 0.83em; }
+  .alt pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    margin: 0.5rem 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .alt pre code { background: none; padding: 0; color: #c8c8e0; }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+
+  /* Steps */
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Lists */
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Nav */
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .nav-links a {
+    color: var(--accent-glow);
+    text-decoration: none;
+  }
+  .nav-links a:hover { text-decoration: underline; }
+
+  /* Links */
+  a { color: var(--info); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .tag {
+    display: inline-block;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-right: 0.3rem;
+  }
+
+  /* Feedback */
+  .feedback-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+  .feedback-box p { margin-bottom: 0.5rem; }
+  .feedback-box .cta {
+    color: var(--accent-glow);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0001</span>
+  <span class="sep">/</span>
+  <span>SETUP</span>
+  <span class="sep">/</span>
+  <span>~20 min</span>
+</div>
+
+<h1>Java 開發環境設定</h1>
+<p class="subtitle">安裝 IntelliJ IDEA + JDK 21 + Gradle，跑起第一個 Java 程式——為 Minecraft MOD 和 SpringBoot 開發打好地基。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>為什麼從這裡開始？</h2>
+
+<p>在寫任何一行 Java 程式碼之前，你需要一個能<b>編譯</b>和<b>執行</b> Java 的環境。這就像寫 TypeScript 之前需要 <code>node</code> 和 <code>tsc</code>，寫 Python 之前需要 <code>python3</code> 直譯器。</p>
+
+<p>Java 的世界有一套自己的工具鏈。這堂課以 <strong>IntelliJ IDEA</strong> 為預設 IDE（現代 Java 開發的業界標準），帶你搞定四件事：</p>
+
+<div class="card info">
+  <p style="margin:0">&#x1f5a5;&#xfe0f; <strong>IntelliJ IDEA</strong> — Java 開發的業界標準 IDE（類比你寫 TS 時用的 VS Code）<br>
+  &#x1f4e6; <strong>JDK 21</strong>（Java Development Kit）— Java 的編譯器 + 執行環境<br>
+  &#x1f527; <strong>Gradle</strong> — Java 世界的套件管理 + 建構工具（類似 npm + webpack 的合體）<br>
+  &#x2705; <strong>驗證</strong> — 確認一切就緒，跑第一個 <code>Hello, Minecraft MODder!</code></p>
+</div>
+
+<div class="card warn">
+  <p style="margin:0">&#x1f4a1; <strong>給 TS/Python 開發者的快速對照：</strong><br>
+  <code>JDK</code> &#x2248; <code>node</code> + <code>tsc</code>（執行期 + 編譯器）<br>
+  <code>Gradle</code> &#x2248; <code>npm</code> + <code>webpack</code>（套件管理 + 建構流程）<br>
+  <code>JVM</code> &#x2248; <code>Node.js runtime</code> 或 <code>Python interpreter</code>（執行程式碼的虛擬機）</p>
+</div>
+
+<!-- ==================== INSTALL ==================== -->
+<h2>安裝</h2>
+
+<div class="step-container" style="counter-reset: step;">
+
+<!-- STEP 1: IntelliJ -->
+<div class="step">
+  <div class="step-title">安裝 IntelliJ IDEA</div>
+  <p><a href="https://www.jetbrains.com/idea/download/">下載 IntelliJ IDEA</a>。有兩個版本：<strong>Community Edition</strong>（免費開源，Minecraft MOD 開發 + 基礎 Java 完全夠用）和 <strong>Ultimate</strong>（付費，多了 SpringBoot/資料庫/JavaScript 等進階支援）。初學選 <b>Community Edition</b> 就對了。</p>
+
+  <h3>macOS</h3>
+  <pre><code><span class="cmt"># 使用 Homebrew（推薦）</span>
+brew install --cask intellij-idea-ce</code></pre>
+  <p>或從官網下載 <code>.dmg</code> 安裝程式手動安裝。</p>
+
+  <h3>Windows</h3>
+  <p>從官網下載 <code>.exe</code> 安裝程式，下一步到底即可。</p>
+
+  <h3>Linux</h3>
+  <p>推薦使用 <a href="https://www.jetbrains.com/help/idea/installation-guide.html#snap">Snap</a> 安裝，或從官網下載 <code>.tar.gz</code> 解壓縮。</p>
+
+  <p>第一次啟動時，IntelliJ 會問你要不要匯入舊設定——全新安裝選 <b>"Do not import settings"</b> 即可。</p>
+</div>
+
+<!-- STEP 2: JDK -->
+<div class="step">
+  <div class="step-title">安裝 JDK 21</div>
+  <p>我們選擇 <strong>JDK 21</strong>（LTS 長期支援版）。Minecraft 1.21+ 需要 Java 21，SpringBoot 3.x 也支援 Java 21——一個版本通吃兩個目標。</p>
+
+  <h3>方法一：IntelliJ 內建下載（推薦 &#x2728;）</h3>
+  <p>IntelliJ 可以幫你管理 JDK——不需要手動跑指令：</p>
+  <ol>
+    <li>開啟 IntelliJ，選擇 <b>File &#x2192; Project Structure &#x2192; SDK</b>（或快捷鍵 <code>Cmd+;</code> / <code>Ctrl+Alt+Shift+S</code>）</li>
+    <li>點 <b>+ &#x2192; Download JDK</b></li>
+    <li>Version 選 <b>21</b>，Vendor 選 <b>Eclipse Temurin</b>（或其他你偏好的發行版）</li>
+    <li>點 <b>Download</b>，IntelliJ 自動下載並設定好 <code>JAVA_HOME</code></li>
+  </ol>
+  <p>這對初學最友善——不會弄亂系統環境變數，每個專案可以獨立指定 JDK 版本。</p>
+
+  <div class="alt">
+    <div class="alt-label">&#x1f5a5;&#xfe0f; 非 IntelliJ 環境（VS Code / Eclipse / 命令列）</div>
+    <p>如果你偏好命令列或使用其他編輯器，可以手動安裝 JDK：</p>
+  </div>
+
+  <h3>方法二：命令列安裝</h3>
+
+  <h4>macOS</h4>
+  <pre><code><span class="cmt"># 使用 Homebrew</span>
+brew install openjdk@21
+
+<span class="cmt"># 建立 symlink 讓系統能找到 JDK</span>
+sudo ln -sfn $(brew --prefix)/opt/openjdk@21/libexec/openjdk.jdk \\
+  /Library/Java/JavaVirtualMachines/openjdk-21.jdk
+
+<span class="cmt"># 設定環境變數（加到 ~/.zshrc）</span>
+<span class="kw">export</span> JAVA_HOME=<span class="str">"/opt/homebrew/opt/openjdk@21"</span>
+<span class="kw">export</span> PATH=<span class="str">"$JAVA_HOME/bin:$PATH"</span></code></pre>
+
+  <h4>Windows</h4>
+  <p>下載 <a href="https://adoptium.net/">Eclipse Temurin (Adoptium) JDK 21</a> 的 <code>.msi</code> 安裝程式，執行後確認環境變數 <code>JAVA_HOME</code> 已自動設定。</p>
+
+  <h4>Linux (Ubuntu/Debian)</h4>
+  <pre><code>sudo apt update
+sudo apt install openjdk-21-jdk</code></pre>
+</div>
+
+<!-- STEP 3: Verify JDK -->
+<div class="step">
+  <div class="step-title">驗證 JDK 安裝</div>
+  <pre><code>java --version
+<span class="cmt"># 預期輸出類似：</span>
+<span class="cmt"># openjdk 21.0.x ...</span>
+
+javac --version
+<span class="cmt"># 預期輸出類似：</span>
+<span class="cmt"># javac 21.0.x</span></code></pre>
+  <p>如果兩個指令都顯示版本號，JDK 就裝好了 &#x2705;。在 IntelliJ 中也可以到 <b>File &#x2192; Project Structure &#x2192; SDK</b> 查看已安裝的 JDK 列表。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：JDK 發行版滿天飛</div>
+  <p>你會看到很多「JDK」：Oracle JDK、OpenJDK、Eclipse Temurin (Adoptium)、Amazon Corretto、Azul Zulu…它們的<b>核心幾乎完全一樣</b>（都來自 OpenJDK 原始碼），差異在於授權條款、更新支援週期、是否包含額外工具。個人開發選 <b>Eclipse Temurin</b> 最省心——免費、無授權陷阱、各平台都有安裝包。</p>
+</div>
+
+<!-- STEP 4: Gradle -->
+<div class="step">
+  <div class="step-title">安裝 Gradle</div>
+  <p>Gradle 可以用 <code>gradle wrapper</code> 的方式隨專案攜帶（推薦），也可以全域安裝：</p>
+  <pre><code><span class="cmt"># macOS</span>
+brew install gradle
+
+<span class="cmt"># 驗證</span>
+gradle --version</code></pre>
+  <p>不過對接下來的課程，我們會用 <strong>Gradle Wrapper</strong>（<code>./gradlew</code>），不需要手動安裝 Gradle 也能運作——就像 <code>npx</code> 的概念。IntelliJ 內建 Gradle 支援，打開專案時會自動偵測 <code>build.gradle.kts</code> 並提示匯入。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Gradle vs Maven</div>
+  <p>Java 世界有兩大建構工具：<b>Maven</b>（2004 年誕生，用 XML 寫設定）和 <b>Gradle</b>（2012 年誕生，用 Groovy/Kotlin DSL 寫設定）。Maven 約定優於配置、生態最成熟；Gradle 更靈活、建構速度更快（增量編譯 + 快取）。為什麼我們用 Gradle？Minecraft MOD 開發（Fabric/NeoForge）和現代 SpringBoot 專案都以 Gradle 為主。求職時兩者都可能遇到——觀念互通，只是設定檔格式不同。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：IntelliJ IDEA Community vs Ultimate</div>
+  <p><b>Community Edition</b>（免費開源）涵蓋純 Java + Gradle + Maven + Git，Minecraft MOD 開發完全夠用。<b>Ultimate</b>（付費，年費 ~$169）多了 SpringBoot 深度整合、資料庫工具、JavaScript/TypeScript 支援等。好消息：<b>學生或開源專案維護者可以免費申請 Ultimate 授權</b>。初學先用 Community，等學到 SpringBoot 時再評估是否升級。VS Code 用戶需裝 <a href="https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack">Extension Pack for Java</a> 來獲得類似功能。</p>
+</div>
+
+</div><!-- /step-container -->
+
+<!-- ==================== FIRST PROJECT ==================== -->
+<h2>第一個 Java 專案</h2>
+
+<h3>方法一：IntelliJ New Project 精靈（推薦 &#x2728;）</h3>
+<ol>
+  <li>開啟 IntelliJ，點 <b>New Project</b></li>
+  <li><b>Name</b> 填入 <code>hello-java</code>，<b>Location</b> 選一個你放 code 的目錄</li>
+  <li><b>Language</b> 選 <b>Java</b>，<b>Build system</b> 選 <b>Gradle (Kotlin)</b></li>
+  <li><b>JDK</b> 選你剛才裝的 JDK 21</li>
+  <li>勾選 <b>"Add sample code"</b>（會自動產生 <code>Main.java</code> 和 <code>build.gradle.kts</code>）</li>
+  <li>點 <b>Create</b>，完成！</li>
+</ol>
+
+<div class="alt">
+  <div class="alt-label">&#x1f4bb; 命令列方式（VS Code / 其他編輯器）</div>
+  <p>如果你用其他編輯器，可以用 <code>gradle init</code> 建立專案：</p>
+  <pre><code><span class="cmt"># 建立專案目錄</span>
+mkdir hello-java && <span class="kw">cd</span> hello-java
+
+<span class="cmt"># 初始化 Gradle 專案</span>
+gradle init \\
+  --type java-application \\
+  --test-framework junit-jupiter \\
+  --dsl kotlin \\
+  --java-version 21</code></pre>
+</div>
+
+<div class="card info">
+  <p style="margin:0">&#x1f914; <strong>為什麼用 Kotlin DSL？</strong> Gradle 建構腳本可以用 Groovy（<code>build.gradle</code>）或 Kotlin（<code>build.gradle.kts</code>）。Kotlin DSL 提供更好的 IDE 自動補全和型別檢查，和寫 TypeScript 的感覺更像。放心，這跟在寫 Java 無關——只是設定檔格式。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：三種建構設定格式</div>
+  <p>Java 專案建構設定經歷了三個階段：<b>Maven 的 pom.xml</b>（冗長的 XML）&#x2192; <b>Gradle + Groovy</b>（<code>build.gradle</code>，動態語言）&#x2192; <b>Gradle + Kotlin DSL</b>（<code>build.gradle.kts</code>，靜態型別 + IDE 支援最好）。Minecraft 的 Fabric 模版使用 <code>build.gradle</code>（Groovy），之後的課程會教怎麼轉成 Kotlin DSL。現階段知道這三種格式的存在就夠了。</p>
+</div>
+
+<p>初始化完成後，專案目錄結構長這樣：</p>
+
+<pre><code>hello-java/
+&#x251c;&#x2500;&#x2500; app/
+&#x2502;   &#x251c;&#x2500;&#x2500; build.gradle.kts    <span class="cmt">// 套件依賴 + 建構設定</span>
+&#x2502;   &#x2514;&#x2500;&#x2500; src/
+&#x2502;       &#x251c;&#x2500;&#x2500; main/java/org/example/
+&#x2502;       &#x2502;   &#x2514;&#x2500;&#x2500; Main.java   <span class="cmt">// &#x2190; 主程式入口</span>
+&#x2502;       &#x2514;&#x2500;&#x2500; test/java/org/example/
+&#x2502;           &#x2514;&#x2500;&#x2500; MainTest.java
+&#x251c;&#x2500;&#x2500; gradlew                  <span class="cmt">// Gradle wrapper (Unix)</span>
+&#x251c;&#x2500;&#x2500; gradlew.bat              <span class="cmt">// Gradle wrapper (Windows)</span>
+&#x2514;&#x2500;&#x2500; settings.gradle.kts      <span class="cmt">// 專案設定</span></code></pre>
+
+<p>打開 <code>Main.java</code>（如果用 <code>gradle init</code> 則檔案名叫 <code>App.java</code>），內容長這樣：</p>
+
+<pre><code><span class="kw">package</span> <span class="type">org.example</span>;
+
+<span class="kw">public class</span> <span class="type">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        System.out.println(<span class="str">"Hello, Minecraft MODder!"</span>);
+    }
+}</code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Java 命名慣例</div>
+  <p>Java 社群有嚴格的命名慣例（比 JS/TS 嚴格得多）：<b>類別名</b>用 <code>PascalCase</code>（<code>Main</code>、<code>MyFirstMod</code>），<b>方法/變數名</b>用 <code>camelCase</code>（<code>main</code>、<code>playerName</code>），<b>常數</b>用 <code>UPPER_SNAKE_CASE</code>（<code>MAX_HEALTH</code>），<b>套件名</b>全小寫倒域名（<code>org.example</code>）。這些慣例在面試時會被注意到，建議一開始就養成。</p>
+</div>
+
+<div class="card">
+  <p style="margin:0">&#x1f50d; <strong>快速對照：</strong> Java 的 <code>public static void main</code> 是所有程式的入口點，相當於 Python 的 <code>if __name__ == "__main__":</code> 或 Node.js 直接執行 <code>node index.js</code>。每個 Java 程式都從 <code>main</code> 開始執行。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼 main 必須是 static？</div>
+  <p>Java 中，非 <code>static</code> 的方法需要先 <code>new</code> 一個物件才能呼叫（就像 JS 的 class instance method）。但程式剛啟動時<b>還沒有任何物件存在</b>——所以 JVM 需要一個不依賴物件的入口。<code>static</code> 方法屬於「類別本身」而非「類別的實例」，因此不需要先建立物件就能呼叫。這就是 <code>main</code> 永遠是 <code>static</code> 的原因。</p>
+</div>
+
+<h3>執行你的第一個 Java 程式</h3>
+
+<p><strong>IntelliJ：</strong>打開 <code>Main.java</code>，點 <code>main</code> 方法左邊的 <b>綠色 &#x25b6; 播放按鈕</b>，選 <b>Run 'Main.main()'</b>。下方的 Run 面板會顯示輸出。</p>
+
+<div class="alt">
+  <div class="alt-label">&#x1f4bb; 命令列方式</div>
+  <pre><code>./gradlew run
+
+<span class="cmt"># 輸出：</span>
+<span class="cmt"># Hello, Minecraft MODder!</span></code></pre>
+</div>
+
+<!-- ==================== KEY CONCEPTS ==================== -->
+<h2>這堂課的關鍵觀念</h2>
+
+<div class="card success">
+  <p style="margin:0"><strong>&#x1f3d7;&#xfe0f; JDK vs JRE vs JVM</strong> —— 三個名詞你會一直看到：<br>
+  &#x2022; <strong>JVM</strong>（Java Virtual Machine）：執行 Java bytecode 的虛擬機<br>
+  &#x2022; <strong>JRE</strong>（Java Runtime Environment）：JVM + 標準庫 = 只能「跑」Java<br>
+  &#x2022; <strong>JDK</strong>（Java Development Kit）：JRE + 編譯器 (javac) + 開發工具 = 能「寫+跑」Java<br>
+  開發者裝 <strong>JDK</strong>，終端使用者裝 <strong>JRE</strong>（或直接 JDK）。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：JVM 上的語言家族</div>
+  <p>JVM 不只跑 Java。<b>Kotlin</b>（Android 官方語言，Spring 官方支援）、<b>Scala</b>（大數據/函數式程式設計）、<b>Groovy</b>（動態語言、Gradle 早期 DSL）、<b>Clojure</b>（Lisp 方言）——這些語言都編譯成和 Java 一樣的 bytecode 在 JVM 上執行，且可以<b>和 Java 程式碼互相呼叫</b>。選 Java 作為第一門 JVM 語言是對的：生態最大、文件最齊、社群最大。將來學 Kotlin 或 Scala 時會發現很多概念相通。</p>
+</div>
+
+<div class="card">
+  <p style="margin:0"><strong>&#x2699;&#xfe0f; 編譯 vs 直譯</strong> —— Java 是<b>編譯語言</b>，這點和 TS &#x2192; JS 的過程類似，但目標不是 JS 而是 <strong>bytecode</strong>（.class 檔案），由 JVM 執行。Python 是直譯語言（雖然也有 .pyc），JS 是 JIT 編譯。Java 的流程：<br>
+  <code>.java</code> &#x2192; <code>javac</code> &#x2192; <code>.class (bytecode)</code> &#x2192; <code>JVM</code> &#x2192; 執行</p>
+</div>
+
+<!-- ==================== PRACTICE ==================== -->
+<h2>動手做 &#x270b;</h2>
+
+<ol>
+  <li>下載並安裝 <strong>IntelliJ IDEA Community Edition</strong></li>
+  <li>用 IntelliJ 內建的 JDK 下載功能安裝 JDK 21（或手動指令安裝）</li>
+  <li>用 IntelliJ 的 <b>New Project</b> 精靈建立一個 Gradle + Java 21 專案（或用 <code>gradle init</code> CLI）</li>
+  <li>修改 <code>Main.java</code>，讓它印出你的名字和今天的日期</li>
+  <li>點 IntelliJ 的 &#x25b6; Run 按鈕（或 <code>./gradlew run</code>）執行確認</li>
+  <li>試著故意把 <code>System.out.println</code> 打成 <code>system.out.println</code>（小寫 s），觀察 IntelliJ 的紅色底線和編譯錯誤訊息</li>
+</ol>
+
+<!-- ==================== CHECKLIST ==================== -->
+<h2>課後檢查清單</h2>
+<ul class="checklist">
+  <li>IntelliJ IDEA Community Edition 已安裝並能正常啟動</li>
+  <li><code>java --version</code> 回傳 21.x</li>
+  <li>能在 IntelliJ 中建立一個 Gradle + Java 21 專案</li>
+  <li>能點 &#x25b6; Run 按鈕（或 <code>./gradlew run</code>）成功執行 Java 程式</li>
+  <li>能說出 JDK / JRE / JVM 三者的區別</li>
+  <li>理解 <code>.java &#x2192; .class &#x2192; JVM 執行</code> 的編譯流程</li>
+</ul>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://www.jetbrains.com/idea/download/">IntelliJ IDEA 下載</a> — 安裝 Community Edition</li>
+  <li>&#x1f4d6; <a href="https://www.jetbrains.com/help/idea/getting-started.html">IntelliJ IDEA 入門指南</a> — JetBrains 官方教學</li>
+  <li>&#x1f4d6; <a href="https://docs.oracle.com/en/java/javase/21/">Oracle JDK 21 官方文件</a> — 權威參考</li>
+  <li>&#x1f4d6; <a href="https://docs.gradle.org/current/userguide/userguide.html">Gradle 使用者手冊</a> — Gradle 官方文件</li>
+  <li>&#x1f517; <strong>下一堂課預告：</strong> <em>Lesson 0002 — Java 語法速覽：從 TS/Python 視角看 Java</em>（即將推出）</li>
+</ul>
+
+<!-- ==================== FEEDBACK ==================== -->
+<div class="feedback-box">
+  <p>&#x1f914; <span class="cta">有疑問嗎？</span></p>
+  <p>直接在對話中問我！例如：「為什麼要編譯成 bytecode 而不是直接編譯成機器碼？」、「IntelliJ 和 VS Code 寫 Java 的體驗差別？」或是「Gradle Wrapper 的運作原理是什麼？」</p>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <span style="color: var(--text-muted)">&#x2190; 這是第一堂課</span>
+  <a href="../reference/jdk-gradle-cheatsheet.html">&#x1f4cb; 參考文件：JDK & Gradle 速查表 &#x2192;</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

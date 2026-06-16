@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RN Architecture Cheatsheet</title>
+<style>
+  :root {
+    --bg: #161618; --text: #e4e4e4; --muted: #8b8b8b;
+    --accent: #5e9eff; --accent-dim: #1e2a3a; --border: #2e2e32;
+    --code-bg: #1e1e22; --surface: #1c1c20;
+    --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem 4rem; font-size: 15px;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
+  p { margin: 0.4rem 0; }
+  code { background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.88em; }
+  pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: var(--accent-dim); font-weight: 600; }
+  .tag { display: inline-block; padding: 0.1em 0.5em; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+  .tag-new { background: #064e3b; color: #6ee7b7; }
+  .tag-old { background: #7f1d1d; color: #fca5a5; }
+  .tag-core { background: var(--accent-dim); color: var(--accent); }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  a { color: var(--accent); }
+  footer { color: var(--muted); font-size: 0.8rem; margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  @media print { body { font-size: 12px; max-width: 100%; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>📋 React Native Architecture Cheatsheet</h1>
+<p class="meta">Reference · 建立於 2026-06-12 · 對應 <a href="../lessons/0001-react-native-runtime-architecture.html">Lesson 0001</a></p>
+
+<h2>Web vs RN：核心差異</h2>
+
+<table>
+  <tr><th>面向</th><th>React Web</th><th>React Native</th></tr>
+  <tr><td>渲染目標</td><td>DOM (HTML elements)</td><td>原生元件 (UIView / ViewGroup)</td></tr>
+  <tr><td>JS Engine</td><td>V8 (Chrome), JSC (Safari), etc.</td><td>Hermes (預設), JSC (iOS fallback)</td></tr>
+  <tr><td>JS↔UI 通訊</td><td>同步 DOM API (同 process)</td><td>JSI C++ 層 (跨 thread/語言)</td></tr>
+  <tr><td>樣式系統</td><td>CSS (cascade, inheritance)</td><td>StyleSheet (subset of CSS, no cascade)</td></tr>
+  <tr><td>導航</td><td>URL routing</td><td>Native stack/tab navigator</td></tr>
+  <tr><td>佈局引擎</td><td>Browser layout engine</td><td>Yoga (Flexbox, C++ 實作)</td></tr>
+</table>
+
+<h2>新舊架構對比</h2>
+
+<table>
+  <tr><th>元件</th><th>舊架構 <span class="tag tag-old">0.75-</span></th><th>新架構 <span class="tag tag-new">0.76+</span></th></tr>
+  <tr>
+    <td>JS↔Native 通訊</td>
+    <td>Async Bridge（JSON 序列化、非同步、佇列）</td>
+    <td>JSI（C++ 層、同步、無序列化、雙向）</td>
+  </tr>
+  <tr>
+    <td>Native Modules</td>
+    <td>啟動時全部載入、手寫膠水碼</td>
+    <td>TurboModules（lazy-load、Codegen 自動產生 binding）</td>
+  </tr>
+  <tr>
+    <td>渲染器</td>
+    <td>UIManager (paper renderer)</td>
+    <td>Fabric（C++ Shadow Tree、Concurrent Mode）</td>
+  </tr>
+  <tr>
+    <td>型別安全</td>
+    <td>執行時錯誤</td>
+    <td>Codegen（編譯時型別檢查、自動產生 native code）</td>
+  </tr>
+</table>
+
+<h2>新架構四大支柱</h2>
+
+<table>
+  <tr><th>支柱</th><th>一句話解釋</th><th>解決什麼問題</th></tr>
+  <tr>
+    <td><strong>JSI</strong></td>
+    <td>輕量 C++ 介面，讓 JS 直接呼叫 native</td>
+    <td>舊 bridge 的 JSON 序列化瓶頸 & 非同步限制</td>
+  </tr>
+  <tr>
+    <td><strong>Fabric</strong></td>
+    <td>新的 C++ 渲染引擎，Shadow Tree + Yoga</td>
+    <td>舊 UIManager 的跳幀、無法同步讀取 layout</td>
+  </tr>
+  <tr>
+    <td><strong>TurboModules</strong></td>
+    <td>lazy-load 的 native module 系統</td>
+    <td>舊 module 全部在啟動時載入，拖慢 TTI</td>
+  </tr>
+  <tr>
+    <td><strong>Codegen</strong></td>
+    <td>從 TS spec 自動產生 native binding</td>
+    <td>手寫 native 膠水碼容易出錯、維護成本高</td>
+  </tr>
+</table>
+
+<h2>Runtime 三層模型</h2>
+
+<pre>
+┌──────────────────┐     ┌──────────────┐     ┌──────────────────┐
+│  🧵 JS Thread    │     │ 🌉 C++ Layer │     │  🧵 UI Thread    │
+│  (Hermes)        │◀───▶│   (JSI)      │◀───▶│  (Main / Native) │
+│                  │     │              │     │                  │
+│  React Tree      │     │  Shadow Tree │     │  UIView          │
+│  Hooks / State   │     │  Yoga Layout │     │  ViewGroup       │
+│  API calls       │     │  Codegen     │     │  Gesture Handler │
+│  Navigation      │     │              │     │  Animations      │
+└──────────────────┘     └──────────────┘     └──────────────────┘
+</pre>
+
+<h2>Expo 在這個架構中</h2>
+
+<table>
+  <tr><th>Expo 組件</th><th>角色</th></tr>
+  <tr><td>Expo SDK</td><td>預封裝的 native module 集合（無需手寫 native code）</td></tr>
+  <tr><td>Expo Go</td><td>開發期預覽 app（不能跑自訂 native module）</td></tr>
+  <tr><td>Dev Client</td><td>生產級開發用 app（支援自訂 native module + 熱重載）</td></tr>
+  <tr><td>expo prebuild</td><td>從 app.json 產生 ios/ 和 android/ 原生目錄</td></tr>
+  <tr><td>EAS Build</td><td>雲端建置（不需本機 Xcode / Android Studio）</td></tr>
+  <tr><td>EAS Update</td><td>OTA 更新（跳過商店審核推送 JS bundle）</td></tr>
+</table>
+
+<h2>關鍵詞彙</h2>
+
+<table>
+  <tr><th>詞彙</th><th>定義</th></tr>
+  <tr><td><strong>Hermes</strong></td><td>Meta 為 mobile 設計的輕量 JS engine，支援 AOT compilation，減少 APK 大小和記憶體用量</td></tr>
+  <tr><td><strong>Yoga</strong></td><td>Meta 開發的跨平台 Flexbox 佈局引擎，C++ 實作，iOS 和 Android 共用同一份程式碼</td></tr>
+  <tr><td><strong>Shadow Tree</strong></td><td>在背景 thread 維護的 UI 元件樹，Yoga 在此計算 layout 後才 commit 到 UI thread</td></tr>
+  <tr><td><strong>JSI</strong></td><td>JavaScript Interface — 讓 JS 可以直接持有和操作 C++ 物件的輕量 API 層</td></tr>
+  <tr><td><strong>Codegen</strong></td><td>從 TypeScript 介面定義自動產生 Java/Kotlin/ObjC/C++ binding code 的工具</td></tr>
+  <tr><td><strong>Fabric</strong></td><td>新渲染系統的 codename，包含 Shadow Tree、Yoga、和 native view mounting</td></tr>
+</table>
+
+<footer>
+  <a href="../MISSION.md">← Mission</a> ·
+  <a href="../lessons/0001-react-native-runtime-architecture.html">← Lesson 0001</a>
+</footer>
+
+</body>
+</html>

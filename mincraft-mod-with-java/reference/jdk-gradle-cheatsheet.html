@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JDK & Gradle 速查表</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --info: #40c4ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; min-height: 100vh;
+  }
+  .container { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.3rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+  h2 {
+    font-size: 1.15rem; color: var(--accent-glow); margin: 2rem 0 0.75rem;
+    padding-bottom: 0.3rem; border-bottom: 1px solid var(--border);
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+  th, td { padding: 0.6rem 0.8rem; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+  td code { background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 3px; color: var(--info); font-size: 0.88em; }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.88em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.8rem 1rem; overflow-x: auto; margin: 0.75rem 0; font-size: 0.85rem; line-height: 1.55;
+  }
+  pre code { background: none; padding: 0; color: #c8c8e0; }
+  .cmt { color: #676e95; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem 1.2rem; margin: 0.75rem 0;
+  }
+  .card h3 { font-size: 1rem; color: #fff; margin-bottom: 0.5rem; }
+
+  a { color: var(--info); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .back { font-size: 0.85rem; margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .back a { color: var(--accent-glow); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>📋 JDK & Gradle 速查表</h1>
+<p class="subtitle">常用指令、目錄結構、術語對照 —— 開發時快速查閱</p>
+
+<!-- ====== TERMS ====== -->
+<h2>核心術語</h2>
+<table>
+  <tr><th>術語</th><th>說明</th><th>TS/JS 對照</th></tr>
+  <tr><td><code>JDK</code></td><td>Java Development Kit：編譯器 + JRE + 開發工具</td><td>Node.js + tsc + npm</td></tr>
+  <tr><td><code>JRE</code></td><td>Java Runtime Environment：只含執行環境</td><td>Node.js runtime（不含 npm）</td></tr>
+  <tr><td><code>JVM</code></td><td>Java Virtual Machine：執行 bytecode 的虛擬機</td><td>V8 engine</td></tr>
+  <tr><td><code>javac</code></td><td>Java 編譯器：.java → .class</td><td>tsc</td></tr>
+  <tr><td><code>bytecode</code></td><td>編譯後的中間碼（.class 檔案）</td><td>編譯後的 .js（概念類似）</td></tr>
+  <tr><td><code>Gradle</code></td><td>建構工具 + 套件管理</td><td>npm + webpack/vite 的合體</td></tr>
+  <tr><td><code>gradlew</code></td><td>Gradle Wrapper：隨專案攜帶的 Gradle</td><td>npx</td></tr>
+  <tr><td><code>Maven</code></td><td>另一個建構工具（Gradle 的競爭者）</td><td>—</td></tr>
+</table>
+
+<!-- ====== COMMANDS ====== -->
+<h2>IDE 選擇</h2>
+<table>
+  <tr><th>IDE</th><th>適合對象</th><th>備註</th></tr>
+  <tr><td><strong>IntelliJ IDEA Community</strong></td><td>✅ 所有人（預設推薦）</td><td>免費開源，Java + Gradle + Git 完全夠用</td></tr>
+  <tr><td>IntelliJ IDEA Ultimate</td><td>專業開發者</td><td>付費，多了 SpringBoot/DB/JS 深度整合</td></tr>
+  <tr><td>VS Code + Extension Pack</td><td>不想換編輯器的前端</td><td>需裝 Java 擴充套件，體驗略遜於 IntelliJ</td></tr>
+  <tr><td>Eclipse</td><td>老派開發者 / 遺留專案</td><td>曾經的霸主，逐漸被 IntelliJ 取代</td></tr>
+</table>
+
+<h2>IntelliJ 常用快捷鍵</h2>
+<table>
+  <tr><th>快捷鍵</th><th>功能</th></tr>
+  <tr><td><code>Cmd+;</code> / <code>Ctrl+Alt+Shift+S</code></td><td>開啟 Project Structure（管理 SDK）</td></tr>
+  <tr><td><code>Cmd+N</code> / <code>Alt+Insert</code></td><td>產生新檔案 / 自動產生程式碼</td></tr>
+  <tr><td><code>Shift Shift</code></td><td>萬能搜尋（檔案、類別、設定）</td></tr>
+  <tr><td><code>Cmd+Shift+Enter</code></td><td>自動補完當前行（加括號、分號）</td></tr>
+  <tr><td><code>Cmd+B</code> / <code>Ctrl+B</code></td><td>跳到定義（Go to Definition）</td></tr>
+  <tr><td><code>Cmd+Shift+A</code></td><td>搜尋所有 Action（找不到功能時按這個）</td></tr>
+</table>
+
+<h2>常用 Gradle 指令</h2>
+<table>
+  <tr><th>指令</th><th>用途</th></tr>
+  <tr><td><code>./gradlew run</code></td><td>編譯並執行主程式</td></tr>
+  <tr><td><code>./gradlew build</code></td><td>編譯 + 跑測試 + 打包成 .jar</td></tr>
+  <tr><td><code>./gradlew test</code></td><td>只跑測試</td></tr>
+  <tr><td><code>./gradlew clean</code></td><td>清除建構產物（build/ 目錄）</td></tr>
+  <tr><td><code>./gradlew tasks</code></td><td>列出所有可用的 task</td></tr>
+  <tr><td><code>./gradlew dependencies</code></td><td>顯示依賴樹</td></tr>
+</table>
+
+<!-- ====== STRUCTURE ====== -->
+<h2>Gradle 專案目錄結構</h2>
+<pre><code>my-project/
+├── build.gradle.kts       <span class="cmt"># 建構腳本（依賴、plugin、設定）</span>
+├── settings.gradle.kts    <span class="cmt"># 專案名稱 + 子專案宣告</span>
+├── gradlew                <span class="cmt"># Gradle wrapper script</span>
+├── gradle/
+│   └── wrapper/
+│       └── gradle-wrapper.properties  <span class="cmt"># Gradle 版本鎖定</span>
+└── src/
+    ├── main/java/         <span class="cmt"># 主要原始碼</span>
+    ├── main/resources/    <span class="cmt"># 資源檔（設定檔、圖片等）</span>
+    └── test/java/         <span class="cmt"># 測試原始碼</span></code></pre>
+
+<!-- ====== DEPS ====== -->
+<h2>build.gradle.kts 基本範例</h2>
+<pre><code>plugins {
+    id("java")                              <span class="cmt">// Java plugin</span>
+}
+
+group = "com.example"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()                          <span class="cmt">// 套件來源（類似 npm registry）</span>
+}
+
+dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    <span class="cmt">// 格式: "group:artifact:version" （類似 npm 的 package@version）</span>
+}</code></pre>
+
+<div class="two-col">
+  <div class="card">
+    <h3>Maven Coordinate</h3>
+    <p>Java 套件的識別格式：<br>
+    <code>group:artifact:version</code><br>
+    例：<code>com.google.guava:guava:33.0.0-jre</code><br>
+    相當於 npm 的 <code>package@version</code></p>
+  </div>
+  <div class="card">
+    <h3>常用 Repository</h3>
+    <p><code>mavenCentral()</code> — 最大套件庫<br>
+    <code>maven { url = "..." }</code> — 自訂來源<br>
+    Fabric MOD 開發會用到專屬的 repository</p>
+  </div>
+</div>
+
+<!-- ====== VERSIONS ====== -->
+<h2>JDK 版本選擇指南</h2>
+<table>
+  <tr><th>版本</th><th>LTS</th><th>適用場景</th></tr>
+  <tr><td>Java 21</td><td>✅</td><td><strong>推薦</strong>：Minecraft 1.21+、SpringBoot 3.x、大多數新專案</td></tr>
+  <tr><td>Java 17</td><td>✅</td><td>Minecraft 1.18–1.20、部分企業環境</td></tr>
+  <tr><td>Java 8</td><td>✅</td><td>老舊專案維護（仍大量存在於企業）</td></tr>
+  <tr><td>Java 22+</td><td>❌</td><td>非 LTS，嘗鮮用。每 6 個月出新版</td></tr>
+</table>
+
+<div class="back">
+  <a href="../lessons/0001-java-dev-environment.html">← 回到 Lesson 0001</a>
+  &nbsp;·&nbsp;
+  <a href="../MISSION.md">← 回到 Mission</a>
+</div>
+
+</div>
+</body>
+</html>

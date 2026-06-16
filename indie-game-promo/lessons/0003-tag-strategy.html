@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0003 — 標籤策略與演算法推薦</title>
+<style>
+  :root {
+    --bg: #1b1916;
+    --text: #e2dbd0;
+    --muted: #9b8e7a;
+    --accent: #d4725a;
+    --border: #3a3530;
+    --highlight: #272320;
+    --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25em; line-height: 1.3; }
+  h2 { font-size: 1.3rem; margin: 2em 0 0.5em; color: var(--accent); }
+  h3 { font-size: 1.05rem; margin: 1.5em 0 0.4em; }
+  p { margin: 0.8em 0; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 1.5em; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  .nav a { color: var(--accent); text-decoration: none; }
+  .nav a:hover { color: #e89375; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1.2em 0; padding: 0.6em 1em;
+    background: var(--highlight); font-style: italic;
+  }
+  blockquote cite { display: block; margin-top: 0.4em; font-size: 0.85rem; color: var(--muted); font-style: normal; }
+  .practice {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.2em 1.5em; margin: 1.5em 0;
+  }
+  .practice h3 { margin-top: 0; color: var(--accent); }
+  ol, ul { margin: 0.5em 0 0.5em 1.5em; }
+  li { margin: 0.4em 0; }
+  code { font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 2px; }
+  .step { font-weight: 600; color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .nav { display: flex; justify-content: space-between; margin-top: 3em; font-size: 0.9rem; }
+  .callout {
+    background: #2a221f; border-left: 3px solid var(--accent);
+    padding: 0.8em 1.2em; margin: 1.5em 0; font-size: 0.92rem;
+  }
+  .callout strong { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.88rem; }
+  th, td { padding: 0.5em 0.7em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .quiz { margin: 1em 0; }
+  .quiz .question { font-weight: 600; margin: 1.2em 0 0.4em; }
+  .quiz label { display: block; padding: 0.3em 0; cursor: pointer; }
+  .quiz input[type="radio"] { margin-right: 0.5em; accent-color: var(--accent); }
+  .quiz .feedback { display: none; margin-top: 0.5em; padding: 0.6em 1em; border-radius: 3px; font-size: 0.9rem; }
+  .quiz .correct { background: #1a3322; color: #6bde80; }
+  .quiz .incorrect { background: #3a1a1a; color: #f07a6a; }
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.8em 0; }
+  .tag { background: var(--code-bg); border: 1px solid var(--border); border-radius: 3px; padding: 2px 9px; font-size: 0.82rem; color: var(--text); }
+  .tag.baseline { border-color: #5a7a5a; color: #8cba8c; }
+  .tag.subgenre { border-color: #5a6a8a; color: #8ca0c8; }
+  .tag.mood { border-color: #8a6a5a; color: #c8a08c; }
+</style>
+</head>
+<body>
+
+<h1>Lesson 0003<br>標籤策略與演算法推薦</h1>
+<p class="subtitle">20 個標籤決定你的遊戲被推薦給誰——以及被誰忽略</p>
+
+<div class="callout">
+  <strong>🎯 與 Mission 的關聯：</strong>標籤是 Steam 推薦引擎的心臟。錯誤的標籤組合會讓你的遊戲被推薦給完全錯誤的受眾——導致低點擊率、低轉化率，最終被演算法打入冷宮。反之，精準的標籤能讓你的遊戲搭上《星露谷物語》或《殺戮尖塔》的「更多類似商品」順風車。
+</div>
+
+<h2>知識：標籤不是分類，是演算法的向量輸入</h2>
+
+<p>多數開發者把標籤當成「幫玩家分類遊戲」的中性分類系統。這是個危險的誤解。</p>
+
+<p>在 Steam 的機器學習架構下，標籤是<strong>決定你的遊戲出現在哪些推薦區塊的向量參數</strong>。它們同時驅動：</p>
+
+<ul>
+  <li><strong>探索佇列</strong>（Discovery Queue）— 系統根據玩家過往遊玩遊戲的標籤向量，匹配你的遊戲</li>
+  <li><strong>「更多類似商品」</strong>（More Like This）— 任何遊戲頁面側邊欄的推薦，依據兩款遊戲前 20 個標籤的重疊度</li>
+  <li><strong>類型與子類型瀏覽頁面</strong>— 玩家按標籤瀏覽時的排序權重</li>
+  <li><strong>首頁個人化推薦</strong>— 結合玩家行為與標籤相似度的綜合推薦</li>
+  <li><strong>Steam 為你推薦的類似遊戲</strong>（Curator 推送、新聞中心）</li>
+</ul>
+
+<blockquote>
+  Steam 的標籤系統不僅僅是分類目錄，它是驅動整個平台推薦演算法的心臟。
+  <cite>— Gemini Deep Research 報告</cite>
+</blockquote>
+
+<h2>知識：三層標籤策略</h2>
+
+<p>20 個標籤欄位不是讓你亂填的。它們應該遵循一個三層結構：</p>
+
+<h3>第一層：基礎類型標籤（Baseline Tags）— 5~8 個</h3>
+
+<p>這些是與你同類型成功競品<strong>共享的標籤</strong>。它們決定了你的遊戲會出現在誰的「更多類似商品」中。</p>
+
+<p>方法：找出 5-10 款同類型中獲得 500+ 評價的競品，提取它們<strong>共同擁有的標籤</strong>。這些共同標籤就是你的基礎層。</p>
+
+<div class="tag-cloud">
+  <span class="tag baseline">Roguelike</span>
+  <span class="tag baseline">卡牌戰鬥</span>
+  <span class="tag baseline">回合制</span>
+  <span class="tag baseline">策略</span>
+  <span class="tag baseline">獨立製作</span>
+  <span class="tag baseline">奇幻</span>
+</div>
+<p style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem;">▲ 基礎標籤範例：一款 Roguelike 卡牌遊戲的基底</p>
+
+<h3>第二層：精細子類型標籤（Sub-Genre Tags）— 5~8 個</h3>
+
+<p>這是你的差異化空間。不要用籠統的標籤，要用<strong>能夠精準定義你遊戲獨特性的細粒度標籤</strong>。</p>
+
+<table>
+  <tr><th>❌ 籠統（浪費欄位）</th><th>✅ 精細（演算法可利用）</th></tr>
+  <tr><td>動作</td><td>精準平台跳躍（Precision Platformer）</td></tr>
+  <tr><td>2D 平台</td><td>類銀河惡魔城（Metroidvania）</td></tr>
+  <tr><td>射擊</td><td>彈幕地獄（Bullet Hell）</td></tr>
+  <tr><td>角色扮演</td><td>極簡角色扮演（Minimalist RPG）</td></tr>
+  <tr><td>模擬</td><td>殖民地模擬（Colony Sim）</td></tr>
+</table>
+
+<h3>第三層：氛圍與情緒標籤（Mood Tags）— 3~6 個</h3>
+
+<p>這是最常被忽略但極其重要的一層。情緒標籤決定了你的遊戲被推薦給<strong>什麼心態</strong>的玩家。</p>
+
+<div class="callout">
+  <strong>⚠️ 經典翻車案例：</strong>一款溫馨的農場模擬遊戲，因為只填了「農場」、「模擬」、「生存」標籤而漏掉「可愛」和「放鬆」——結果 Steam 演算法根據「農場 + 生存」的向量，把它推薦給了硬核末日生存遊戲的玩家。點擊率與轉化率雙雙探底。
+</div>
+
+<div class="tag-cloud">
+  <span class="tag mood">放鬆</span>
+  <span class="tag mood">可愛</span>
+  <span class="tag mood">黑暗</span>
+  <span class="tag mood">氛圍</span>
+  <span class="tag mood">極簡</span>
+  <span class="tag mood">電影感</span>
+  <span class="tag mood">懷舊</span>
+  <span class="tag mood">色彩繽紛</span>
+</div>
+<p style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem;">▲ 常見的情緒標籤。選擇那些真正描述你遊戲<em>感受</em>的，而非你<em>希望</em>它有的。</p>
+
+<h2>知識：「更多類似商品」的向量匹配機制</h2>
+
+<p>這是標籤策略中最具戰術價值的一塊。Steam 的「更多類似商品」區塊使用<strong>標籤向量重疊度</strong>來決定推薦關係：</p>
+
+<ul>
+  <li>兩款遊戲的前 20 個標籤中，<strong>重疊的數量越多</strong>，互相推薦的機率越高</li>
+  <li>標籤的<strong>順序權重低於絕對重疊數量</strong>（這點與許多開發者的直覺相反）</li>
+  <li>與高流量大作的標籤重疊 = 免費的百萬級曝光機會</li>
+</ul>
+
+<p>這意味著：如果你的 Roguelike 卡牌遊戲與《殺戮尖塔》共享了 15 個標籤，你的遊戲就有極高機率出現在《殺戮尖塔》商店頁面的側邊欄中——<strong>零成本從這款 Steam 傳奇大作的每日流量中分一杯羹</strong>。</p>
+
+<p>但這也是雙面刃：如果你的標籤與大量低品質資產翻新遊戲（asset flips）重疊過高，你的遊戲也會被拖入那些垃圾遊戲的推薦池中。</p>
+
+<h2>技能實踐：為你的遊戲建立標籤策略</h2>
+
+<div class="practice">
+<h3>🛠 動手做：標籤逆向工程</h3>
+
+<ol>
+  <li><strong>列出 5 款競品的標籤。</strong>在 Steam 商店頁面上，點擊「查看全部」展開每個競品的完整標籤列表。記下所有 20 個（如果競品沒填滿 20 個，記下它填了幾個）。</li>
+  <li><strong>找出共同標籤。</strong>這 5 款競品中，有哪些標籤出現在了至少 3 款以上？這些就是你的<strong>基礎類型標籤</strong>。</li>
+  <li><strong>找出你的獨特標籤。</strong>哪些標籤是你的競品<em>沒有</em>使用，但精準描述了你遊戲的獨特之處？這些是你的<strong>差異化標籤</strong>。</li>
+  <li><strong>補上情緒標籤。</strong>問自己：玩家玩這款遊戲時，應該感受到什麼？從中選出 3-6 個情緒標籤。</li>
+  <li><strong>檢查重疊。</strong>在 SteamDB 上搜尋你選的標籤組合。看看與你共享最高標籤重疊的遊戲是什麼——它們是你會出現在「更多類似商品」中的鄰居。這些鄰居的品質如何？</li>
+</ol>
+</div>
+
+<h2>自我測驗</h2>
+
+<div class="quiz">
+  <div class="question">1. 「更多類似商品」區塊的推薦主要依據什麼？</div>
+  <label><input type="radio" name="q1" value="A" onchange="checkQ1(this)"> A. 兩款遊戲的標籤順序高度一致</label>
+  <label><input type="radio" name="q1" value="B" onchange="checkQ1(this)"> B. 兩款遊戲前 20 個標籤的重疊數量</label>
+  <label><input type="radio" name="q1" value="C" onchange="checkQ1(this)"> C. 兩款遊戲的發行日期相近</label>
+  <div class="feedback" id="q1-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">2. 為什麼情緒標籤（如「放鬆」、「可愛」）很重要？</div>
+  <label><input type="radio" name="q2" value="A" onchange="checkQ2(this)"> A. 它們讓 Steam 商店頁面看起來更美觀</label>
+  <label><input type="radio" name="q2" value="B" onchange="checkQ2(this)"> B. 它們防止演算法根據類型標籤做出錯誤的受眾匹配</label>
+  <label><input type="radio" name="q2" value="C" onchange="checkQ2(this)"> C. 它們是 Valve 強制要求的必填欄位</label>
+  <div class="feedback" id="q2-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">3. 如果發現你的標籤組合與大量低品質 asset flip 遊戲高度重疊，該怎麼辦？</div>
+  <label><input type="radio" name="q3" value="A" onchange="checkQ3(this)"> A. 什麼都不做——演算法會自動區分品質</label>
+  <label><input type="radio" name="q3" value="B" onchange="checkQ3(this)"> B. 加入更多精細的子類型標籤和情緒標籤，拉開與低品質遊戲的向量距離</label>
+  <label><input type="radio" name="q3" value="C" onchange="checkQ3(this)"> C. 刪除所有與低品質遊戲共享的標籤，即使它們準確描述了你的遊戲</label>
+  <div class="feedback" id="q3-feedback"></div>
+</div>
+
+<script>
+function showFeedback(id, correct, explanation) {
+  const fb = document.getElementById(id);
+  fb.style.display = 'block';
+  fb.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+  fb.textContent = (correct ? '✓ 正確。' : '✗ 不正確。') + ' ' + explanation;
+}
+function checkQ1(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q1-feedback', false, '標籤順序的權重低於絕對重疊數量。重點是「有哪些共同標籤」，而不是「它們排在第幾個」。');
+  else if (v === 'B') showFeedback('q1-feedback', true, '重疊數量越多，互相推薦的機率越高。這就是為什麼要研究競品標籤並最大化與高品質大作的標籤重疊。');
+  else showFeedback('q1-feedback', false, '發行日期不影響「更多類似商品」的推薦邏輯。');
+}
+function checkQ2(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q2-feedback', false, '情緒標籤的功能性遠大於美觀性——它們直接影響演算法的受眾匹配。');
+  else if (v === 'B') showFeedback('q2-feedback', true, '情緒標籤幫演算法理解「什麼心態的玩家會喜歡這款遊戲」。沒有它們，演算法只能根據類型標籤猜測，經常猜錯。');
+  else showFeedback('q2-feedback', false, 'Valve 不強制要求情緒標籤，但它們是策略上不該省略的。');
+}
+function checkQ3(el) {
+  const v = el.value;
+  if (v === 'A') showFeedback('q3-feedback', false, '演算法不會自動區分品質——它只看標籤向量。如果你的向量與垃圾遊戲重疊，你就會跟它們出現在同一個推薦池中。');
+  else if (v === 'B') showFeedback('q3-feedback', true, '你不能刪除正確的基礎標籤（那會損失與優質競品的重疊），但可以透過加入精細標籤來增加向量維度，拉開距離。');
+  else showFeedback('q3-feedback', false, '如果這些標籤準確描述了你的遊戲，刪掉它們會讓你失去與同類型優質遊戲的關聯。問題不在標籤本身，在於你<em>只用了</em>這些標籤。');
+}
+</script>
+
+<h2>推薦原始來源</h2>
+<ul>
+  <li><strong>閱讀</strong>：<a href="https://howtomarketagame.com/2023/10/30/steam-tags-are-free-marketing/" target="_blank">Chris Zukowski — Steam Tags Are Free Marketing</a> — 標籤策略的經典教學，包含實際案例與標籤研究工具。</li>
+  <li><strong>工具</strong>：<a href="https://steamdb.info/" target="_blank">SteamDB</a> 的標籤頁面——可以查看每個標籤下的遊戲數量、熱度趨勢，以及關聯標籤圖譜。</li>
+  <li><strong>工具</strong>：<a href="https://partner.steamgames.com/doc/store/tags" target="_blank">Steamworks 官方標籤文件</a> — Valve 對標籤系統的技術說明與政策規範。</li>
+</ul>
+
+<hr>
+
+<div class="callout">
+  <strong>💬 學習提示：</strong>標籤策略不是一次設定就忘掉的事。隨著你的遊戲開發進展和 Steam 標籤生態的變化，你應該每隔幾個月重新檢視一次。把你在逆向工程中發現的競品標籤數據帶來討論——我可以幫你判斷你的標籤組合是否合理，或是幫你找出你可能漏掉的高價值標籤。
+</div>
+
+<div class="nav">
+  <a href="0002-steam-page-early-setup.html">← Lesson 0002: Steam 商店頁面早期建置</a>
+  <a href="0004-localization.html">Lesson 0004: 商店頁面在地化 →</a>
+</div>
+
+</body>
+</html>

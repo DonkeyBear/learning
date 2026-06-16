@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0001 — 類型市場適配度：在寫程式之前，先問市場是否存在</title>
+<style>
+  :root {
+    --bg: #1b1916;
+    --text: #e2dbd0;
+    --muted: #9b8e7a;
+    --accent: #d4725a;
+    --border: #3a3530;
+    --highlight: #272320;
+    --code-bg: #2d2924;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25em; line-height: 1.3; }
+  h2 { font-size: 1.3rem; margin: 2em 0 0.5em; color: var(--accent); }
+  h3 { font-size: 1.05rem; margin: 1.5em 0 0.4em; }
+  p { margin: 0.8em 0; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 1.5em; }
+  .sidenote {
+    float: right; clear: right; width: 200px; margin-right: -230px;
+    font-size: 0.82rem; color: var(--muted); line-height: 1.4;
+    margin-bottom: 0.5em;
+  }
+  @media (max-width: 1000px) {
+    .sidenote { float: none; width: auto; margin: 0.5em 0; display: block; }
+  }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1.2em 0; padding: 0.6em 1em;
+    background: var(--highlight); font-style: italic;
+  }
+  blockquote cite { display: block; margin-top: 0.4em; font-size: 0.85rem; color: var(--muted); font-style: normal; }
+  .practice {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1.2em 1.5em; margin: 1.5em 0;
+  }
+  .practice h3 { margin-top: 0; color: var(--accent); }
+  ol, ul { margin: 0.5em 0 0.5em 1.5em; }
+  li { margin: 0.4em 0; }
+  code { font-family: "SF Mono", "Menlo", "Monaco", monospace; font-size: 0.9em; background: var(--code-bg); padding: 1px 4px; border-radius: 2px; }
+  .step { font-weight: 600; color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+  .nav { display: flex; justify-content: space-between; margin-top: 3em; font-size: 0.9rem; }
+  a { color: #c8a87c; text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:visited { color: #a89070; }
+  a:hover { color: #e0b87c; }
+  .nav a { color: var(--accent); text-decoration: none; }
+  .nav a:hover { color: #e89375; }
+  .callout {
+    background: #2a221f; border-left: 3px solid var(--accent);
+    padding: 0.8em 1.2em; margin: 1.5em 0; font-size: 0.92rem;
+  }
+  .callout strong { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.9rem; }
+  th, td { padding: 0.5em 0.7em; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .quiz { margin: 1em 0; }
+  .quiz .question { font-weight: 600; margin: 1.2em 0 0.4em; }
+  .quiz label { display: block; padding: 0.3em 0; cursor: pointer; }
+  .quiz input[type="radio"] { margin-right: 0.5em; }
+  .quiz .feedback { display: none; margin-top: 0.5em; padding: 0.6em 1em; border-radius: 3px; font-size: 0.9rem; }
+  .quiz .correct { background: #1a3322; color: #6bde80; }
+  .quiz .incorrect { background: #3a1a1a; color: #f07a6a; }
+</style>
+</head>
+<body>
+
+<h1>Lesson 0001<br>類型市場適配度</h1>
+<p class="subtitle">在寫第一行程式碼之前，先問市場是否存在</p>
+
+<div class="callout">
+  <strong>🎯 這堂課與你的 Mission 的關聯：</strong>你的專案 framework 已完成，即將進入內容填充。這是評估類型市場適配度的<em>最後黃金窗口</em>——現在調整定位的成本遠低於發行後才發現沒人要買。
+</div>
+
+<h2>知識：什麼是 Genre-Market Fit？</h2>
+
+<p>「類型市場適配度」（Genre-Market Fit）是一個借用自新創領域「Product-Market Fit」的概念。它的核心問題是：</p>
+
+<blockquote>
+  你選擇的遊戲類型，是否存在足夠大、且未被過度競爭佔據的付費玩家群體？
+  <cite>— 改寫自 Chris Zukowski, <em>How To Market A Game</em></cite>
+</blockquote>
+
+<p>Gemini 報告中明確指出，行銷「無法拯救一款無人問津的拙劣之作」。但更精確的說法是：<strong>行銷無法拯救一款選錯類型的優秀之作</strong>。如果你的遊戲類型本身只有極小的受眾，或是已被 3-5 款大作完全壟斷，那麼再好的執行力也只是在荒漠中挖井。</p>
+
+<h3>三個評估維度</h3>
+
+<p><span class="step">維度一：總體可達市場（TAM — Total Addressable Market）</span></p>
+<p>使用 SteamDB 或 VG Insights，查詢你目標類型標籤的歷史總收入。這告訴你這個池子有多大——是湖還是海。</p>
+
+<p><span class="step">維度二：競爭強度（Competitive Intensity）</span></p>
+<p>檢視該類型的中位數收入 vs 平均收入。如果平均值遠高於中位數，表示少數大作壟斷了大部分收入，中小型作品很難存活。你需要的是中位數仍有意義的「健康長尾」市場。</p>
+
+<p><span class="step">維度三：對標作品分析（Comp-title Analysis）</span></p>
+<p>選 5-10 款定位相近的遊戲（不是最好的，而是<em>最像你的</em>），分析它們的：</p>
+<ul>
+  <li>Steam 評價數量（使用「願望清單 ≈ 追隨者 × 9.6」經驗法則逆推早期動能）</li>
+  <li>發行後的評價趨勢（是開高走低還是持續累積？）</li>
+  <li>玩家負評的<em>主題</em>（是技術問題還是設計問題？你能避免嗎？）</li>
+</ul>
+
+<h2>知識：讀懂數據的三個陷阱</h2>
+
+<h3>陷阱一：生存者偏差</h3>
+<p>你看到的成功案例（如《殺戮尖塔》、《星露谷物語》）是經過極端篩選後的倖存者。同類型中失敗的作品——那些賣不到 100 套的遊戲——不會出現在任何推薦列表中。Gemini 報告引用的數據很清楚：近三分之二的遊戲生命週期利潤低於 $1,000。</p>
+
+<h3>陷阱二：IP 汙染</h3>
+<p>在分析類型趨勢時，必須剔除那些依賴大型 IP（漫威、戰錘 40K）或已有龐大粉絲基礎的續作。這些遊戲的成功條件與你完全不同。</p>
+
+<h3>陷阱三：標籤模糊</h3>
+<p>Steam 的標籤是使用者生成的，經常不精確。例如「動作」標籤同時涵蓋《隻狼》和《吸血鬼倖存者》——但它們面對的是完全不同的受眾。分析時要深入子標籤層級。</p>
+
+<h2>技能實踐：分析你的遊戲類型</h2>
+
+<div class="practice">
+<h3>🛠 動手做：Genre-Market Fit 評估表</h3>
+<p>現在請打開以下工具，針對<strong>你的遊戲專案</strong>（或你正在考慮的類型），完成以下步驟：</p>
+
+<ol>
+  <li><strong>打開 <a href="https://steamdb.info/" target="_blank">SteamDB</a></strong>，搜尋你遊戲最核心的 3 個標籤，記錄每個標籤下遊戲的數量級。</li>
+  <li><strong>打開 <a href="https://vginsights.com/steam-analytics" target="_blank">VG Insights</a></strong>（免費層級即可），查詢該類型的中位數收入與前 10% 收入。</li>
+  <li><strong>在 Steam 上找到 5 款</strong>你認為最接近你的遊戲定位的作品。對每一款記錄：
+    <ul>
+      <li>Steam 評價總數</li>
+      <li>追隨者數量</li>
+      <li>主要負評主題</li>
+      <li>是否有知名 IP 或前作加持</li>
+    </ul>
+  </li>
+  <li><strong>寫下你的結論</strong>：這個類型的市場是否健康？競爭是否可突破？你的遊戲在這個市場中的差異化錨點是什麼？</li>
+</ol>
+</div>
+
+<h2>自我測驗</h2>
+
+<div class="quiz">
+  <div class="question">1. 一個類型的「平均收入遠高於中位數收入」，代表什麼？</div>
+  <label><input type="radio" name="q1" value="A" onchange="checkQ1(this)"> A. 這個類型很健康，多數遊戲都能賺錢</label>
+  <label><input type="radio" name="q1" value="B" onchange="checkQ1(this)"> B. 少數大作壟斷收入，中小型遊戲風險極高</label>
+  <label><input type="radio" name="q1" value="C" onchange="checkQ1(this)"> C. 數據有誤，應該忽略此類型</label>
+  <div class="feedback" id="q1-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">2. 進行對標作品分析時，最關鍵的篩選條件是什麼？</div>
+  <label><input type="radio" name="q2" value="A" onchange="checkQ2(this)"> A. 該類型中銷量最高的代表作</label>
+  <label><input type="radio" name="q2" value="B" onchange="checkQ2(this)"> B. 定位與你的遊戲最相似的作品（不一定是最大賣的）</label>
+  <label><input type="radio" name="q2" value="C" onchange="checkQ2(this)"> C. 所有使用相同遊戲引擎的作品</label>
+  <div class="feedback" id="q2-feedback"></div>
+</div>
+
+<div class="quiz">
+  <div class="question">3. 分析類型趨勢時，為什麼要「剔除 IP 加持作品」？</div>
+  <label><input type="radio" name="q3" value="A" onchange="checkQ3(this)"> A. 因為這些遊戲不屬於該類型</label>
+  <label><input type="radio" name="q3" value="B" onchange="checkQ3(this)"> B. 因為它們的成功條件（既有粉絲基礎）對新 IP 不具參考意義</label>
+  <label><input type="radio" name="q3" value="C" onchange="checkQ3(this)"> C. 因為這些遊戲通常品質較低</label>
+  <div class="feedback" id="q3-feedback"></div>
+</div>
+
+<script>
+function showFeedback(id, correct, explanation) {
+  const fb = document.getElementById(id);
+  fb.style.display = 'block';
+  fb.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+  fb.textContent = (correct ? '✓ 正確。' : '✗ 不正確。') + ' ' + explanation;
+}
+function checkQ1(el) {
+  if (el.value === 'A') showFeedback('q1-feedback', false, '平均值高於中位數恰恰代表收入集中於少數頂端作品，多數遊戲實際收入很低。');
+  else if (el.value === 'B') showFeedback('q1-feedback', true, '這是「贏者全拿」市場的典型訊號。應尋找中位數收入仍有意義的類型。');
+  else showFeedback('q1-feedback', false, '這不是數據錯誤，而是一個重要的市場結構訊號。');
+}
+function checkQ2(el) {
+  if (el.value === 'A') showFeedback('q2-feedback', false, '只看銷量最高的作品會落入生存者偏差。你需要找與<em>你的定位</em>最接近的——即使它們只是中等成功。');
+  else if (el.value === 'B') showFeedback('q2-feedback', true, '對標分析的價值在於找到「像你的遊戲」的實際表現，以此校準預期。');
+  else showFeedback('q2-feedback', false, '遊戲引擎與市場表現無直接關係。');
+}
+function checkQ3(el) {
+  if (el.value === 'A') showFeedback('q3-feedback', false, '它們確實屬於該類型，但問題在於它們的市場條件與你不同。');
+  else if (el.value === 'B') showFeedback('q3-feedback', true, '漫威、戰錘等 IP 遊戲自帶百萬粉絲，新 IP 無法複製這個條件。分析時必須分開看。');
+  else showFeedback('q3-feedback', false, 'IP 遊戲的品質參差不齊，但這不是分析時要剔除它們的主因。');
+}
+</script>
+
+<h2>推薦原始來源</h2>
+<ul>
+  <li><strong>閱讀</strong>：Chris Zukowski 的部落格文章 <a href="https://howtomarketagame.com/2024/10/21/does-your-game-have-genre-market-fit/" target="_blank">"Does Your Game Have Genre-Market Fit?"</a> — 這篇文章定義了這個概念，比任何二手報告都更值得讀。</li>
+  <li><strong>工具</strong>：<a href="https://vginsights.com/" target="_blank">VG Insights</a> 的免費層級足以完成本課的市場分析練習。</li>
+</ul>
+
+<hr>
+
+<div class="callout">
+  <strong>💬 記住：</strong>你的老師（Claude）可以在下一堂課幫你檢視你的 Genre-Market Fit 分析結果。做完練習後，把數據帶來討論——你可以問：「我的類型看起來是健康長尾還是贏者全拿？」、「我選的對標作品是否合理？」或者任何你在分析過程中遇到的困惑。
+</div>
+
+<div class="nav">
+  <span></span>
+  <a href="0002-steam-page-early-setup.html">Lesson 0002: Steam 商店頁面早期建置 →</a>
+</div>
+
+</body>
+</html>

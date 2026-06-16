@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0001：把「做一個關卡」變成可執行的 Backlog</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a1f;
+    --text: #ddd8cf;
+    --muted: #8a857e;
+    --accent: #e07373;
+    --border: #333338;
+    --card: #242429;
+    --card-hover: #2c2c32;
+    --success: #6baf7c;
+    --success-bg: #1c2d21;
+    --warn: #d4a84b;
+    --warn-bg: #2d2618;
+    --wrong-bg: #2d1c1f;
+    --code-bg: #2a2a30;
+    --input-bg: #1e1e23;
+  }
+
+  body {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* --- Typography --- */
+  h1 { font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.02em; color: #f0ece4; }
+  h2 { font-family: 'Noto Serif TC', serif; font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; padding-top: 1rem; border-top: 2px solid var(--border); }
+  h3 { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+  p { margin: 0.75rem 0; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.25rem; }
+
+  /* --- Callout (replaces Tufte sidenote) --- */
+  .callout {
+    margin: 1rem 0; padding: 0.6rem 1rem;
+    border-left: 3px solid var(--accent);
+    background: var(--card); border-radius: 0 4px 4px 0;
+    font-size: 0.88rem; line-height: 1.5;
+  }
+  .callout.mission-tie {
+    border-left-color: #6baf7c;
+    margin-bottom: 1.5rem;
+  }
+  .callout.tip { border-left-color: var(--warn); }
+
+  /* --- Quote --- */
+  blockquote {
+    margin: 1.25rem 0; padding: 0.75rem 1.25rem;
+    border-left: 3px solid var(--accent); background: var(--card);
+    font-style: italic; border-radius: 0 4px 4px 0;
+  }
+
+  /* --- Cards --- */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem 1.25rem;
+  }
+  .card h4 { font-size: 0.9rem; color: var(--accent); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* --- Quiz --- */
+  .quiz { margin: 1.5rem 0; }
+  .quiz-question {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.25rem; margin: 1rem 0;
+  }
+  .quiz-question p { margin: 0 0 0.75rem; font-weight: 500; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.4rem; }
+  .quiz-option {
+    display: block; width: 100%; text-align: left;
+    padding: 0.6rem 0.9rem; font-size: 0.92rem; font-family: inherit;
+    background: var(--input-bg); color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .quiz-option:hover { background: var(--card-hover); border-color: #555; }
+  .quiz-option.correct { background: var(--success-bg); border-color: var(--success); color: #c3e6cd; }
+  .quiz-option.wrong { background: var(--wrong-bg); border-color: var(--accent); color: #e6c3c3; }
+  .quiz-feedback { font-size: 0.88rem; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 4px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: var(--success-bg); color: var(--success); }
+  .quiz-feedback.wrong { background: var(--wrong-bg); color: var(--accent); }
+
+  /* --- Exercise --- */
+  .exercise {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;
+  }
+  .exercise h3 { margin-top: 0; }
+  textarea {
+    width: 100%; min-height: 120px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;
+    padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--input-bg); color: var(--text); resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    display: inline-block; padding: 0.5rem 1.25rem;
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 4px; font-family: inherit; font-size: 0.9rem;
+    cursor: pointer; margin-top: 0.5rem;
+  }
+  .btn:hover { opacity: 0.85; }
+  .reveal {
+    display: none; margin-top: 1rem; padding: 1rem;
+    background: var(--success-bg); border-radius: 4px; font-size: 0.9rem;
+    border: 1px solid var(--success);
+  }
+  .reveal.show { display: block; }
+
+  /* --- Checklist --- */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 0.3rem 0; }
+  .checklist li::before { content: "☐ "; color: var(--muted); }
+
+  /* --- Process flow --- */
+  .flow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; font-size: 0.9rem; }
+  .flow-step {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.6rem 0.9rem; white-space: nowrap;
+  }
+  .flow-arrow { color: var(--muted); font-weight: 700; }
+
+  /* --- Table --- */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; background: var(--card); border-bottom: 2px solid var(--border); }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+
+  /* --- Footer --- */
+  .lesson-footer {
+    margin-top: 3.5rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted);
+  }
+  .lesson-footer a { color: var(--accent); }
+
+  a { color: var(--accent); }
+
+  code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 3px; color: #e0c070; }
+
+  ul, ol { padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+</style>
+</head>
+<body>
+
+<h1>把「做一個關卡」變成一份可以執行的 Backlog</h1>
+<p class="subtitle">Lesson 0001 · 主題：Work Breakdown · 預估時間：15–20 分鐘</p>
+
+<div class="callout mission-tie">
+  🎯 <strong>與你的 Mission 的關聯</strong>——這是從「想到哪做到哪」到「有節奏地推進」的第一步。沒有 breakdown，就沒有估算、沒有排程、沒有辦法讓別人參與。
+</div>
+
+<h2>問題：為什麼「做關卡」是一個糟糕的任務</h2>
+
+<p>你的核心框架已經完成了。剩下的工作是「做關卡設計、填充內容」。讓我猜猜你的待辦清單（如果有的話）長什麼樣子：</p>
+
+<blockquote>
+  🗒️ 做 Level 1<br>
+  🗒️ 做 Level 2<br>
+  🗒️ 做 DLC 關卡
+</blockquote>
+
+<p>如果你看到這份清單時感受到的是一股模糊的焦慮，而不是「好，我知道下一步是什麼」——恭喜，你已經親身體驗了遊戲開發中最常見的陷阱：<strong>任務粒度過大</strong>。</p>
+
+<p>一個叫做「做 Level 1」的任務，它真正的問題是：</p>
+<ul>
+  <li><strong>無法估算</strong>——2 天還是 2 個月？完全不知道。</li>
+  <li><strong>無法開始</strong>——坐下來之後要先做什麼？設計謎題？畫場景？寫腳本？</li>
+  <li><strong>無法追蹤進度</strong>——做到一半是什麼意思？50% 是完成了什麼？</li>
+  <li><strong>無法交接</strong>——如果之後有人幫你做關卡設計，你怎麼告訴他該做什麼？</li>
+</ul>
+
+<h2>核心概念：兩種 Board，兩種視角</h2>
+
+<p>單人開發者最實用的管理模式是<strong>雙板系統（Two-Board System）</strong>——讓「玩家的大腦」和「開發者的大腦」分開運作：</p>
+
+<div class="card-grid">
+  <div class="card">
+    <h4>📋 Board 1：願景板 Vision Board</h4>
+    <p>從<strong>玩家視角</strong>描述你想要的最終體驗。粒度大約是 feature 層級。</p>
+    <p style="font-size:0.88rem; color:var(--muted);">只在每個工作週期結束時才回來調整。</p>
+    <p style="font-size:0.85rem; margin-top:0.5rem;"><strong>範例項目：</strong><br>
+    • 玩家能找到隱藏在書架後的鑰匙<br>
+    • 玩家能組合道具來解開謎題<br>
+    • 遊戲有兩個免費關卡 + DLC</p>
+  </div>
+  <div class="card">
+    <h4>⚙️ Board 2：執行板 Execution Board</h4>
+    <p>從<strong>開發者視角</strong>寫下具體要執行的工作。任務必須小到可以估算。</p>
+    <p style="font-size:0.88rem; color:var(--muted);">每天工作時只看這塊板子。</p>
+    <p style="font-size:0.85rem; margin-top:0.5rem;"><strong>範例項目：</strong><br>
+    • 繪製書架道具的點擊區域<br>
+    • 實作鑰匙拾取後顯示在物品欄<br>
+    • 撰寫書架謎題的提示文字</p>
+  </div>
+</div>
+
+<p>關鍵規則：<strong>工作時只看執行板。</strong>願景板是你「做完一個週期後」才回來檢視的東西。兩塊板子同時看的結果就是大腦同時當產品經理和工程師——然後兩邊都做不好。</p>
+
+<h2>Task Sizing：2 小時到 3 天的黃金法則</h2>
+
+<p>來自 Calgary 大學遊戲開發管理課程的經驗法則：</p>
+
+<div class="flow">
+  <div class="flow-step">🏔️ 太大：超過 3 天</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">拆！</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">✅ 剛好：2h–3d</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">🧩 太小：少於 2h</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">合併</div>
+</div>
+
+<p>如果你的任務超過 3 天才能完成，代表它<strong>應該被繼續拆解</strong>。如果一個任務不到 2 小時就能做完，考慮把它跟相關任務合併——管理 overhead 不值得。</p>
+
+<h2>密室逃脫遊戲的 Breakdown 模板</h2>
+
+<p>對於你的密室逃脫遊戲，一個關卡可以沿著這五個維度來拆：</p>
+
+<table>
+  <tr>
+    <th>維度</th>
+    <th>包含什麼</th>
+    <th>範例任務</th>
+  </tr>
+  <tr>
+    <td><strong>🔍 謎題鏈</strong></td>
+    <td>謎題邏輯、觸發條件、提示系統</td>
+    <td style="font-size:0.85rem;">「實作書架鑰匙謎題：點擊正確順序→鑰匙出現」</td>
+  </tr>
+  <tr>
+    <td><strong>🎨 場景素材</strong></td>
+    <td>背景、道具美術、UI 元素</td>
+    <td style="font-size:0.85rem;">「繪製書架的三種狀態：正常／移動後／空」</td>
+  </tr>
+  <tr>
+    <td><strong>💻 互動腳本</strong></td>
+    <td>點擊回應、道具組合、過場動畫</td>
+    <td style="font-size:0.85rem;">「實作道具組合：鑰匙+鎖→門打開的過場」</td>
+  </tr>
+  <tr>
+    <td><strong>🔊 音效／氛圍</strong></td>
+    <td>背景音樂、音效回饋、環境音</td>
+    <td style="font-size:0.85rem;">「添加謎題解開時的音效回饋」</td>
+  </tr>
+  <tr>
+    <td><strong>🧪 測試</strong></td>
+    <td>通關測試、邊界情況、提示覆蓋</td>
+    <td style="font-size:0.85rem;">「測試 Level 1 完整通關流程，記錄所有卡關點」</td>
+  </tr>
+</table>
+
+<div class="callout tip">
+  💡 <strong>非程式工作的估算</strong>——很容易只估算「寫程式」的時間，忘了美術、音效、測試、整合也需要時間。Calgary 課程特別強調：估算時必須納入 non-code content。
+</div>
+
+<h2>動手練習</h2>
+
+<div class="exercise">
+  <h3>✏️ 拆解一個謎題</h3>
+  <p>假設你要為密室逃脫遊戲製作這樣一個謎題：</p>
+  <blockquote>
+    「玩家需要在書房中找到三張散落的紙條，拼出一個四位數密碼，用這個密碼打開牆上的保險箱，取得裡面的鑰匙。」
+  </blockquote>
+  <p>請在下方嘗試把這個謎題拆成 <strong>4–8 個具體任務</strong>，每個任務應該落在 2 小時到 3 天的範圍內：</p>
+  <textarea id="exercise-input" placeholder="例如：&#10;1. 設計三張紙條的提示文字內容&#10;2. 在場景中放置三張紙條的隱藏位置&#10;3. ..."></textarea>
+  <button class="btn" onclick="document.getElementById('exercise-reveal').classList.add('show')">完成後點此查看參考答案</button>
+  <div class="reveal" id="exercise-reveal">
+    <strong>參考 breakdown（一種可能）：</strong>
+    <ol>
+      <li><strong>設計紙條內容</strong>：寫出三張紙條的文字，確保拼起來能推導出密碼（2–4h）</li>
+      <li><strong>場景配置</strong>：在書房場景中放置三張紙條的可點擊熱區（1–2h）</li>
+      <li><strong>紙條 UI</strong>：實作點擊紙條後顯示放大檢視、已收集紙條的列表（3–6h）</li>
+      <li><strong>保險箱互動</strong>：實作四位數字輸入面板、密碼驗證邏輯（4–8h）</li>
+      <li><strong>保險箱美術</strong>：繪製保險箱關閉／開啟兩種狀態的素材（3–5h）</li>
+      <li><strong>鑰匙拾取</strong>：保險箱打開後出現鑰匙、拾取後加入物品欄（1–3h）</li>
+      <li><strong>提示系統</strong>：加入卡關提示（「或許我該找找有沒有其他紙條...」）（2–4h）</li>
+      <li><strong>整合測試</strong>：完整跑一次這個謎題，確認所有邊界情況正常（1–2h）</li>
+    </ol>
+  </div>
+</div>
+
+<h2>小測驗：哪些任務粒度正確？</h2>
+
+<div class="quiz">
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 以下哪個任務的粒度最適合放進執行板？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-correct="false">實作所有關卡的謎題系統</button>
+      <button class="quiz-option" data-correct="false">設計密室逃脫遊戲的提示機制</button>
+      <button class="quiz-option" data-correct="true">為書房場景的書架添加點擊檢查邏輯</button>
+      <button class="quiz-option" data-correct="false">讓遊戲變得更有沉浸感</button>
+    </div>
+    <div class="quiz-feedback" id="q1-fb"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 「繪製 Level 1 所有場景素材」這個任務的問題是什麼？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-correct="false">任務太小，應該跟其他任務合併</button>
+      <button class="quiz-option" data-correct="true">任務太大，可能超過 3 天且難以追蹤進度</button>
+      <button class="quiz-option" data-correct="false">任務描述太具體，沒有問題</button>
+      <button class="quiz-option" data-correct="false">無法判斷，需要更多資訊</button>
+    </div>
+    <div class="quiz-feedback" id="q2-fb"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 根據本課內容，執行板和願景板的正確使用方式是？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-correct="false">每小時同步一次，確保執行方向正確</button>
+      <button class="quiz-option" data-correct="true">工作時只看執行板，週期結束後才回來檢視願景板</button>
+      <button class="quiz-option" data-correct="false">只保留執行板，願景板沒有實際用途</button>
+      <button class="quiz-option" data-correct="false">同時開著兩塊板子，方便隨時調整優先級</button>
+    </div>
+    <div class="quiz-feedback" id="q3-fb"></div>
+  </div>
+</div>
+
+<h2>下一步：你的第一個 Backlog</h2>
+
+<p>現在輪到你自己的專案了。選擇<strong>一個關卡中的一個謎題</strong>，用上面學到的五維度模板，拆成 5–10 個具體任務。寫在紙上、Obsidian 裡、或任何你順手的工具中。</p>
+
+<p>如果你還沒有管理工具，以下是最受 Godot 社群推薦的選項（從最簡單到最強大）：</p>
+
+<ul class="checklist">
+  <li><strong>Trello</strong>——如果你想要零摩擦開始，拖放卡片即可</li>
+  <li><strong>Obsidian + Kanban 插件</strong>——如果你已經在用 Obsidian 做筆記，這是自然延伸</li>
+  <li><strong>Codecks</strong>——如果你想要專為遊戲開發設計的結構（卡牌遊戲隱喻）</li>
+  <li><strong>GitHub Issues / Projects</strong>——如果你想把程式碼和任務管理放在同一個地方</li>
+</ul>
+
+<div class="callout tip">
+  ⚠️ <strong>工具選擇的陷阱</strong>——不要在工具選擇上花超過 30 分鐘。用 Trello 開始，如果一個月後覺得不夠用再換。選擇工具本身不是工作。
+</div>
+
+<div class="lesson-footer">
+  <p>
+    <strong>📖 推薦延伸閱讀：</strong>
+    <a href="https://cspages.ucalgary.ca/~bdstephe/585_W11/d504_project_management.pdf" target="_blank">Project Management for Game Development — University of Calgary</a>（第 19–30 頁：Feature Backlog & Task Estimation）
+  </p>
+  <p>
+    <strong>🔗 相關參考文件：</strong>
+    <a href="../reference/backlog-cheatsheet.html">Backlog Breakdown 速查表</a>
+  </p>
+  <p style="margin-top:1.5rem;">
+    💬 <strong>有疑問嗎？</strong>直接問你的 AI 老師——「這個任務這樣拆夠細嗎？」「我的執行板這樣設置對嗎？」任何卡住的地方都可以拿出來討論。
+  </p>
+  <p style="margin-top:0.5rem; color:var(--muted);">
+    下一堂課預告：如何估算這些任務的時間（以及為什麼你一定會估錯——但那沒關係）
+  </p>
+</div>
+
+<script>
+document.querySelectorAll('.quiz-option').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const question = this.closest('.quiz-question');
+    const feedback = question.querySelector('.quiz-feedback');
+    const allOptions = question.querySelectorAll('.quiz-option');
+
+    // Reset
+    allOptions.forEach(o => { o.classList.remove('correct', 'wrong'); o.disabled = true; });
+
+    const isCorrect = this.dataset.correct === 'true';
+    this.classList.add(isCorrect ? 'correct' : 'wrong');
+    feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+    feedback.textContent = isCorrect
+      ? '✅ 正確！'
+      : '❌ 再想想——複習一下上面的 Task Sizing 段落。';
+
+    // Show correct answer
+    question.querySelector('[data-correct="true"]').classList.add('correct');
+  });
+});
+</script>
+
+</body>
+</html>
