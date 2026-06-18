@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference: Java / TS / Python 語法速查表</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'SF Pro Display', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { color: #fff; margin-bottom: 2rem; font-size: 2rem; border-left: 4px solid var(--accent); padding-left: 1rem; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.9rem;
+  }
+  th, td {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  th {
+    background: var(--surface-2);
+    color: var(--accent-glow);
+    font-weight: 600;
+  }
+  td { background: var(--code-bg); }
+  .kw { color: #c792ea; }
+  .type { color: #ffcb6b; }
+  .str { color: #c3e88d; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Java / TS / Python 語法速查表</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>概念</th>
+        <th>Java (JDK 17+)</th>
+        <th>TypeScript</th>
+        <th>Python</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>變數宣告</td>
+        <td><code><span class="type">String</span> name = <span class="str">"a"</span>;</code><br><code><span class="kw">var</span> name = <span class="str">"a"</span>;</code></td>
+        <td><code><span class="kw">let</span> name: <span class="type">string</span> = <span class="str">"a"</span>;</code></td>
+        <td><code>name: <span class="type">str</span> = <span class="str">"a"</span></code></td>
+      </tr>
+      <tr>
+        <td>常數</td>
+        <td><code><span class="kw">final int</span> MAX = 10;</code></td>
+        <td><code><span class="kw">const</span> MAX = 10;</code></td>
+        <td><code>MAX = 10</code> (慣例)</td>
+      </tr>
+      <tr>
+        <td>印出</td>
+        <td><code>System.out.println(x);</code></td>
+        <td><code>console.log(x);</code></td>
+        <td><code>print(x)</code></td>
+      </tr>
+      <tr>
+        <td>可變長度列表</td>
+        <td><code>List&lt;String&gt; list = new ArrayList&lt;&gt;();</code><br><code>list.add(<span class="str">"a"</span>);</code></td>
+        <td><code><span class="kw">const</span> list: <span class="type">string</span>[] = [];</code><br><code>list.push(<span class="str">"a"</span>);</code></td>
+        <td><code>list = []</code><br><code>list.append(<span class="str">"a"</span>)</code></td>
+      </tr>
+      <tr>
+        <td>For-Each 迴圈</td>
+        <td><code><span class="kw">for</span> (<span class="type">String</span> s : list) {}</code></td>
+        <td><code><span class="kw">for</span> (<span class="kw">const</span> s <span class="kw">of</span> list) {}</code></td>
+        <td><code><span class="kw">for</span> s <span class="kw">in</span> list:</code></td>
+      </tr>
+      <tr>
+        <td>類別建構子</td>
+        <td><code><span class="kw">public</span> ClassName() {}</code></td>
+        <td><code><span class="kw">constructor</span>() {}</code></td>
+        <td><code><span class="kw">def</span> __init__(self):</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -247,6 +247,7 @@
   .nav-links {
     display: flex;
     gap: 1rem;
+    justify-content: space-between;
     margin-top: 3rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border);
@@ -259,8 +260,8 @@
   .nav-links a:hover { text-decoration: underline; }
 
   /* Links */
-  a { color: var(--info); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
 
   .tag {
     display: inline-block;
@@ -350,7 +351,7 @@ brew install --cask intellij-idea-ce</code></pre>
 <!-- STEP 2: JDK -->
 <div class="step">
   <div class="step-title">安裝 JDK 21</div>
-  <p>我們選擇 <strong>JDK 21</strong>（LTS 長期支援版）。Minecraft 1.21+ 需要 Java 21，SpringBoot 3.x 也支援 Java 21——一個版本通吃兩個目標。</p>
+  <p>我們選擇 <strong>JDK 21</strong>（LTS 長期支援版）。Minecraft 26 需要 Java 21，SpringBoot 3.x 也支援 Java 21——一個版本通吃兩個目標。</p>
 
   <h3>方法一：IntelliJ 內建下載（推薦 &#x2728;）</h3>
   <p>IntelliJ 可以幫你管理 JDK——不需要手動跑指令：</p>
@@ -569,7 +570,7 @@ gradle init \\
   <li>&#x1f4d6; <a href="https://www.jetbrains.com/help/idea/getting-started.html">IntelliJ IDEA 入門指南</a> — JetBrains 官方教學</li>
   <li>&#x1f4d6; <a href="https://docs.oracle.com/en/java/javase/21/">Oracle JDK 21 官方文件</a> — 權威參考</li>
   <li>&#x1f4d6; <a href="https://docs.gradle.org/current/userguide/userguide.html">Gradle 使用者手冊</a> — Gradle 官方文件</li>
-  <li>&#x1f517; <strong>下一堂課預告：</strong> <em>Lesson 0002 — Java 語法速覽：從 TS/Python 視角看 Java</em>（即將推出）</li>
+  <li>&#x1f517; <strong>下一堂課：</strong> <a href="./0002-java-syntax-for-ts-python-devs.html">Lesson 0002 — Java 語法速覽：從 TS/Python 視角看 Java</a></li>
 </ul>
 
 <!-- ==================== FEEDBACK ==================== -->
@@ -581,7 +582,8 @@ gradle init \\
 <!-- ==================== NAV ==================== -->
 <div class="nav-links">
   <span style="color: var(--text-muted)">&#x2190; 這是第一堂課</span>
-  <a href="../reference/jdk-gradle-cheatsheet.html">&#x1f4cb; 參考文件：JDK & Gradle 速查表 &#x2192;</a>
+  <a href="../reference/jdk-gradle-cheatsheet.html">&#x1f4cb; 參考文件：JDK & Gradle 速查表</a>
+  <a href="./0002-java-syntax-for-ts-python-devs.html">Lesson 0002 &#x2192;</a>
 </div>
 
 </div><!-- /container -->

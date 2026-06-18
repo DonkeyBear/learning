@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0004 — 第一個物品：註冊你的專屬神劍</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* Header */
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+  h4 {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+  .card .icon { font-size: 1.2rem; margin-right: 0.4rem; }
+
+  /* Tip — "by the way" side knowledge */
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+
+  /* Steps */
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Lists */
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Nav */
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  /* Links */
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
+
+  /* Feedback */
+  .feedback-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+  .feedback-box p { margin-bottom: 0.5rem; }
+  .feedback-box .cta {
+    color: var(--accent-glow);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0004</span>
+  <span class="sep">/</span>
+  <span>ITEM</span>
+  <span class="sep">/</span>
+  <span>~35 min</span>
+</div>
+
+<h1>第一個物品：註冊你的專屬神劍</h1>
+<p class="subtitle">理解 Minecraft 核心的 Registry 機制，並將一把自訂的劍加進遊戲世界中。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>Minecraft 的大腦：Registry 註冊表</h2>
+
+<p>如果你要在一個已經寫好的遊戲中加入新東西（比如一個物品），你不能只寫一個 Class 就算了，因為遊戲引擎根本不知道它的存在。你必須把它<strong>登記 (Register)</strong> 到遊戲的大腦裡。</p>
+
+<p>Minecraft 中的這個大腦叫做 <code>Registry</code>。遊戲中的所有物品、方塊、生物、音效，全部都在各自的 <code>Registry</code> 裡有一個獨一無二的 ID（例如 <code>minecraft:apple</code> 或 <code>my_mod:magic_sword</code>）。</p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Identifier 與 ResourceKey</div>
+  <p>Minecraft 大量使用 <code>Identifier</code> (簡稱 ID) 來尋找資源。格式永遠是 <code>命名空間:資源名稱</code>。從 Minecraft 26 開始，我們必須先透過 <code>Identifier.parse("...")</code> 建立 ID，然後用它生成一個 <code>ResourceKey</code>（註冊金鑰）。這個金鑰就像是一把鎖匙，在建立物品與註冊物品時都必須使用同一把鎖匙，這樣遊戲大腦才不會搞混！</p>
+</div>
+
+<!-- ==================== CREATE ITEM ==================== -->
+<h2>步驟一：撰寫物品與註冊程式碼</h2>
+
+<div class="step-container" style="counter-reset: step;">
+
+<div class="step">
+  <div class="step-title">建立一個統一管理物品的 Class</div>
+  <p>在你的主程式 (例如 <code>ExampleMod.java</code>) 旁邊，建立一個新類別叫做 <code>ModItems.java</code>。把所有自訂物品都集中管理是很好的習慣。</p>
+
+  <pre><code><span class="kw">package</span> <span class="type">com.example.item</span>; <span class="cmt">// 替換成你的 package</span>
+
+<span class="kw">import</span> net.minecraft.world.item.Item;
+<span class="kw">import</span> net.minecraft.core.Registry;
+<span class="kw">import</span> net.minecraft.core.registries.BuiltInRegistries;
+<span class="kw">import</span> net.minecraft.core.registries.Registries;
+<span class="kw">import</span> net.minecraft.resources.Identifier;
+<span class="kw">import</span> net.minecraft.resources.ResourceKey;
+
+<span class="kw">public class</span> <span class="type">ModItems</span> {
+    <span class="cmt">// 1. 提早建立專屬的「註冊金鑰 (ResourceKey)」</span>
+    <span class="kw">public static final</span> <span class="type">ResourceKey</span>&lt;<span class="type">Item</span>&gt; MAGIC_SWORD_KEY = <span class="type">ResourceKey</span>.create(
+            Registries.ITEM,
+            <span class="type">Identifier</span>.parse(<span class="str">"myfirstmod:magic_sword"</span>)
+    );
+
+    <span class="cmt">// 2. 實例化你的物品 (必須呼叫 setId 將金鑰綁定進 Properties 中)</span>
+    <span class="kw">public static final</span> <span class="type">Item</span> MAGIC_SWORD = <span class="kw">new</span> <span class="type">Item</span>(
+            <span class="kw">new</span> <span class="type">Item.Properties</span>().setId(MAGIC_SWORD_KEY)
+    );
+
+    <span class="cmt">// 3. 建立註冊方法</span>
+    <span class="kw">public static void</span> <span class="fn">registerModItems</span>() {
+        <span class="cmt">// 新版的註冊可以直接傳入剛剛做好的 Key</span>
+        Registry.register(
+                BuiltInRegistries.ITEM,
+                MAGIC_SWORD_KEY,
+                MAGIC_SWORD
+        );
+    }
+}</code></pre>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：public static final 是什麼？</div>
+  <p>在 Java 中，<code>public static final</code> 是定義<strong>常數 (Constants)</strong> 的標準語法。<code>public</code> 代表大家都能存取，<code>static</code> 代表它屬於 Class 本身（不需要 new 就能用），<code>final</code> 代表它的參考不可改變（類似 JS 的 const）。在 Minecraft 模組開發中，你幾乎所有的物品實例都會被宣告為 <code>public static final</code>！</p>
+</div>
+
+<div class="step">
+  <div class="step-title">在主入口點呼叫註冊方法</div>
+  <p>打開你的主程式（繼承了 <code>ModInitializer</code> 的那個，通常是 <code>ExampleMod.java</code>），在 <code>onInitialize()</code> 方法中呼叫你剛剛寫的方法：</p>
+
+  <pre><code><span class="kw">public class</span> <span class="type">ExampleMod</span> <span class="kw">implements</span> <span class="type">ModInitializer</span> {
+    <span class="kw">public static final</span> <span class="type">String</span> MOD_ID = <span class="str">"myfirstmod"</span>;
+
+    <span class="type">@Override</span>
+    <span class="kw">public void</span> <span class="fn">onInitialize</span>() {
+        <span class="cmt">// 將我們的物品註冊進遊戲大腦！</span>
+        ModItems.registerModItems();
+        System.out.println(<span class="str">"Hello Fabric world!"</span>);
+    }
+}</code></pre>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：單例模式 (Singleton) 概念</div>
+  <p>因為 <code>MAGIC_SWORD</code> 是 static final 的實例，這代表遊戲中「這種類型的劍」在記憶體裡永遠只有一份物件拷貝！每個玩家拿在手上的那把劍，其實是記錄在另一個類別 <code>ItemStack</code> (物品堆疊) 裡，而 <code>ItemStack</code> 會指回這唯一的 <code>Item</code> 實例來查詢它的屬性。</p>
+</div>
+
+</div><!-- step container -->
+
+<!-- ==================== ASSETS ==================== -->
+<h2>步驟二：給它名字與圖案 (Assets)</h2>
+
+<p>如果你現在開遊戲，你會能用指令取得劍（<code>/give @s myfirstmod:magic_sword</code>），但它會沒有名字（顯示 <code>item.myfirstmod.magic_sword</code>）且圖案是黑紫相間的除錯材質。我們需要加入資源檔。</p>
+
+<div class="card info">
+  <p style="margin:0">&#x1f4e2; <strong>重要：資源路徑非常嚴格！</strong> <br>
+  所有的翻譯與材質都必須放在 <code>src/main/resources/assets/[你的modid]/</code> 下面。任何拼寫錯誤都會導致遊戲找不到檔案。</p>
+</div>
+
+<h3>1. 翻譯檔 (lang)</h3>
+<p>建立檔案：<code>src/main/resources/assets/myfirstmod/lang/en_us.json</code></p>
+<pre><code>{
+  <span class="str">"item.myfirstmod.magic_sword"</span>: <span class="str">"Epic Magic Sword"</span>
+}</code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼要用翻譯檔？</div>
+  <p>Minecraft 內建了強大的 i18n (國際化) 系統。遊戲永遠不會在程式碼裡寫死 "Magic Sword"。程式碼只知道 <code>item.myfirstmod.magic_sword</code> 這個字串鍵值，遊戲會根據玩家當前選擇的語言，去對應的 JSON 檔（例如繁體中文是 <code>zh_tw.json</code>）尋找真正的顯示文字。</p>
+</div>
+
+<h3>2. 物品圖案的三層架構 (Data-Driven Models)</h3>
+<p>從 Minecraft 26 開始，物品的顯示採用了「資料驅動」的三層架構。要讓劍顯示出來，你需要建立三個檔案，把它們當成「路由 -> 元件 -> CSS」的關係來理解會很快：</p>
+
+<p><strong>A. 物品模型定義檔 (Item Definition)：</strong> 類似 Router，負責告訴遊戲這個物品要對應到哪個幾何模型。<br>
+建立路徑：<code>src/main/resources/assets/myfirstmod/items/magic_sword.json</code></p>
+<pre><code>{
+  <span class="str">"model"</span>: {
+    <span class="str">"type"</span>: <span class="str">"minecraft:model"</span>,
+    <span class="str">"model"</span>: <span class="str">"myfirstmod:item/magic_sword"</span>
+  }
+}</code></pre>
+
+<p><strong>B. 幾何模型檔 (Model)：</strong> 類似 Component，定義物品的 3D 形狀與套用的貼圖變數（注意 parent 必須是 minecraft:item/generated）。<br>
+建立路徑：<code>src/main/resources/assets/myfirstmod/models/item/magic_sword.json</code></p>
+<pre><code>{
+  <span class="str">"parent"</span>: <span class="str">"minecraft:item/generated"</span>,
+  <span class="str">"textures"</span>: {
+    <span class="str">"layer0"</span>: <span class="str">"myfirstmod:item/magic_sword"</span>
+  }
+}</code></pre>
+
+<p><strong>C. 實體貼圖 (Texture)：</strong> 類似 CSS / 靜態資源檔，真正的 16x16 點陣圖。<br>
+準備一張 PNG 圖片，命名為 <code>magic_sword.png</code>，放到：<br>
+<code>src/main/resources/assets/myfirstmod/textures/item/magic_sword.png</code></p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼要拆成三層？</div>
+  <p>在前端開發中，我們習慣把路由、邏輯、結構與樣式分離。Minecraft 26 這麼做是為了獲得強大的擴充性！你可以在 <b>Item Definition (A)</b> 撰寫簡單的狀態判斷，例如：「如果這把劍處於防禦狀態，就導向防禦用的 Model B；如果快壞了，就導向破損的 Model C」。這樣一來，顯示邏輯被完全轉移到 JSON 處理，不再需要在 Java 程式碼裡寫死了！</p>
+</div>
+
+<!-- ==================== PRACTICE ==================== -->
+<h2>動手做 &#x270b;</h2>
+
+<ol>
+  <li>按照上述步驟，建立 <code>ModItems</code> 類別並寫好註冊邏輯。</li>
+  <li>建立語言檔，並完成 <code>items/</code>、<code>models/</code>、<code>textures/</code> 這三層資料夾與檔案的建立。隨便找一張 16x16 的圖片當作材質放進去。</li>
+  <li>在 IntelliJ 啟動 <b>Minecraft Client</b>。</li>
+  <li>進入遊戲，建立一個單人世界（建議開創造模式與允許作弊）。</li>
+  <li>按下 <code>T</code> 開啟聊天框，輸入 <code>/give @s myfirstmod:magic_sword</code>。</li>
+  <li>看看你的專屬神劍有沒有出現在手上！</li>
+</ol>
+
+<div class="card warn">
+  <p style="margin:0">&#x1f6e0;&#xfe0f; <strong>除錯小幫手：</strong> 如果拿不到物品，檢查 <code>onInitialize</code> 有沒有真的呼叫 <code>registerModItems()</code>。如果材質紫黑相間，檢查 JSON 裡面的拼字（尤其是 <code>myfirstmod</code> 這個 modid 有沒有跟檔案路徑對上）。</p>
+</div>
+
+<!-- ==================== CHECKLIST ==================== -->
+<h2>課後檢查清單</h2>
+<ul class="checklist">
+  <li>我理解 <code>Registry</code> 是 Minecraft 註冊新元素的字典</li>
+  <li>我了解為什麼物品必須是 <code>public static final</code></li>
+  <li>我成功讓遊戲啟動且沒有閃退</li>
+  <li>我能用 <code>/give</code> 指令拿到自己的物品</li>
+  <li>物品有正確的名稱和材質圖案</li>
+</ul>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://fabricmc.net/wiki/tutorial:items">Fabric 官方教學：Items</a></li>
+  <li>&#x1f517; <strong>下一堂課：</strong> <a href="./0005-first-block.html">Lesson 0005 — 打造 3D 方塊與 Loot Table (掉落物表)</a></li>
+</ul>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <a href="./0003-fabric-mod-environment-setup.html">&#x2190; Lesson 0003</a>
+  <a href="./0005-first-block.html">Lesson 0005 &#x2192;</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

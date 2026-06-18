@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0002 — Java 語法速覽：從 TS/Python 視角看 Java</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* Header */
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+  h4 {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+  .card .icon { font-size: 1.2rem; margin-right: 0.4rem; }
+
+  /* Tip — "by the way" side knowledge */
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+
+  /* Steps */
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Lists */
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Nav */
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  /* Links */
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
+
+  /* Feedback */
+  .feedback-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+  .feedback-box p { margin-bottom: 0.5rem; }
+  .feedback-box .cta {
+    color: var(--accent-glow);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0002</span>
+  <span class="sep">/</span>
+  <span>SYNTAX</span>
+  <span class="sep">/</span>
+  <span>~25 min</span>
+</div>
+
+<h1>Java 語法速覽：從 TS/Python 視角看 Java</h1>
+<p class="subtitle">將你已知的 TypeScript/Python 知識映射到 Java，快速掌握變數、類別與函式的核心語法差異。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>為什麼要這樣學？</h2>
+
+<p>你已經具備前端（JS/TS）與後端（Python）的經驗，所以不需要從「什麼是變數」、「什麼是迴圈」開始學起。最有效率的學習方式是<b>建立知識映射（Knowledge Mapping）</b>：將 Java 的語法直接對應到你已經熟悉的 TS 和 Python 概念。</p>
+
+<p>Java 是一門<strong>強型別（Strongly Typed）</strong>且<strong>純粹物件導向（Pure OOP）</strong>的語言。這表示：</p>
+
+<div class="card info">
+  <p style="margin:0">&#x1f5a5;&#xfe0f; <strong>一切都在 Class 裡</strong>：沒有像 Python 或 JS 那樣可以游離在類別外的全域函式（Global functions）。<br>
+  &#x1f4e6; <strong>嚴格型別宣告</strong>：和 TypeScript 類似，但在 Java 中型別宣告在變數前面，而不是後面（例如 <code>String name</code> 而不是 <code>name: string</code>）。<br>
+  &#x2705; <strong>編譯期把關</strong>：編譯器（<code>javac</code>）非常嚴格，這對大型專案（如 SpringBoot 或 Minecraft MOD）是一大優勢。</p>
+</div>
+
+<!-- ==================== VARIABLES ==================== -->
+<h2>1. 變數與型別 (Variables & Types)</h2>
+
+<p>在 TypeScript 中，你可能會這樣寫：</p>
+<pre><code><span class="kw">let</span> <span class="fn">count</span>: <span class="type">number</span> = <span class="num">10</span>;
+<span class="kw">const</span> <span class="fn">playerName</span>: <span class="type">string</span> = <span class="str">"Steve"</span>;
+<span class="kw">let</span> <span class="fn">isActive</span>: <span class="type">boolean</span> = <span class="kw">true</span>;</code></pre>
+
+<p>在 Java 中，型別寫在變數前面，且字串必須使用<strong>雙引號</strong>（單引號是給字元 <code>char</code> 用的）：</p>
+<pre><code><span class="type">int</span> <span class="fn">count</span> = <span class="num">10</span>;
+<span class="kw">final</span> <span class="type">String</span> <span class="fn">playerName</span> = <span class="str">"Steve"</span>;  <span class="cmt">// final 類似於 const，表示不可重新賦值</span>
+<span class="type">boolean</span> <span class="fn">isActive</span> = <span class="kw">true</span>;</code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Java 10 引入的 var</div>
+  <p>雖然 Java 是嚴格型別，但在 Java 10 之後加入了 <code>var</code> 關鍵字用於<b>區域變數型別推斷</b>。所以你可以寫 <code>var name = "Steve";</code>，編譯器會自動推斷為 <code>String</code>。注意：它和 JS 的 <code>var</code>（函式作用域）完全不同，它仍然是強型別，一旦推斷為 <code>String</code> 就不能再塞數字進去！</p>
+</div>
+
+<h3>基本資料型別（Primitives）vs 物件型別（Objects）</h3>
+
+<p>Java 有兩大類資料型別：</p>
+<ol>
+  <li><strong>Primitives (基本型別)</strong>：<code>int</code>, <code>double</code>, <code>boolean</code>, <code>char</code>, <code>long</code> 等。它們小寫開頭，效能極高，但<b>不能是 null</b>。</li>
+  <li><strong>Objects (物件型別)</strong>：<code>String</code>, <code>Integer</code>, <code>Double</code> 等。大寫開頭，它們是類別的實例，<b>可以是 null</b>。</li>
+</ol>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：String 為什麼大寫？</div>
+  <p>在 Java 中，字串（<code>String</code>）不是基本型別，而是一個真正的物件（Class），因此首字母大寫。你可以對它呼叫方法，例如 <code>"Hello".length()</code>。</p>
+</div>
+
+<!-- ==================== CLASSES & METHODS ==================== -->
+<h2>2. 類別與方法 (Classes & Methods)</h2>
+
+<p>在 Java 中，<b>每一個檔案通常只包含一個 <code>public</code> 類別，且檔名必須和類別名稱完全一致。</b>（例如：<code>Player.java</code> 裡面必須是 <code>public class Player</code>）。</p>
+
+<h3>TS/Python vs Java 比較</h3>
+
+<div class="card">
+<pre><code><span class="cmt">// Java 的寫法</span>
+<span class="kw">public class</span> <span class="type">Player</span> {
+    <span class="cmt">// 屬性 (Fields)</span>
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private int</span> health;
+
+    <span class="cmt">// 建構子 (Constructor)</span>
+    <span class="kw">public</span> <span class="fn">Player</span>(<span class="type">String</span> name) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.health = <span class="num">20</span>; <span class="cmt">// Minecraft 預設血量</span>
+    }
+
+    <span class="cmt">// 方法 (Method) - 注意回傳型別在方法名稱前面</span>
+    <span class="kw">public void</span> <span class="fn">takeDamage</span>(<span class="type">int</span> amount) {
+        <span class="kw">this</span>.health -= amount;
+        System.out.println(name + <span class="str">" took "</span> + amount + <span class="str">" damage!"</span>);
+    }
+    
+    <span class="cmt">// Getter</span>
+    <span class="kw">public int</span> <span class="fn">getHealth</span>() {
+        <span class="kw">return this</span>.health;
+    }
+}</code></pre>
+</div>
+
+<p>幾點重要差異：</p>
+<ul>
+  <li>建構子名稱必須和類別名稱完全一樣，且沒有回傳型別（甚至不能寫 <code>void</code>），不同於 TS 的 <code>constructor()</code> 或 Python 的 <code>__init__()</code>。</li>
+  <li>沒有回傳值的方法要標記為 <code>void</code>。</li>
+  <li>屬性通常設為 <code>private</code>，然後提供 <code>public get...()</code> 和 <code>set...()</code> 方法來存取。這在 Java 叫作 <b>封裝 (Encapsulation)</b>，是極度普遍的慣例。</li>
+</ul>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼要寫一堆 Getter/Setter？</div>
+  <p>在 JS/TS 中你可能習慣直接 <code>player.health = 10</code>，但在 Java 中直接把屬性設為 public 被視為一種「破壞封裝」的壞習慣。透過 Getter/Setter（<code>player.getHealth()</code>），可以在未來修改內部實作或加入檢查（例如確保血量不低於 0）而不影響外部呼叫。現代 Java (Records) 或 Lombok 工具可以幫你自動生成這些程式碼，我們後面會學到！</p>
+</div>
+
+<!-- ==================== ARRAYS & LISTS ==================== -->
+<h2>3. 陣列與列表 (Arrays & Lists)</h2>
+
+<p>這可能是 TS/Python 開發者最容易踩坑的地方！</p>
+
+<p>在 JS 和 Python 中，陣列（Array / List）的大小是動態的，可以隨時 <code>push</code> 或 <code>append</code>。但在 Java 中，<b>原生陣列（Array）的大小是固定的</b>。</p>
+
+<pre><code><span class="cmt">// 原生陣列：大小固定為 3，無法擴充！</span>
+<span class="type">String</span>[] items = <span class="kw">new</span> <span class="type">String</span>[<span class="num">3</span>];
+items[<span class="num">0</span>] = <span class="str">"Sword"</span>;</code></pre>
+
+<p>如果你想要一個可以動態增減的列表（就像 JS 的 Array 或 Python 的 List），你要使用的是 <strong><code>ArrayList</code></strong>：</p>
+
+<pre><code><span class="kw">import</span> java.util.ArrayList;
+<span class="kw">import</span> java.util.List;
+
+<span class="cmt">// &lt;String&gt; 是泛型 (Generics)，和 TS 非常類似！</span>
+<span class="type">List</span>&lt;<span class="type">String</span>&gt; inventory = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+inventory.add(<span class="str">"Diamond Pickaxe"</span>); <span class="cmt">// 相當於 JS 的 push()</span>
+inventory.add(<span class="str">"Apple"</span>);
+
+<span class="type">int</span> size = inventory.size(); <span class="cmt">// 相當於 JS 的 length()</span>
+<span class="type">String</span> item = inventory.get(<span class="num">0</span>); <span class="cmt">// 相當於 JS 的 inventory[0]</span></code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：List vs ArrayList</div>
+  <p>你可能會注意到我們寫 <code>List&lt;String&gt; list = new ArrayList&lt;&gt;();</code> 而不是 <code>ArrayList&lt;String&gt; list = new ArrayList&lt;&gt;();</code>。這是 Java 鼓勵的「針對介面寫程式 (Program to an Interface)」原則。<code>List</code> 是介面，<code>ArrayList</code> 是具體實作。未來如果想換成另一種實作（例如 <code>LinkedList</code>），只需要改等號右邊即可。</p>
+</div>
+
+<!-- ==================== PRACTICE ==================== -->
+<h2>動手做 &#x270b;</h2>
+
+<p>打開上一堂課建立的 <code>hello-java</code> 專案，修改 <code>Main.java</code> 來練習今天學到的語法：</p>
+
+<ol>
+  <li>在 <code>org.example</code> 套件下建立一個新的類別檔案 <code>Item.java</code>。</li>
+  <li>在裡面宣告一個 <code>public class Item</code>，給它兩個 <code>private</code> 屬性：<code>String name</code> 和 <code>int quantity</code>。</li>
+  <li>建立一個建構子來初始化這兩個屬性。</li>
+  <li>寫兩個 <code>public</code> 方法：<code>getName()</code> 和 <code>getQuantity()</code> 回傳這些屬性的值。</li>
+  <li>回到 <code>Main.java</code> 的 <code>main</code> 方法中，建立一個 <code>List&lt;Item&gt;</code>，加入幾個 <code>Item</code> 實例。</li>
+  <li>使用 <code>for</code> 迴圈把他們印出來！（提示：Java 的 for-each 寫法是 <code>for (Item item : items) { ... }</code>）</li>
+</ol>
+
+<div class="card warn">
+  <p style="margin:0">&#x1f6e0;&#xfe0f; <strong>IntelliJ 魔法：</strong> 當你在寫 List 時，如果出現紅字，按 <code>Alt+Enter</code> (Windows/Linux) 或 <code>Option+Enter</code> (Mac)，IntelliJ 會自動幫你 <code>import java.util.List;</code>！</p>
+</div>
+
+<!-- ==================== CHECKLIST ==================== -->
+<h2>課後檢查清單</h2>
+<ul class="checklist">
+  <li>理解 <code>final</code> 和 <code>const</code> 的關聯</li>
+  <li>知道基本型別 (<code>int</code>) 與物件型別 (<code>String</code>) 的大小寫區別</li>
+  <li>知道 Java 每一個 public 類別都必須在同名檔案中</li>
+  <li>能寫出一個包含建構子的基本類別</li>
+  <li>知道如果要用「長度可變的陣列」，應該用 <code>ArrayList</code> 而不是原生 Array <code>[]</code></li>
+</ul>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://dev.java/learn/language-basics/">Java 官方基礎教學 (Language Basics)</a></li>
+  <li>&#x1f4d6; <a href="https://docs.oracle.com/javase/tutorial/java/concepts/index.html">Java Object-Oriented Programming Concepts</a></li>
+  <li>&#x1f517; <strong>下一堂課：</strong> <a href="./0003-fabric-mod-environment-setup.html">Lesson 0003 — 進入 Minecraft 的世界：Fabric MOD 環境建置</a></li>
+</ul>
+
+<!-- ==================== FEEDBACK ==================== -->
+<div class="feedback-box">
+  <p>&#x1f914; <span class="cta">有疑問嗎？</span></p>
+  <p>這堂課只挑了差異最大的地方講！如果你想知道「Java 怎麼寫 async/await？」或「Java 有 map/filter/reduce 嗎？」，隨時在對話中問我！完成動手做後，跟我說一聲，我們就可以進軍 Minecraft MOD 開發了！</p>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <a href="./0001-java-dev-environment.html">&#x2190; Lesson 0001</a>
+  <a href="../reference/0001-java-ts-python-syntax-cheatsheet.html">&#x1f4cb; 參考文件：Java/TS/Python 語法速查表</a>
+  <a href="./0003-fabric-mod-environment-setup.html">Lesson 0003 &#x2192;</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

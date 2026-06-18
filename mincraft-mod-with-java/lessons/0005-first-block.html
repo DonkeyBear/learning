@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0005 — 打造 3D 方塊與 Loot Table</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* Header */
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+  h4 {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+  .card .icon { font-size: 1.2rem; margin-right: 0.4rem; }
+
+  /* Tip — "by the way" side knowledge */
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+
+  /* Steps */
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Lists */
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Nav */
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  /* Links */
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0005</span>
+  <span class="sep">/</span>
+  <span>BLOCKS</span>
+  <span class="sep">/</span>
+  <span>~45 min</span>
+</div>
+
+<h1>打造 3D 方塊與 Loot Table</h1>
+<p class="subtitle">將方塊放在世界上、拿在手裡，並自定義破壞後的掉落物。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>方塊與物品有什麼不同？</h2>
+
+<p>在 Minecraft 中，<strong>物品 (Item)</strong> 只存在於你的物品欄或掉落在地上（成為實體）。而 <strong>方塊 (Block)</strong> 則固定在世界的 3D 座標系中，擁有方向、狀態（例如門是開著還是關著），並且在被破壞時會觸發掉落事件。</p>
+
+<p>要建立一個完整的方塊體驗，我們需要做兩件事：
+  <br>1. 註冊世界上的「方塊」。
+  <br>2. 註冊放在背包裡的「方塊物品 (BlockItem)」。
+</p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：BlockState 的概念</div>
+  <p>真實的 Minecraft 方塊遠比這課介紹的複雜。每個方塊可以有多種「狀態 (BlockState)」——例如樓梯有朝向（North/South...）和形狀（Straight/Inner/Outer）的組合，產生出數十種不同的顯示方式。這門課我們從最簡單的「無狀態」方塊入門，等你熟悉之後，BlockState 是一個值得深入的下一步。</p>
+</div>
+
+<!-- ==================== STEP 1 ==================== -->
+<h2>步驟一：雙重註冊 (Block & BlockItem)</h2>
+
+<div class="step-container" style="counter-reset: step;">
+
+<div class="step">
+  <div class="step-title">建立 ModBlocks 類別</div>
+  <p>就像 <code>ModItems</code> 一樣，我們建立一個 <code>ModBlocks.java</code> 來統一管理方塊。這裡我們將遵循 <b>Minecraft 26</b> 的標準，同時使用 <code>ResourceKey</code> 註冊方塊與對應的物品。</p>
+
+  <pre><code><span class="kw">package</span> <span class="type">com.example.block</span>;
+
+<span class="kw">import</span> net.minecraft.world.item.Item;
+<span class="kw">import</span> net.minecraft.world.item.BlockItem;
+<span class="kw">import</span> net.minecraft.world.level.block.Block;
+<span class="kw">import</span> net.minecraft.world.level.block.state.BlockBehaviour;
+<span class="kw">import</span> net.minecraft.core.Registry;
+<span class="kw">import</span> net.minecraft.core.registries.BuiltInRegistries;
+<span class="kw">import</span> net.minecraft.core.registries.Registries;
+<span class="kw">import</span> net.minecraft.resources.Identifier;
+<span class="kw">import</span> net.minecraft.resources.ResourceKey;
+
+<span class="kw">public class</span> <span class="type">ModBlocks</span> {
+    <span class="cmt">// 1. 建立 Block 與 Item 的註冊金鑰</span>
+    <span class="kw">public static final</span> <span class="type">ResourceKey</span>&lt;<span class="type">Block</span>&gt; MAGIC_BLOCK_KEY = <span class="type">ResourceKey</span>.create(
+            Registries.BLOCK, <span class="type">Identifier</span>.parse(<span class="str">"myfirstmod:magic_block"</span>)
+    );
+    <span class="kw">public static final</span> <span class="type">ResourceKey</span>&lt;<span class="type">Item</span>&gt; MAGIC_BLOCK_ITEM_KEY = <span class="type">ResourceKey</span>.create(
+            Registries.ITEM, <span class="type">Identifier</span>.parse(<span class="str">"myfirstmod:magic_block"</span>)
+    );
+
+    <span class="cmt">// 2. 實例化方塊 (綁定 Block 金鑰)</span>
+    <span class="kw">public static final</span> <span class="type">Block</span> MAGIC_BLOCK = <span class="kw">new</span> <span class="type">Block</span>(
+            <span class="type">BlockBehaviour.Properties</span>.of().setId(MAGIC_BLOCK_KEY).strength(<span class="num">3.0f</span>)
+    );
+
+    <span class="cmt">// 3. 實例化方塊物品 (包裝方塊，並綁定 Item 金鑰)</span>
+    <span class="kw">public static final</span> <span class="type">Item</span> MAGIC_BLOCK_ITEM = <span class="kw">new</span> <span class="type">BlockItem</span>(
+            MAGIC_BLOCK, 
+            <span class="kw">new</span> <span class="type">Item.Properties</span>().setId(MAGIC_BLOCK_ITEM_KEY)
+    );
+
+    <span class="cmt">// 4. 註冊方法</span>
+    <span class="kw">public static void</span> <span class="fn">registerModBlocks</span>() {
+        <span class="cmt">// 分別註冊方塊和對應的物品</span>
+        Registry.register(BuiltInRegistries.BLOCK, MAGIC_BLOCK_KEY, MAGIC_BLOCK);
+        Registry.register(BuiltInRegistries.ITEM, MAGIC_BLOCK_ITEM_KEY, MAGIC_BLOCK_ITEM);
+    }
+}</code></pre>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼需要 BlockItem？</div>
+  <p><code>Block</code> 物件只負責處理世界上的互動（如踩踏、被挖掘）。當你把方塊挖下來變成掉落物，或者拿在手中時，遊戲需要一個繼承自 <code>Item</code> 的物件。<code>BlockItem</code> 就是官方提供的一個「包裝紙」，把方塊偽裝成物品讓你拿在手上！這也就是為什麼我們同時需要 <code>Registries.BLOCK</code> 和 <code>Registries.ITEM</code> 的金鑰。</p>
+</div>
+
+</div><!-- step container -->
+
+<!-- ==================== ASSETS ==================== -->
+<h2>步驟二：方塊的資源檔架構</h2>
+
+<p>方塊的渲染比單純的物品複雜，我們需要建立四個資源檔！</p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：assets/ vs. data/ 的分界</div>
+  <p>Minecraft 把資源分成兩個目錄，這和前端的 <code>public/</code>（靜態資源）與 <code>api/</code>（後端邏輯）的概念如出一轍。<code>assets/</code> 是客戶端資源（貼圖、模型、音效），屬於「怎麼看起來像什麼」。<code>data/</code> 是伺服器端邏輯（Loot Table、配方、標籤），屬於「遊戲規則是什麼」。區分清楚這兩個目錄，可以避免非常多「材質沒讀到」或「掉落物沒生效」的 debug 困境。</p>
+</div>
+
+<h3>1. Blockstates (方塊狀態)</h3>
+<p>這決定了方塊在不同狀態下（例如朝向南邊或北邊）要使用哪個模型。對於普通的方塊，我們只需要一種狀態。<br>
+<code>assets/myfirstmod/blockstates/magic_block.json</code></p>
+<pre><code>{
+  <span class="str">"variants"</span>: {
+    <span class="str">""</span>: { <span class="str">"model"</span>: <span class="str">"myfirstmod:block/magic_block"</span> }
+  }
+}</code></pre>
+
+<h3>2. 幾何模型 (Block Model) 與貼圖 (Texture)</h3>
+<p>定義這個方塊是一個正方體 (cube)，並且六面都貼同一張圖。<br>
+<code>assets/myfirstmod/models/block/magic_block.json</code></p>
+<pre><code>{
+  <span class="str">"parent"</span>: <span class="str">"minecraft:block/cube_all"</span>,
+  <span class="str">"textures"</span>: {
+    <span class="str">"all"</span>: <span class="str">"myfirstmod:block/magic_block"</span>
+  }
+}</code></pre>
+<p>準備一張圖片放在：<code>assets/myfirstmod/textures/block/magic_block.png</code></p>
+
+<h3>3. 背包裡的物品顯示 (Item Model Definition)</h3>
+<p>還記得上一課學到的 Minecraft 26 新版架構嗎？因為我們有 <code>BlockItem</code>，所以也必須為它定義 <code>items/*.json</code>。<br>
+<code>assets/myfirstmod/items/magic_block.json</code></p>
+<pre><code>{
+  <span class="str">"model"</span>: {
+    <span class="str">"type"</span>: <span class="str">"minecraft:model"</span>,
+    <span class="str">"model"</span>: <span class="str">"myfirstmod:block/magic_block"</span>
+  }
+}</code></pre>
+<p><em>注意：這裡的 model 指向的是 <code>block/magic_block</code>，代表拿在手上的方塊長得跟地上的一模一樣。</em></p>
+
+<!-- ==================== LOOT TABLE ==================== -->
+<h2>步驟三：破壞與掉落 (Loot Tables)</h2>
+
+<p>在舊時代，工程師會寫 <code>if (broken) return magic_sword;</code>。但現在的 Minecraft 是 <strong>Data-Driven (資料驅動)</strong> 的！掉落物完全由 JSON 控制。這個 JSON 必須放在 <code>data/</code> 目錄，而不是 <code>assets/</code>（因為掉落屬於遊戲邏輯規則，不屬於客戶端視覺資源）。</p>
+
+<p>建立檔案：<code>src/main/resources/data/myfirstmod/loot_table/blocks/magic_block.json</code></p>
+<pre><code>{
+  <span class="str">"type"</span>: <span class="str">"minecraft:block"</span>,
+  <span class="str">"pools"</span>: [
+    {
+      <span class="str">"rolls"</span>: <span class="num">1</span>,
+      <span class="str">"entries"</span>: [
+        {
+          <span class="str">"type"</span>: <span class="str">"minecraft:item"</span>,
+          <span class="str">"name"</span>: <span class="str">"myfirstmod:magic_sword"</span>
+        }
+      ],
+      <span class="str">"conditions"</span>: [
+        {
+          <span class="str">"condition"</span>: <span class="str">"minecraft:survives_explosion"</span>
+        }
+      ]
+    }
+  ]
+}</code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：資料驅動 (Data-Driven) 的威力</div>
+  <p>透過 JSON 定義掉落物，意味著未來玩家可以透過「資料包 (Datapack)」輕鬆修改你的模組！他們不需要會寫 Java，只要放一個新的 <code>magic_block.json</code> 覆蓋原本的路徑，就能讓這個方塊改掉鑽石或蘋果。這是現代 Minecraft 模組生態能如此繁榮的關鍵設計。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Loot Table 與 SpringBoot 設定驅動的共鳴</div>
+  <p>在 SpringBoot 中，我們習慣把行為配置從程式碼中抽出來，放進 <code>application.yml</code>。Loot Table 的設計哲學完全一樣——把「規則」外化成資料檔，讓邏輯與設定分離。未來學 SpringBoot 時，你會發現這種「資料驅動設定」的思維無處不在。</p>
+</div>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://fabricmc.net/wiki/tutorial:blocks">Fabric 官方教學：Blocks</a></li>
+  <li>&#x1f4d6; <a href="https://fabricmc.net/wiki/tutorial:loot_tables">Fabric 官方教學：Loot Tables</a></li>
+  <li>&#x1f517; <strong>下一堂課：</strong> <a href="./0006-events-and-behavior.html">Lesson 0006 — 讓物品活起來：事件系統與自訂行為</a></li>
+</ul>
+
+<!-- ==================== CHECKLIST ==================== -->
+<h2>動手做與檢查清單 &#x270b;</h2>
+<ul class="checklist">
+  <li>我理解 <code>Block</code> 與 <code>BlockItem</code> 的差異。</li>
+  <li>我在主程式的 <code>onInitialize()</code> 中呼叫了 <code>ModBlocks.registerModBlocks()</code>。</li>
+  <li>我建立了 <code>blockstates/</code>、<code>models/block/</code>、以及 <code>items/</code> 的 JSON。</li>
+  <li>我寫了 Loot Table，讓方塊被挖掉時會掉落上一課的 <code>magic_sword</code>。</li>
+  <li>我成功進遊戲，把方塊放地上，打碎它，並撿起了掉落的劍！</li>
+</ul>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <a href="./0004-first-item.html">&#x2190; Lesson 0004</a>
+  <a href="./0006-events-and-behavior.html">Lesson 0006 &#x2192;</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

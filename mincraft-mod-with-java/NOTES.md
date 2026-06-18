@@ -3,6 +3,8 @@
 ## User Preferences
 
 - **Dark mode**: All lessons and reference documents must use dark color schemes. Background should be dark (#1a1a2e or similar), text light. Avoid bright white backgrounds.
+- **Link Colors**: Hyperlinks must use high-contrast colors (like `#64ffda` teal or similar non-blue brights) because the background is dark blue/purple. Standard `var(--info)` blue blends in too much and is hard to see. Always add underline/border to links so they are clearly identifiable.
+- **Version Baseline**: ALL Fabric mod development lessons and code MUST target the Minecraft 26 API (where `BuiltInRegistries` and `ResourceKey` are required, and `Identifier.parse()` is used). Never use the legacy `new Identifier()` or `Registries.ITEM` direct registration. Additionally, all asset generation must respect the Data-Driven Item Model architecture (requiring `items/` definition files).
 - **Language**: 中文授課（Traditional Chinese / Mandarin），但程式碼、術語保留英文原文
 - **Pace**: Flexible. Start with moderate pacing and adjust based on feedback.
 

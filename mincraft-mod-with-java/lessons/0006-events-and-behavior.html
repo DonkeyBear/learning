@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0006 — 讓物品活起來：事件系統與自訂行為</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+  .ann { color: #89ddff; }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .compare-grid .col-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } }
+
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+
+  /* Links */
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0006</span>
+  <span class="sep">/</span>
+  <span>EVENTS</span>
+  <span class="sep">/</span>
+  <span>~40 min</span>
+</div>
+
+<h1>讓物品活起來：事件系統與自訂行為</h1>
+<p class="subtitle">不再只是靜態的方塊和物品——學習 Fabric 事件系統，讓右鍵能夠施法，讓玩家加入世界時觸發魔法。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>為什麼需要事件系統？</h2>
+
+<p>到目前為止，你的神劍只是一個存在於物品欄裡的靜態物件，它不能做任何事。真正的 MOD 是靠「<strong>監聽遊戲中發生的事</strong>」來運作的——玩家右鍵揮劍、踩上方塊、進入世界……這些都是「事件 (Events)」。</p>
+
+<p>如果你熟悉前端開發，這個概念幾乎完全一樣：</p>
+
+<div class="compare-grid">
+  <div>
+    <div class="col-label">&#x1f310; JavaScript（你熟悉的）</div>
+    <pre><code>button.addEventListener(
+  <span class="str">'click'</span>,
+  (event) => {
+    console.log(<span class="str">'clicked!'</span>);
+  }
+);</code></pre>
+  </div>
+  <div>
+    <div class="col-label">&#x2388; Fabric（你要學的）</div>
+    <pre><code>ServerPlayerEvents.AFTER_RESPAWN
+  .register(
+    (player, ...) -> {
+      <span class="cmt">// 玩家重生後觸發</span>
+    }
+  );</code></pre>
+  </div>
+</div>
+
+<p>Fabric 的事件 API 完全採用 <strong>觀察者模式 (Observer Pattern)</strong>——你向一個「事件總線」登記一個 lambda 回呼函式，當遊戲引擎偵測到對應的遊戲行為，就會呼叫你的函式。</p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Lambda 在 Java 中的語法</div>
+  <p>你在 JS 裡寫 <code>(x) => x + 1</code>，Java 則寫 <code>(x) -> x + 1</code>。意義完全相同，只是箭頭從 <code>=></code> 換成了 <code>-></code>。Fabric 的事件回呼大量使用 lambda，所以你的 JS 直覺在這裡完全用得上！</p>
+</div>
+
+<!-- ==================== APPROACH A ==================== -->
+<h2>方法 A：覆寫物品的 use() 方法</h2>
+
+<p>最直接的方式：讓你的 <code>MagicSword</code> 繼承自 <code>Item</code>，然後覆寫 <code>use()</code> 方法。當玩家右鍵時，遊戲就會呼叫你的邏輯。</p>
+
+<div class="step-container" style="counter-reset: step;">
+
+<div class="step">
+  <div class="step-title">建立自訂 Item 類別</div>
+  <p>之前 <code>MAGIC_SWORD</code> 直接使用 <code>new Item(...)</code>，現在我們把它升級成一個有自己邏輯的子類別：</p>
+
+<pre><code><span class="kw">package</span> <span class="type">com.example.item</span>;
+
+<span class="kw">import</span> net.minecraft.world.item.Item;
+<span class="kw">import</span> net.minecraft.world.item.ItemStack;
+<span class="kw">import</span> net.minecraft.world.InteractionResultHolder;
+<span class="kw">import</span> net.minecraft.world.InteractionHand;
+<span class="kw">import</span> net.minecraft.world.entity.player.Player;
+<span class="kw">import</span> net.minecraft.world.level.Level;
+<span class="kw">import</span> net.minecraft.world.effect.MobEffectInstance;
+<span class="kw">import</span> net.minecraft.world.effect.MobEffects;
+
+<span class="kw">public class</span> <span class="type">MagicSwordItem</span> <span class="kw">extends</span> <span class="type">Item</span> {
+
+    <span class="kw">public</span> <span class="fn">MagicSwordItem</span>(<span class="type">Properties</span> properties) {
+        <span class="kw">super</span>(properties);
+    }
+
+    <span class="cmt">// 覆寫右鍵行為</span>
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">InteractionResultHolder</span>&lt;<span class="type">ItemStack</span>&gt; <span class="fn">use</span>(
+            <span class="type">Level</span> level, <span class="type">Player</span> player, <span class="type">InteractionHand</span> hand) {
+
+        <span class="cmt">// 只在伺服器端執行（避免客戶端與伺服器邏輯衝突）</span>
+        <span class="kw">if</span> (!level.isClientSide()) {
+            <span class="cmt">// 給玩家施加速度增益效果 10 秒</span>
+            player.<span class="fn">addEffect</span>(
+                <span class="kw">new</span> <span class="type">MobEffectInstance</span>(
+                    MobEffects.MOVEMENT_SPEED,
+                    <span class="num">200</span>,  <span class="cmt">// 200 ticks = 10 秒</span>
+                    <span class="num">1</span>     <span class="cmt">// 等級 II</span>
+                )
+            );
+            <span class="cmt">// 在聊天室顯示訊息</span>
+            player.<span class="fn">displayClientMessage</span>(
+                net.minecraft.network.chat.Component.<span class="fn">literal</span>(<span class="str">"✨ Magic Sword activated!"</span>),
+                <span class="kw">true</span>  <span class="cmt">// true = 顯示在 Hotbar 上方，不進聊天室</span>
+            );
+        }
+
+        <span class="cmt">// 告訴遊戲：「這個右鍵操作成功了！」</span>
+        <span class="kw">return</span> <span class="type">InteractionResultHolder</span>.<span class="fn">success</span>(player.<span class="fn">getItemInHand</span>(hand));
+    }
+}</code></pre>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：isClientSide() 是什麼？</div>
+  <p>在 Minecraft 的多人架構中，遊戲邏輯同時在「客戶端 (Client)」與「伺服器端 (Server)」運行。<code>level.isClientSide()</code> 回傳 <code>true</code> 代表現在正在客戶端。給玩家狀態效果這種「改變遊戲狀態」的事情，必須只在伺服器端執行。你可以把它想像成前端的「只在 server action 裡改資料庫，不在純 UI 元件裡做」的原則。</p>
+</div>
+
+<div class="step">
+  <div class="step-title">更新 ModItems 使用新類別</div>
+  <p>回到 <code>ModItems.java</code>，把 <code>new Item(...)</code> 換成 <code>new MagicSwordItem(...)</code>：</p>
+
+<pre><code><span class="cmt">// 在 ModItems.java 中</span>
+<span class="kw">public static final</span> <span class="type">Item</span> MAGIC_SWORD = <span class="kw">new</span> <span class="type">MagicSwordItem</span>(
+        <span class="kw">new</span> <span class="type">Item.Properties</span>().<span class="fn">setId</span>(MAGIC_SWORD_KEY)
+);</code></pre>
+
+  <p>其他地方（資源檔、Loot Table）完全不需要改，因為 ID 還是一樣的。</p>
+</div>
+
+</div><!-- /step-container -->
+
+<!-- ==================== APPROACH B ==================== -->
+<h2>方法 B：使用 Fabric 全域事件 API</h2>
+
+<p>有些情境不適合寫在 Item 類別裡——例如「玩家加入世界時歡迎他」這件事，沒有辦法塞在任何一個物品的 <code>use()</code> 裡。這時候就要使用 Fabric 的 <strong>全域事件 API</strong>。</p>
+
+<p>這類事件的監聽器通常直接寫在 <code>ExampleMod.java</code> 的 <code>onInitialize()</code> 中：</p>
+
+<pre><code><span class="kw">import</span> net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+<span class="kw">import</span> net.minecraft.network.chat.Component;
+
+<span class="ann">@Override</span>
+<span class="kw">public void</span> <span class="fn">onInitialize</span>() {
+    ModItems.<span class="fn">registerModItems</span>();
+    ModBlocks.<span class="fn">registerModBlocks</span>();
+
+    <span class="cmt">// 監聽：玩家進入伺服器時觸發</span>
+    ServerPlayConnectionEvents.JOIN.<span class="fn">register</span>((handler, sender, server) -> {
+        <span class="kw">var</span> player = handler.player;
+        player.<span class="fn">displayClientMessage</span>(
+            <span class="type">Component</span>.<span class="fn">literal</span>(<span class="str">"⚔ Welcome, "</span> + player.<span class="fn">getName</span>().<span class="fn">getString</span>() + <span class="str">"! Magic Mod is active."</span>),
+            <span class="kw">false</span>
+        );
+    });
+}</code></pre>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：var 關鍵字（Java 10+）</div>
+  <p>Java 10 引入了 <code>var</code> 做型別推斷，讓你不用寫冗長的型別名稱。<code>var player = handler.player;</code> 等同於 <code>ServerPlayer player = handler.player;</code>。這和你在 JS/TS 中熟悉的 <code>let</code> / <code>const</code> 型別推斷完全一樣的感覺，但本質上仍是靜態型別（編譯器已經知道型別是什麼）。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Fabric API 事件 vs. Spring 的 ApplicationEvent</div>
+  <p>你未來學 SpringBoot 時，會看到 <code>@EventListener</code> 標註與 <code>ApplicationEventPublisher</code>。機制幾乎一模一樣：都是「發布者 (Publisher)」觸發一個事件，「訂閱者 (Subscriber)」接收並處理。Fabric 用的是「介面 + 靜態欄位 + 函式式介面」的組合，Spring 則用了更多標註魔法，但思想是一致的。</p>
+</div>
+
+<!-- ==================== SIDE EFFECT ==================== -->
+<h2>步驟三：驗證伺服器 vs. 客戶端邊界</h2>
+
+<p>這是 Minecraft 模組開發中最容易踩的坑。以下是一個快速判斷表：</p>
+
+<div class="card info">
+  <p style="margin:0 0 0.7rem">
+    <strong>&#x1f5a5; 伺服器端（Server Side）做</strong><br>
+    改變遊戲狀態（給效果、生成實體、改變方塊）<br>
+    讀取 / 寫入玩家資料<br>
+    觸發有副作用的操作
+  </p>
+  <p style="margin:0">
+    <strong>&#x1f4bb; 客戶端（Client Side）做</strong><br>
+    渲染特效、粒子效果<br>
+    播放音效（也可以透過 server packet 觸發）<br>
+    顯示 UI / HUD 資訊
+  </p>
+</div>
+
+<p>在 <code>use()</code> 方法裡，你用 <code>if (!level.isClientSide())</code> 保護伺服器邏輯。如果沒有這個判斷而直接在兩端都執行，很容易造成<strong>效果疊加兩次</strong>或<strong>客戶端崩潰</strong>的 bug。</p>
+
+<!-- ==================== PRACTICE ==================== -->
+<h2>動手做與檢查清單 &#x270b;</h2>
+
+<ol>
+  <li>建立 <code>MagicSwordItem.java</code> 並在 <code>use()</code> 中加入你自己想要的邏輯（例如改成給予飛行效果，或噴出閃電）。</li>
+  <li>更新 <code>ModItems.java</code>，讓 <code>MAGIC_SWORD</code> 使用你的新類別。</li>
+  <li>在 <code>onInitialize()</code> 中加入玩家加入時的歡迎訊息事件監聽器。</li>
+  <li>啟動遊戲，拿著劍右鍵確認效果觸發，並確認訊息出現在正確位置。</li>
+</ol>
+
+<ul class="checklist">
+  <li>我知道 Fabric 事件 API 的運作機制等同於 JS 的 <code>addEventListener</code>。</li>
+  <li>我理解為什麼要用 <code>!level.isClientSide()</code> 保護伺服器邏輯。</li>
+  <li>右鍵神劍後，玩家確實獲得了速度增益效果。</li>
+  <li>玩家加入時，歡迎訊息有出現在聊天室中。</li>
+</ul>
+
+<div class="card warn">
+  <p style="margin:0">&#x26a0;&#xfe0f; <strong>常見錯誤：</strong> 如果你在客戶端嘗試呼叫某些伺服器專屬的 API（例如 <code>server.getPlayerList()</code>），IntelliJ 會報紅字。只要把邏輯包進 <code>if (!level.isClientSide())</code> 裡即可。</p>
+</div>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://fabricmc.net/wiki/tutorial:events">Fabric 官方教學：Events</a></li>
+  <li>&#x1f4d6; <a href="https://fabricmc.net/wiki/tutorial:interaction">Fabric 官方教學：Interaction Events</a></li>
+  <li>&#x1f517; <strong>下一堂課預告：</strong> <em>Lesson 0007 — 資料存取：Config 設定檔與持久化玩家資料</em>（即將推出）</li>
+</ul>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <a href="./0005-first-block.html">&#x2190; Lesson 0005</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

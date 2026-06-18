@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0003 — 進入 Minecraft 的世界：Fabric MOD 環境建置</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface-2: #252542;
+    --text: #e0e0e8;
+    --text-muted: #9898b0;
+    --accent: #7c4dff;
+    --accent-glow: #b388ff;
+    --code-bg: #16162a;
+    --border: #2a2a45;
+    --success: #69f0ae;
+    --warn: #ffd740;
+    --info: #40c4ff;
+    --minecraft-green: #5b8731;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  /* Header */
+  .lesson-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  .lesson-meta .num { color: var(--accent); font-weight: 600; }
+  .lesson-meta .sep { color: var(--border); }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 1.35rem;
+    color: var(--accent-glow);
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.1rem;
+    color: #d0d0e0;
+    margin: 1.5rem 0 0.6rem;
+  }
+  h4 {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .card.warn {
+    border-color: rgba(255, 215, 64, 0.3);
+    background: rgba(255, 215, 64, 0.05);
+  }
+  .card.info {
+    border-color: rgba(64, 196, 255, 0.3);
+    background: rgba(64, 196, 255, 0.05);
+  }
+  .card.success {
+    border-color: rgba(105, 240, 174, 0.3);
+    background: rgba(105, 240, 174, 0.05);
+  }
+  .card .icon { font-size: 1.2rem; margin-right: 0.4rem; }
+
+  /* Tip — "by the way" side knowledge */
+  .tip {
+    background: var(--surface);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .tip .tip-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-glow);
+    margin-bottom: 0.35rem;
+  }
+  .tip p { margin-bottom: 0.35rem; color: var(--text-muted); }
+  .tip p:last-child { margin-bottom: 0; }
+  .tip code { font-size: 0.85em; }
+  .tip a { color: var(--accent-glow); }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--info);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #c8c8e0;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #676e95; }
+  .fn { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .type { color: #ffcb6b; }
+
+  /* Steps */
+  .step {
+    counter-increment: step;
+    margin: 1.5rem 0;
+    padding-left: 2.5rem;
+    position: relative;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .step-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Lists */
+  ol { padding-left: 1.5rem; margin: 0.8rem 0; }
+  ol li { margin-bottom: 0.4rem; color: var(--text); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0 0.5rem 1.8rem;
+    position: relative;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '\2610';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+
+  /* Nav */
+  .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  /* Links */
+  a { color: #64ffda; text-decoration: none; font-weight: 500; border-bottom: 1px solid rgba(100, 255, 218, 0.3); transition: all 0.2s ease; }
+  a:hover { text-decoration: none; border-bottom: 1px solid #64ffda; background-color: rgba(100, 255, 218, 0.1); }
+
+  /* Feedback */
+  .feedback-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 2.5rem;
+    text-align: center;
+  }
+  .feedback-box p { margin-bottom: 0.5rem; }
+  .feedback-box .cta {
+    color: var(--accent-glow);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="lesson-meta">
+  <span class="num">LESSON 0003</span>
+  <span class="sep">/</span>
+  <span>FABRIC</span>
+  <span class="sep">/</span>
+  <span>~30 min</span>
+</div>
+
+<h1>進入 Minecraft 的世界：Fabric MOD 環境建置</h1>
+<p class="subtitle">從官方模板開始，在 IntelliJ 中啟動帶有你的專屬模組的 Minecraft 客戶端。</p>
+
+<!-- ==================== WHY ==================== -->
+<h2>為什麼用 Fabric？</h2>
+
+<p>Minecraft 本身不是開源的，也沒有官方的 Mod API。開發者們必須對遊戲進行反編譯、修改位元組碼（Bytecode Injection）才能加入新功能。為了不讓每個人都重新發明輪子，社群開發了 <strong>Mod Loader (模組載入器)</strong>。</p>
+
+<p><strong>Fabric</strong> 是目前最受歡迎的 Mod Loader 之一。它的特色是<strong>輕量、更新快（通常 Minecraft 改版後幾天內就會支援）、API 設計現代化</strong>，非常適合搭配你剛學到的現代 Java 開發技巧。</p>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：Fabric vs NeoForge</div>
+  <p>Minecraft 模組界長年有兩大陣營：<b>Forge</b> (歷史最悠久、重量級、複雜) 與 <b>Fabric</b> (輕量、現代)。近期 Forge 團隊分裂出了 <b>NeoForge</b>，目前社群基本上是 Fabric 與 NeoForge 雙強鼎立。作為新手，從架構較為清晰、輕量的 Fabric 入手，學習曲線會平緩許多。學會 Fabric 之後，要轉移到 SpringBoot 後端的觀念也會比較順利！</p>
+</div>
+
+<!-- ==================== SETUP ==================== -->
+<h2>取得 Fabric Example Mod 模板</h2>
+
+<p>我們不會從空白資料夾開始寫 MOD，因為要配置反編譯 Minecraft 程式碼的 Gradle 任務非常複雜。官方提供了一個開箱即用的模板。</p>
+
+<div class="step-container" style="counter-reset: step;">
+
+<!-- STEP 1 -->
+<div class="step">
+  <div class="step-title">下載模板專案</div>
+  <p>請前往 <a href="https://github.com/FabricMC/fabric-example-mod">Fabric Example Mod GitHub 頁面</a>。</p>
+  <p>點擊綠色的 <b>Code</b> 按鈕，選擇 <b>Download ZIP</b>。或者在命令列執行：</p>
+  <pre><code>git clone https://github.com/FabricMC/fabric-example-mod.git my-first-mod
+cd my-first-mod
+<span class="cmt"># 移除原本的 git 紀錄，這樣你就可以建立自己的 repository</span>
+rm -rf .git</code></pre>
+</div>
+
+<!-- STEP 2 -->
+<div class="step">
+  <div class="step-title">匯入 IntelliJ IDEA</div>
+  <ol>
+    <li>打開 IntelliJ IDEA。</li>
+    <li>點選 <b>Open</b>，然後選擇你剛剛解壓縮/clone 的 <code>my-first-mod</code> 資料夾。</li>
+    <li><b>&#x231b; 最重要的一步：等待！</b></li>
+  </ol>
+  <p>當專案開啟時，IntelliJ 會自動偵測到 <code>build.gradle</code>，並開始下載 Minecraft 主程式、反編譯遊戲程式碼、下載各種依賴。在右下角的進度條跑完之前（可能需要 3~5 分鐘），<strong>請不要做任何操作或修改程式碼</strong>，不然 IDE 會報一堆紅色的錯誤。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：genSources 任務</div>
+  <p>如果你發現程式碼裡無法點擊進入 Minecraft 原生類別（例如 <code>Block</code> 或 <code>Item</code>），你需要執行 Gradle 的 <code>genSources</code> 任務。這個步驟會將 Minecraft 混淆過的程式碼轉譯成人類可讀的 Java 程式碼，讓你能夠像看開源專案一樣閱讀 Minecraft 的底層邏輯！在 IntelliJ 右側的 Gradle 面板裡，找到 <b>Tasks > fabric > genSources</b> 並點擊兩下執行。</p>
+</div>
+
+<!-- STEP 3 -->
+<div class="step">
+  <div class="step-title">認識重要檔案</div>
+  <p>專案讀取完畢後，看看左側的專案結構，以下是這三個你未來會最常碰的檔案：</p>
+
+  <div class="card info">
+    <p style="margin:0">
+    &#x1f4c4; <code>gradle.properties</code><br>
+    這是設定檔。你的 Minecraft 版本（例如 <code>Minecraft 26</code>）和 Fabric API 的版本都在這裡設定。
+    <br><br>
+    &#x1f4c4; <code>src/main/resources/fabric.mod.json</code><br>
+    這個 JSON 是模組的「身分證」。它告訴 Fabric 你的模組叫什麼名字、作者是誰、以及<b>入口程式碼 (Entrypoint) 在哪裡</b>（這很重要！）。
+    <br><br>
+    &#x1f4c4; <code>src/main/java/.../ExampleMod.java</code><br>
+    這是模組的主程式。你的所有魔法將從這裡開始執行。
+    </p>
+  </div>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：為什麼沒有 main 方法了？</div>
+  <p>在上一課中，我們說 Java 程式從 <code>public static void main</code> 開始。但在 MOD 開發中，遊戲已經在執行了！你的模組是以「插件 (Plugin)」的形式被 Fabric Loader 載入。所以你不會寫 main 方法，而是實作 Fabric 定義的介面（例如 <code>ModInitializer</code> 的 <code>onInitialize</code> 方法）。這種「框架呼叫你的程式」的模式稱為<b>控制反轉 (Inversion of Control, IoC)</b>，這也是 SpringBoot 的核心思想！</p>
+</div>
+
+<!-- STEP 4 -->
+<div class="step">
+  <div class="step-title">啟動遊戲客戶端！</div>
+  <p>現在，讓我們來跑跑看這個充滿希望的空白模組：</p>
+  <ol>
+    <li>在 IntelliJ 右上角的「執行設定 (Run Configuration)」下拉選單中。</li>
+    <li>你應該會看到一個叫做 <b>Minecraft Client</b> 的選項（如果沒有，展開 Gradle 面板找 Tasks > fabric > runClient）。</li>
+    <li>按下綠色的 &#x25b6; 播放鍵！</li>
+  </ol>
+  <p>如果一切順利，你將會看到熟悉的 Mojang 啟動畫面，並且遊戲主畫面的左下角會顯示 "Fabric (Modded)"。</p>
+</div>
+
+<div class="tip">
+  <div class="tip-label">&#x1f4a1; 順帶一提：@Override 標註</div>
+  <p>當你打開 <code>ExampleMod.java</code>，你會看到方法上面有一個 <code>@Override</code>。這叫作<b>標註 (Annotation)</b>。在 TS 裡我們有 <code>@Decorator</code>，在 Python 有 <code>@decorator</code>。在 Java 中，<code>@Override</code> 是告訴編譯器：「我打算覆寫/實作父類別或介面的這個方法」。如果名字打錯了，編譯器會報錯，是非常實用的防呆機制！</p>
+</div>
+
+</div><!-- /step-container -->
+
+<!-- ==================== PRACTICE ==================== -->
+<h2>動手做 &#x270b;</h2>
+
+<ol>
+  <li>按照教學下載 <code>fabric-example-mod</code>。</li>
+  <li>在 IntelliJ 中成功匯入專案（等待 Gradle 同步完成，不再有紅字）。</li>
+  <li>打開 <code>src/main/java/com/example/ExampleMod.java</code>。</li>
+  <li>在 <code>onInitialize()</code> 方法中，把原本的 <code>LOGGER.info(...)</code> 改成印出 <code>"Hello, Minecraft! I am [你的名字]!"</code>。</li>
+  <li>點擊執行 <b>Minecraft Client</b>，在遊戲啟動的同時，觀察 IntelliJ 的 <b>Console 輸出視窗</b>，找到你印出的那行字！</li>
+</ol>
+
+<div class="card warn">
+  <p style="margin:0">&#x1f6e0;&#xfe0f; <strong>遇到困難？</strong> 如果編譯出現奇怪的 Java 版本錯誤，請去 <b>File > Project Structure</b> 確認 SDK 是不是設為 JDK 21（或 17，視你下載的模板對應的 Minecraft 版本而定）。</p>
+</div>
+
+<!-- ==================== CHECKLIST ==================== -->
+<h2>課後檢查清單</h2>
+<ul class="checklist">
+  <li>我已經知道 Fabric 和 NeoForge 是什麼</li>
+  <li>我成功用 IntelliJ 載入了 Fabric 模板專案</li>
+  <li>我知道為什麼模組程式碼裡面找不到 <code>public static void main</code></li>
+  <li>我能在 IntelliJ 中直接啟動帶有模組的 Minecraft 客戶端，並在 Console 中看到自己印出的文字</li>
+</ul>
+
+<!-- ==================== RESOURCES ==================== -->
+<h2>延伸資源</h2>
+
+<ul>
+  <li>&#x1f4d6; <strong>主要讀物：</strong> <a href="https://fabricmc.net/wiki/tutorial:setup">Fabric 官方教學：Environment Setup</a></li>
+  <li>&#x1f4d6; <a href="https://fabricmc.net/wiki/tutorial:mod_structure">Fabric 官方教學：Mod Structure (模組結構)</a></li>
+  <li>&#x1f517; <strong>下一堂課：</strong> <a href="./0004-first-item.html">Lesson 0004 — 第一個物品：註冊你的專屬神劍</a></li>
+</ul>
+
+<!-- ==================== FEEDBACK ==================== -->
+<div class="feedback-box">
+  <p>&#x1f914; <span class="cta">有遇到紅字嗎？</span></p>
+  <p>環境建置往往是開發中最容易踩雷的一步，因為 Gradle 可能會下載失敗，或是 JDK 版本沒對上。如果你的 IntelliJ 滿江紅，或是遊戲跑不起來，請馬上在這裡告訴我你的錯誤訊息！</p>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<div class="nav-links">
+  <a href="./0002-java-syntax-for-ts-python-devs.html">&#x2190; Lesson 0002</a>
+  <a href="./0004-first-item.html">Lesson 0004 &#x2192;</a>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>
