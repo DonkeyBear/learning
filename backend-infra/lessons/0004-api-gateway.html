@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0004：API 網關 — 當 Nginx 不夠用時</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>🚪 API 網關 — 當 Nginx 不夠用時</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0004</span>
+  <span>·</span>
+  <span>⏱ ~20 min</span>
+  <span>·</span>
+  <span class="badge">architecture</span>
+  <span>·</span>
+  <span>← <a href="0003-reverse-proxy-nginx.html">Lesson 0003</a></span>
+</div>
+
+<h2>從 1 個服務到 20 個服務</h2>
+
+<p>
+  Lesson 0003 你學了 Nginx 反向代理，它的設定長這樣：
+</p>
+
+<pre><code class="language-nginx">location / { proxy_pass http://fastapi_backend; }</code></pre>
+
+<p>
+  一個後端、一個 upstream、一條規則。這在服務只有 1 個時完美運作。<br>
+  但當你的系統長成這樣時，Nginx 開始吃力了：
+</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">                    ┌─────────────┐
+                    │  用戶服務     │ :8001
+                    │  (FastAPI)   │
+                    └─────────────┘
+                    ┌─────────────┐
+  客戶端 ──→ Nginx ──│  訂單服務     │ :8002
+                    │  (FastAPI)   │
+                    └─────────────┘
+                    ┌─────────────┐
+                    │  支付服務     │ :8003
+                    │  (FastAPI)   │
+                    └─────────────┘
+
+   Nginx config 會變成一堆 location 規則
+   每新增一個服務就要手動改 config + reload
+   認證邏輯散落在每個服務中
+   沒有統一的監控、限流、日誌</code></pre>
+</div>
+
+<p>
+  <strong>API Gateway（API 網關）</strong>就是為了解決這個「多服務管理」問題而生的。
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>能清楚區分反向代理和 API 網關的職責邊界，
+  知道何時該用哪個，並能在面試中畫出一個微服務架構下的 API Gateway 部署圖。
+</div>
+
+<h2>第一步：Nginx vs API Gateway — 不是替代，是進化</h2>
+
+<div class="card">
+  <h3>一句話區分</h3>
+  <p>
+    <strong>Nginx</strong> 是 Layer 4/7 的反向代理——它關心的是「怎麼把請求轉發到正確的機器」。
+  </p>
+  <p>
+    <strong>API Gateway</strong> 是應用層的閘道——它關心的是「這個請求<em>應該</em>被轉發嗎？轉發前需要做什麼？」
+  </p>
+</div>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── Nginx 做的事（反向代理層）─┐   ┌── API Gateway 額外做的事 ──┐
+│                             │   │                            │
+│  ✅ SSL termination         │   │  ✅ 路由：/users → 用戶服務   │
+│  ✅ 靜態檔案                │   │  ✅ 鑑權：JWT 驗證集中處理    │
+│  ✅ 負載均衡到 upstream     │   │  ✅ 限流：每用戶每秒 100 次   │
+│  ✅ 基本 header 改寫        │   │  ✅ API 版本：/v1, /v2 路由   │
+│  ✅ 連線緩衝與超時          │   │  ✅ 請求/回應轉換            │
+│                             │   │  ✅ 服務發現（自動偵測新服務） │
+│                             │   │  ✅ 金鑰管理 + 計費          │
+│                             │   │  ✅ 統一監控與日誌           │
+│                             │   │  ✅ Circuit Breaker         │
+└─────────────────────────────┘   └────────────────────────────┘</code></pre>
+</div>
+
+<div class="callout">
+  <strong>💡 實務上常見的組合：</strong>Nginx 在最前面處理 SSL 和靜態檔案，然後把 API 請求轉發給 API Gateway（Kong / Traefik / APISIX），Gateway 再做路由、鑑權、限流，最後轉給各個微服務。兩者<strong>協同工作</strong>，不是二選一。
+</div>
+
+<h2>第二步：API Gateway 的核心能力</h2>
+
+<h3>① 路由與服務發現</h3>
+
+<p>不再是寫死 <code>proxy_pass http://127.0.0.1:8001</code>，而是動態路由：</p>
+
+<pre><code class="language-plaintext"># Kong 的路由規則（宣告式，不用手寫 location）
+GET    /users          → user-service      (內部自動負載均衡)
+GET    /users/:id      → user-service
+POST   /orders         → order-service      ← 需要 auth
+DELETE /orders/:id     → order-service      ← 需要 auth + admin role
+POST   /payments       → payment-service    ← 需要特殊的 API key</code></pre>
+
+<p>當一個新的服務上線，Gateway 透過<strong>服務發現</strong>（Consul、K8s Service、Docker DNS）自動知道它的位置，不需要手動改 config。</p>
+
+<h3>② 集中式鑑權</h3>
+
+<p>在 Nginx 時代，每個 FastAPI 服務都要自己寫 JWT 驗證。Gateway 把這件事<strong>抽出來</strong>：</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">  Request: GET /orders/42
+  Authorization: Bearer &lt;JWT&gt;
+         │
+         ▼
+  ┌─────────────────────┐
+  │  API Gateway        │
+  │  ① 驗證 JWT 簽名    │  ← 一次處理，所有服務受益
+  │  ② 解析 user_id     │
+  │  ③ 檢查 rate limit  │
+  │  ④ 附加 X-User-ID   │
+  │     header 轉發      │
+  └─────────────────────┘
+         │
+         ▼
+  ┌─────────────┐
+  │ order-service│ ← 直接讀 X-User-ID，不需要再驗 JWT
+  └─────────────┘</code></pre>
+</div>
+
+<h3>③ Rate Limiting（限流）</h3>
+
+<p>Nginx 的 <code>limit_req</code> 只能做到「每個 IP 每分鐘 N 次」。API Gateway 可以做到：</p>
+
+<pre><code class="language-plaintext"># 精細的限流策略
+plan: free      → 每分鐘 10 次請求
+plan: pro       → 每分鐘 1000 次請求
+plan: enterprise → 每分鐘 10000 次請求
+
+# 或是按 endpoint 限流
+POST /payments   → 每秒最多 5 次（防重複扣款）
+GET  /search     → 每秒最多 50 次（防爬蟲）</code></pre>
+
+<h3>④ 請求/回應轉換</h3>
+
+<p>舊版 API 回傳 <code>user_name</code>，新版前端要 <code>username</code>？Gateway 可以即時改寫，不用動後端程式碼。</p>
+
+<div class="card">
+  <h3>⑤ 還有這些能力——面試加分項</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.3rem 0.5rem;"><strong>Circuit Breaker</strong></td>
+      <td style="padding:0.3rem 0.5rem;">當訂單服務連續失敗 5 次，自動熔斷，直接回 503，防止級聯故障</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.3rem 0.5rem;"><strong>API Versioning</strong></td>
+      <td style="padding:0.3rem 0.5rem;"><code>/v1/users</code> → 舊服務、<code>/v2/users</code> → 新服務，平滑遷移</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.3rem 0.5rem;"><strong>Request Deduplication</strong></td>
+      <td style="padding:0.3rem 0.5rem;">偵測重複請求（如使用者連點兩下付款），只轉發一次</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.3rem 0.5rem;"><strong>Response Caching</strong></td>
+      <td style="padding:0.3rem 0.5rem;">Gateway 層快取 GET 回應，減輕後端負載</td>
+    </tr>
+    <tr>
+      <td style="padding:0.3rem 0.5rem;"><strong>Canary Release</strong></td>
+      <td style="padding:0.3rem 0.5rem;">10% 流量導向新版服務，觀察錯誤率後逐步擴大</td>
+    </tr>
+  </table>
+</div>
+
+<h2>第三步：常見的 API Gateway 方案</h2>
+
+<div class="card">
+  <h3>開源方案（你可以自己部署的）</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;">Gateway</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">特點</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">適合場景</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Kong</strong></td>
+      <td style="padding:0.4rem 0.5rem;">基於 Nginx + Lua，外掛生態豐富（JWT, OAuth2, rate limiting, logging）</td>
+      <td style="padding:0.4rem 0.5rem;">中大型微服務，需要豐富的外掛生態</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Traefik</strong></td>
+      <td style="padding:0.4rem 0.5rem;">Go 語言，原生支援 Docker/K8s，自動服務發現</td>
+      <td style="padding:0.4rem 0.5rem;">容器化環境，追求零配置自動發現</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Apache APISIX</strong></td>
+      <td style="padding:0.4rem 0.5rem;">基於 Nginx + LuaJIT，高效能，支援動態設定</td>
+      <td style="padding:0.4rem 0.5rem;">高效能要求，需要動態變更路由</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;"><strong>Caddy</strong></td>
+      <td style="padding:0.4rem 0.5rem;">自動 HTTPS，設定極簡（但 API Gateway 功能較少）</td>
+      <td style="padding:0.4rem 0.5rem;">小型專案，簡單的反向代理 + SSL</td>
+    </tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>雲端方案（付費但免維護）</h3>
+  <ul>
+    <li><strong>AWS API Gateway</strong> — 與 Lambda、Cognito 深度整合</li>
+    <li><strong>GCP Apigee</strong> — Google 的企業級方案</li>
+    <li><strong>Azure API Management</strong> — 與 Azure AD 整合</li>
+  </ul>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 不要為了用而用：</strong>如果你的服務只有 2-3 個，一個 Nginx 就夠了。
+  API Gateway 引入額外的複雜度（部署、監控、延遲 +5-20ms）。
+  <strong>先有痛點（管理成本太高、鑑權邏輯重複、缺乏統一監控），再引入 Gateway。</strong>
+</div>
+
+<h2>第四步：回顧地圖 — Gateway 坐哪裡？</h2>
+
+<p>回憶 Lesson 0001 的 request 路徑圖。API Gateway 坐哪裡？</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">  瀏覽器 → DNS → TCP → TLS
+    ↓
+  ⑦a Nginx (SSL termination, 靜態檔案)
+    ↓
+  ⑦b API Gateway ← 🆕 本課的主題
+    │   (路由、鑑權、限流、版本、轉換)
+    ↓
+  ⑧ uvicorn → ⑨ FastAPI → ⑩ Middleware → ⑪ 路由函數 → ⑫ 回應返回</code></pre>
+</div>
+
+<p>
+  Gateway 本質上是 ⑦（反向代理層）的<strong>進化版</strong>。它依然是 request 路徑上的一個中間站，
+  但它比 Nginx 多了一層「應用層智慧」——知道你的 API 結構、知道誰在呼叫、知道該不該放行。
+</p>
+
+<h2>🔰 練習</h2>
+
+<div class="quiz" id="quiz4">
+
+  <div class="quiz-question">
+    <p>Q1. API Gateway 和 Nginx 反向代理最關鍵的區別是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> API Gateway 比較快</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> API Gateway 可以處理 HTTPS，Nginx 不行</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> API Gateway 理解 API 的語義（路由、鑑權、版本），能做應用層決策；Nginx 主要做傳輸層轉發</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> API Gateway 取代了後端伺服器</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. 以下哪個場景<strong>最適合</strong>引入 API Gateway？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> 只有 1 個 FastAPI 服務，部署在 1 台 VM 上</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> 15 個微服務，每個都在重複實作 JWT 驗證、rate limiting 和日誌格式</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> 一個靜態部落格網站</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> 單一 PostgreSQL 資料庫</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. Circuit Breaker（熔斷器）模式在 API Gateway 中的作用是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> 加密 API 請求以防止資料外洩</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> 當一個服務持續失敗時，自動停止對它的請求，直接回傳錯誤，防止級聯故障拖垮整個系統</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> 自動重啟失敗的微服務</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> 在流量高峰時自動增加伺服器</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. 在微服務架構中，為什麼把 JWT 驗證放在 Gateway 層而不是每個服務各自做？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> Gateway 的 JWT 驗證比 Python 更快</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> JWT 規範要求必須在 Gateway 層驗證</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> 集中處理避免每個服務重複實作、確保一致性、減少程式碼重複；服務只需信任 Gateway 傳來的 user info</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> 微服務不能用 Python 驗證 JWT</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz4-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li><strong>Nginx 是傳輸層反向代理</strong>（轉發請求），<strong>API Gateway 是應用層閘道</strong>（理解 API 語義後做決策）。</li>
+    <li>Gateway 的核心能力：路由、集中鑑權、限流、版本管理、請求轉換、熔斷、金絲雀部署。</li>
+    <li>Gateway 和 Nginx 是<strong>協同關係</strong>，不是替代關係——常見架構是 Nginx（SSL + 靜態檔案）→ Gateway（路由 + 鑑權）→ 後端服務。</li>
+    <li>開源選擇：<strong>Kong</strong>（生態豐富）、<strong>Traefik</strong>（容器原生）、<strong>APISIX</strong>（高效能）。</li>
+    <li><strong>不要過早引入</strong>——服務少於 5 個時 Nginx 就夠了。先有痛點再升級。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🎤 面試回答模板：「你們的微服務之間怎麼溝通？有沒有用 API Gateway？」</h3>
+  <p>
+    <em>「我們使用 API Gateway 作為所有微服務的統一入口。Gateway 負責幾件事：
+    第一，路由——根據 URL path 把請求導向對應的服務；
+    第二，集中鑑權——在 Gateway 層驗證 JWT，通過後把 user_id 放進 header 傳給後端，避免每個服務重複實作；
+    第三，限流——根據使用者的方案（free/pro/enterprise）做差異化 rate limiting；
+    第四，觀測性——Gateway 層統一收集 request log、metrics 和 tracing。
+    我們選用 Kong，因為它的外掛生態成熟，JWT、OAuth2、rate limiting 都有現成的外掛可以用。
+    在 Gateway 前面還有一層 Nginx 處理 SSL termination 和靜態檔案。」</em>
+  </p>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://konghq.com/products/kong-gateway" target="_blank">Kong Gateway 官方文件</a> — 最成熟的開源 API Gateway，建議快速看一遍它有哪些外掛</li>
+  <li><a href="https://doc.traefik.io/traefik/" target="_blank">Traefik 官方文件</a> — 如果你用 Docker/K8s，Traefik 的自動服務發現很值得了解</li>
+  <li><a href="https://microservices.io/patterns/apigateway.html" target="_blank">microservices.io: API Gateway Pattern</a> — 微服務權威網站的架構說明</li>
+  <li><strong>下一課預告：</strong> <a href="0005-authentication-authorization.html">鑑權系統：JWT、OAuth2、Session</a> — 面試必問！三種鑑權機制的完整比較與實作</li>
+</ul>
+
+<div class="callout">
+  <strong>❓ 有問題嗎？</strong>API Gateway 是架構題的常見考點。如果你想練習在白板上畫出一個包含 Gateway 的完整架構圖，我可以幫你檢查！
+</div>
+
+<nav class="footer-nav">
+  <a href="0003-reverse-proxy-nginx.html">← 上一課：反向代理與 Nginx 實戰</a>
+  <a href="0005-authentication-authorization.html">下一課：鑑權系統 →</a>
+</nav>
+
+<script>
+const ANSWERS = { q1: 2, q2: 1, q3: 1, q4: 2 };
+const FEEDBACK = {
+  q1: { correct: '✅ 正確！API Gateway 理解 API 的結構和語義，能做應用層的決策（這個 user 可以 access 這個 endpoint 嗎？）。Nginx 主要做傳輸層的轉發。', wrong: '❌ 關鍵差別在於「應用層智慧」。Nginx 看到的是 TCP/HTTP 連線，Gateway 看到的是 API 路由和使用者身分。' },
+  q2: { correct: '✅ 正確！當多個服務都在重複實作相同的橫切關注點（cross-cutting concerns）時，Gateway 可以把它們集中處理，減少重複程式碼並確保一致性。', wrong: '❌ Gateway 的價值體現在多服務管理中。只有 1 個服務時，Nginx 就夠了。當你有十多個服務且鑑權/限流/日誌邏輯到處重複時，才是引入 Gateway 的時機。' },
+  q3: { correct: '✅ 正確！Circuit Breaker 防止級聯故障（cascading failure）。如果訂單服務掛了，Gateway 直接回 503，不讓請求排隊堆積，保護其他服務不受牽連。', wrong: '❌ Circuit Breaker 是故障隔離機制。當一個服務持續失敗，Gateway 會「斷開電路」，直接回傳錯誤而不繼續發送請求，防止故障擴散。' },
+  q4: { correct: '✅ 正確！這是 DRY（Don't Repeat Yourself）原則在架構層的應用。集中鑑權減少重複、確保一致性、簡化服務實作。後端服務只需信任 Gateway 傳來的已验证 user info。', wrong: '❌ 集中鑑權的核心價值是避免重複和確保一致性。每個服務各自驗證 JWT 意味著要管理相同的密鑰、處理相同的錯誤、寫相同的程式碼——Gateway 做一次就好。' }
+};
+
+document.getElementById('quiz4-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+    if (!selected) {
+      fb.innerHTML = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+    options.forEach(opt => { opt.disabled = true; });
+  }
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz4-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+
+</body>
+</html>

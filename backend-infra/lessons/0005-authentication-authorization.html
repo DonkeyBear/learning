@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0005：鑑權系統 — JWT、OAuth2、Session</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>🔐 鑑權系統 — JWT、OAuth2、Session</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0005</span>
+  <span>·</span>
+  <span>⏱ ~25 min</span>
+  <span>·</span>
+  <span class="badge">security</span>
+  <span>·</span>
+  <span>← <a href="0004-api-gateway.html">Lesson 0004</a></span>
+</div>
+
+<h2>面試官問「你們怎麼做登入？」——你怎麼答？</h2>
+
+<p>
+  這可能是後端面試中最常問的題目。它不是考你會不會 call 一個 library，
+  而是考你<strong>理解不同機制的 trade-off</strong>——何時用 Session、何時用 JWT、OAuth2 在整個流程中扮演什麼角色。
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>能畫出三種鑑權機制的流程圖，說出各自的 pros/cons，
+  並在 FastAPI 中正確實作 JWT + OAuth2。
+</div>
+
+<h2>第一步：Authentication ≠ Authorization</h2>
+
+<div class="card">
+  <h3>先搞清楚這兩個詞——面試中混用會扣分</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.5rem;">Authentication（認證）</th>
+      <th style="text-align:left; padding:0.5rem;">Authorization（授權）</th>
+    </tr>
+    <tr>
+      <td style="padding:0.5rem; vertical-align:top;">
+        你是誰？<br>
+        <span style="color:var(--muted); font-size:0.85rem;">Who are you?</span><br><br>
+        驗證身分：<br>
+        • 帳號 + 密碼 ✓<br>
+        • JWT token 有效 ✓<br>
+        • OAuth2 Google 登入 ✓
+      </td>
+      <td style="padding:0.5rem; vertical-align:top;">
+        你可以做什麼？<br>
+        <span style="color:var(--muted); font-size:0.85rem;">What can you do?</span><br><br>
+        驗證權限：<br>
+        • 普通用戶不能刪除別人文章 ✗<br>
+        • Admin 可以看後台 ✓<br>
+        • Pro 會員可以用 API ✓
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>
+  <strong>口訣：</strong>Authentication = 驗身分（AuthN），Authorization = 驗權限（AuthZ）。
+  先 AuthN，再 AuthZ。
+</p>
+
+<h2>第二步：三種鑑權機制全比較</h2>
+
+<h3>方案 A：Session-Based（伺服器端狀態）</h3>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── Session 登入流程 ──────────────────────────────────┐
+│                                                       │
+│  瀏覽器                 伺服器                          │
+│    │                      │                           │
+│    │  POST /login         │                           │
+│    │  {user, password}    │                           │
+│    │ ───────────────────→ │  驗證密碼                   │
+│    │                      │  產生 session_id: "abc123" │
+│    │                      │  存入 Redis/DB:            │
+│    │                      │  "abc123" → {user_id: 42} │
+│    │  200 OK              │                           │
+│    │  Set-Cookie:          │                           │
+│    │  session_id=abc123   │                           │
+│    │ ←─────────────────── │                           │
+│    │                      │                           │
+│    │  GET /users/me       │                           │
+│    │  Cookie: abc123      │                           │
+│    │ ───────────────────→ │  查 Redis: abc123 → 42    │
+│    │                      │  回傳 user 42 的資料       │
+│    │  200 {id:42, name}   │                           │
+│    │ ←─────────────────── │                           │
+└──────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<div class="card">
+  <h3>Session 的優缺點</h3>
+  <p>✅ <strong>優點：</strong>伺服器可以隨時撤銷（刪除 session）、敏感資料不離開伺服器、實作簡單</p>
+  <p>❌ <strong>缺點：</strong>需要儲存（Redis/DB）、水平擴展時需要共享 session store、不適合 mobile app</p>
+  <p>📌 <strong>適用場景：</strong>傳統的伺服器端渲染網站（如 Django Admin、WordPress）</p>
+</div>
+
+<h3>方案 B：JWT（JSON Web Token，無狀態）</h3>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── JWT 結構 ──────────────────────────────────────────┐
+│                                                       │
+│  eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI0MiJ9.qVYU_jH07     │
+│  └─── Header ────┘ └── Payload ─┘ └── Signature ──┘  │
+│                                                       │
+│  Header:   {"alg": "HS256", "typ": "JWT"}            │
+│  Payload:  {"sub": "42", "exp": 1719000000}           │
+│  Signature: HMAC-SHA256(Header + "." + Payload,       │
+│                          your-secret-key)              │
+│                                                       │
+│  🔑 關鍵理解：任何人都能「讀」Payload（它是 base64），  │
+│  但沒有人能「改」它——改了之後 Signature 會對不上。      │
+└──────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<div class="card">
+  <h3>JWT 的優缺點</h3>
+  <p>✅ <strong>優點：</strong>無狀態（伺服器不需存任何東西）、自帶資訊（user_id 在 token 裡）、適合分散式系統和 mobile app</p>
+  <p>❌ <strong>缺點：</strong>無法單方面撤銷（發出去的 token 在過期前都有效）、payload 是明文（只能編碼不能加密）、token 可能變大</p>
+  <p>📌 <strong>適用場景：</strong>SPA + API、微服務之間的通訊、mobile app 後端</p>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 面試陷阱題：</strong>「JWT 要怎麼登出？」<br>
+  JWT 本身<strong>無法被撤銷</strong>——它是無狀態的設計。要實現「登出」必須靠額外手段：<br>
+  ① <strong>黑名單</strong>：把要廢掉的 token 放進 Redis（但這樣 JWT 就不是無狀態的了）<br>
+  ② <strong>短過期 + Refresh Token</strong>：access token 只活 15 分鐘，登出時丟棄 refresh token<br>
+  ③ <strong>客戶端刪除 token</strong>：瀏覽器刪掉 token 就無法發請求，但 token 本身仍然有效<br>
+  → 這是 JWT 最經典的 trade-off，面試必問。
+</div>
+
+<h3>方案 C：OAuth2 + OpenID Connect</h3>
+
+<p>OAuth2 不是一種「登入方式」，它是一種<strong>授權框架</strong>（還記得 AuthN ≠ AuthZ 嗎？）。OpenID Connect 是在 OAuth2 之上的身份認證層。</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── OAuth2 Authorization Code Flow（最安全的流程）─────┐
+│                                                       │
+│  使用者          你的前端        你的後端      Google   │
+│    │               │              │             │      │
+│    │  點「Google登入」            │             │      │
+│    │ ────────────→ │              │             │      │
+│    │               │   redirect   │             │      │
+│    │ ← ────────── │  到 Google   │             │      │
+│    │               │              │             │      │
+│    │  在 Google 頁面上輸入帳密     │             │      │
+│    │ ────────────────────────────────────────→ │      │
+│    │               │              │             │      │
+│    │               │  redirect 回你的網站        │      │
+│    │               │  ?code=xyz   │             │      │
+│    │               │ ───────────→│             │      │
+│    │               │              │  用 code    │      │
+│    │               │              │  換 token   │      │
+│    │               │              │ ──────────→│      │
+│    │               │              │ ←── id_token│      │
+│    │               │              │ + access_tok│      │
+│    │               │              │             │      │
+│    │               │  登入成功！    │             │      │
+│    │               │ ←─────────── │             │      │
+└──────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<div class="card">
+  <h3>OAuth2 四種 Grant Type（面試常考）</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;">Grant Type</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">用途</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">安全性</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Authorization Code</strong></td>
+      <td style="padding:0.4rem 0.5rem;">有後端的 web app</td>
+      <td style="padding:0.4rem 0.5rem; color:var(--success);">⭐⭐⭐ 最安全</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Client Credentials</strong></td>
+      <td style="padding:0.4rem 0.5rem;">伺服器對伺服器（無使用者）</td>
+      <td style="padding:0.4rem 0.5rem; color:var(--success);">⭐⭐⭐</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><strong>Implicit</strong></td>
+      <td style="padding:0.4rem 0.5rem;">SPA（純前端）— <strong>已廢棄！</strong></td>
+      <td style="padding:0.4rem 0.5rem; color:var(--danger);">⭐ 不安全</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;"><strong>Password</strong></td>
+      <td style="padding:0.4rem 0.5rem;">你直接拿到使用者密碼</td>
+      <td style="padding:0.4rem 0.5rem; color:var(--danger);">⭐ 不安全</td>
+    </tr>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>💡 現實中：</strong>大多數應用只用 OAuth2 來做「第三方登入」（Sign in with Google/GitHub/Facebook），然後在自家後端<strong>再發一個自己的 JWT</strong> 給前端。OAuth2 管「你是誰」，你自己的 JWT 管「你在本站的身分和權限」。
+</div>
+
+<h2>第三步：FastAPI 實作 — JWT + OAuth2</h2>
+
+<pre><code class="language-python"># auth.py — FastAPI 鑑權的完整範例
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from passlib.context import CryptContext
+import jwt  # pip install pyjwt[crypto]
+
+app = FastAPI()
+
+# === 設定 ===
+SECRET_KEY = "your-secret-key-at-least-32-chars"  # 生產環境用環境變數
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15   # access token 短過期
+REFRESH_TOKEN_EXPIRE_DAYS = 7     # refresh token 長過期
+
+# === 密碼雜湊 ===
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# === OAuth2 端點（FastAPI 會自動產生 /docs 中的登入表單）===
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+# === 建立 JWT ===
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict):
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode = {**data, "exp": expire, "type": "refresh"}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# === FastAPI Dependency：從 token 解出當前使用者 ===
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Use access token, not refresh token")
+        return {"user_id": user_id}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+# === 登入端點 ===
+@app.post("/login")
+async def login(username: str, password: str):
+    # ① 驗證帳號密碼（查 DB，這裡省略）
+    # user = db.get_user(username)
+    # if not verify_password(password, user.hashed_password): raise ...
+
+    # ② 發 access token + refresh token
+    access_token = create_access_token(data={"sub": "42"})
+    refresh_token = create_refresh_token(data={"sub": "42"})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+# === 刷新 token ===
+@app.post("/refresh")
+async def refresh_token(refresh_token: str):
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401)
+        new_access = create_access_token(data={"sub": payload["sub"]})
+        return {"access_token": new_access, "token_type": "bearer"}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired, please login again")
+
+# === 受保護的端點 ===
+@app.get("/users/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    # current_user 已經被 get_current_user dependency 解出來了
+    return {"user_id": current_user["user_id"], "message": "You are authenticated!"}</code></pre>
+
+<div class="callout tip">
+  <strong>🔑 Access Token vs Refresh Token 的設計邏輯：</strong><br>
+  • <strong>Access Token</strong>：短壽命（15 分鐘），每次請求都帶，洩漏了也只影響 15 分鐘<br>
+  • <strong>Refresh Token</strong>：長壽命（7 天），只用來換新的 access token，不頻繁傳輸，洩漏風險較低<br>
+  • Refresh token 存在 httpOnly cookie 中（JavaScript 無法讀取），access token 存在記憶體中<br>
+  → 這是 JWT 最佳實踐的核心。
+</div>
+
+<h2>第四步：三種機制的選擇決策樹</h2>
+
+<div class="diagram">
+<pre><code class="language-plaintext">你的應用需要登入嗎？
+  │
+  ├── 是傳統 SSR 網站（Django template / Jinja2）？
+  │     └── → Session + Cookie（最簡單、最安全）
+  │
+  ├── 是 SPA + API 或 Mobile App？
+  │     ├── 自己管理帳密？
+  │     │     └── → JWT（access + refresh token）
+  │     └── 讓使用者用 Google/GitHub 登入？
+  │           └── → OAuth2 + 自己的 JWT
+  │
+  ├── 是微服務之間的內部呼叫？
+  │     └── → JWT（Client Credentials 或 service-to-service token）
+  │
+  └── 是對外公開的 API（給第三方開發者）？
+        └── → OAuth2 + API Key</code></pre>
+</div>
+
+<h2>🔰 練習</h2>
+
+<div class="quiz" id="quiz5">
+
+  <div class="quiz-question">
+    <p>Q1. Authentication（認證）和 Authorization（授權）的區別是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> 沒有區別，兩個詞可以互換使用</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> Authentication 驗證「你是誰」，Authorization 驗證「你可以做什麼」</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> Authentication 是前端的事，Authorization 是後端的事</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> Authorization 發生在登入前，Authentication 發生在登入後</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. JWT 最大的缺點是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> 傳輸速度太慢</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> 無法被撤銷——發出去的 token 在過期前持續有效，無法實現真正的「登出」</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> 不支援 HTTPS</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> Payload 無法被任何人讀取</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. OAuth2 的 Authorization Code Flow 中，<code>code</code> 的作用是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> 它是使用者的密碼，用來驗證身分</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> 它是一個臨時授權碼，前端拿到後交給後端，後端再用它去換真正的 token——這樣 token 永遠不會暴露在前端</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> 它是 Google 發給使用者的永久 API key</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> 它是用來加密通訊的金鑰</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. Access Token 過期時間為什麼通常設很短（如 15 分鐘）？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> 因為 JWT 演算法限制 token 最長只能活 15 分鐘</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> 短過期 + Refresh Token 機制：萬一 access token 被偷，攻擊者只有 15 分鐘的窗口；Refresh Token 較長但很少傳輸，洩漏風險低</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> 為了減輕伺服器負擔</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> 因為瀏覽器每 15 分鐘會自動清除 cookie</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz5-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li><strong>AuthN ≠ AuthZ</strong>：認證是「你是誰」，授權是「你能做什麼」。先認證，再授權。</li>
+    <li><strong>Session</strong>：伺服器端存狀態，安全可控但無法水平擴展。適合 SSR。</li>
+    <li><strong>JWT</strong>：無狀態、自帶資訊、適合分散式系統。缺點是無法撤銷——靠短過期 + Refresh Token 緩解。</li>
+    <li><strong>OAuth2</strong>：授權框架，不是登入方式。Authorization Code Flow 最安全。現實中通常 OAuth2 驗身分 + 自己的 JWT 管權限。</li>
+    <li><strong>Access + Refresh Token</strong> 是 JWT 最佳實踐的核心——短命的 access token 降低洩漏風險，長命的 refresh token 減少重新登入次數。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🎤 面試回答模板：「你們系統怎麼做鑑權？」</h3>
+  <p>
+    <em>「我們使用 JWT-based 的無狀態鑑權，搭配 access token + refresh token 機制。
+    使用者登入時，後端驗證帳密後發給兩個 token：access token（15 分鐘過期，存在前端記憶體中）、
+    refresh token（7 天過期，存在 httpOnly cookie 中，JavaScript 無法存取）。
+    前端每次請求都帶 access token 在 Authorization header 中，
+    後端用 FastAPI 的 Dependency 來驗證 JWT 簽名和過期時間。
+    Access token 過期後，前端用 refresh token 去 /refresh 端點換新的 access token，
+    使用者不需要重新登入。如果有第三方登入需求（Google/GitHub），
+    我們走 OAuth2 Authorization Code Flow，拿到 id_token 後再發自己的 JWT。」</em>
+  </p>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://jwt.io/introduction" target="_blank">JWT.io Introduction</a> — JWT 結構的互動式說明，可以直接在上面貼 token 解碼</li>
+  <li><a href="https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/" target="_blank">FastAPI: OAuth2 with JWT</a> — 官方教學，本課的程式碼就是基於這個簡化而來</li>
+  <li><a href="https://auth0.com/docs/get-started/authentication-and-authorization-flow" target="_blank">Auth0: Auth Flows</a> — 各種鑑權流程的圖解（Auth0 的文件寫得非常好）</li>
+  <li><a href="https://oauth.net/2/" target="_blank">OAuth 2.0 Simplified</a> — Aaron Parecki 的 OAuth2 簡明指南</li>
+  <li><strong>下一課預告：</strong> <a href="0006-web-security-owasp.html">資安基礎：OWASP Top 10 與常見攻擊防禦</a></li>
+</ul>
+
+<div class="callout">
+  <strong>❓ 有問題嗎？</strong>鑑權是面試最愛問的主題。如果你想練習畫流程圖、或是想討論你自己的 FastAPI 專案要怎麼實作鑑權，直接告訴我！
+</div>
+
+<nav class="footer-nav">
+  <a href="0004-api-gateway.html">← 上一課：API 網關</a>
+  <a href="0006-web-security-owasp.html">下一課：資安基礎 →</a>
+</nav>
+
+<script>
+const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
+const FEEDBACK = {
+  q1: { correct: '✅ 正確！Authentication（你是誰）先於 Authorization（你能做什麼）。記住口訣：AuthN 驗身分，AuthZ 驗權限。', wrong: '❌ 兩者有明確區別。Authentication = 驗證你是誰（登入），Authorization = 驗證你能做什麼（權限檢查）。面試中混用這兩個詞會被扣分。' },
+  q2: { correct: '✅ 正確！JWT 的無狀態性既是優點也是缺點——一旦發出就無法單方面撤銷。這就是為什麼需要短過期 + Refresh Token 機制。', wrong: '❌ JWT 的本質限制是無法被撤銷。因為伺服器不儲存 token 狀態，所以無法「刪除」一個已發出的 token。這是它和 Session 最根本的 trade-off。' },
+  q3: { correct: '✅ 正確！Authorization Code 的核心價值就是 token 永遠不經過前端（瀏覽器 URL 或 JavaScript）。code 是一次性的臨時憑證，後端拿到後在伺服器端和 Google 交換 token，確保 token 不會洩漏在前端。', wrong: '❌ Authorization Code 是一個臨時的、一次性的授權碼。它的核心安全設計是：前端只拿到 code（無用），後端在伺服器端用 code 換 token。Token 永遠不會暴露在前端。' },
+  q4: { correct: '✅ 正確！這是 JWT 安全最佳實踐的核心：短 access token（頻繁傳輸，高洩漏風險→短窗口）+ 長 refresh token（很少傳輸，低洩漏風險→長窗口）。', wrong: '❌ 短過期的目的是安全：access token 每次請求都帶，洩漏風險高，所以壽命要短；refresh token 不頻繁傳輸（只在 /refresh 端點用），洩漏風險低，可以較長。' }
+};
+
+document.getElementById('quiz5-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+    if (!selected) {
+      fb.innerHTML = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+    options.forEach(opt => { opt.disabled = true; });
+  }
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz5-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+
+</body>
+</html>

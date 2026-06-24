@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0009：容器化 — Docker 與 Docker Compose</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>🐳 容器化 — Docker 與 Docker Compose</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0009</span>
+  <span>·</span>
+  <span>⏱ ~20 min</span>
+  <span>·</span>
+  <span class="badge">devops</span>
+  <span>·</span>
+  <span>← <a href="0008-caching-strategies.html">Lesson 0008</a></span>
+</div>
+
+<h2>「在我電腦上可以跑啊」— 這句話終結者</h2>
+
+<p>
+  你用 uvicorn 部署到 VM 上。但如果 VM 重灌了？如果換了一台機器？
+  如果團隊新成員要 setup 環境？每次都要重裝 Python、pip install、設定 Nginx、安裝 Redis...
+</p>
+
+<p>
+  <strong>Docker 把「整台機器的狀態」打包成一個檔案。</strong>
+  你在任何地方執行這個檔案，都會得到完全相同的環境——Python 3.12、相同的相依套件、相同的設定檔。
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>能寫出 FastAPI 的 Dockerfile 和 docker-compose.yml，
+  把 Nginx + FastAPI + Redis + PostgreSQL 全部用一個指令啟動。
+</div>
+
+<h2>第一步：Docker 不是虛擬機</h2>
+
+<p>這是面試常問的概念題。</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌── 虛擬機 (VM) ────────────┐  ┌── Docker 容器 ─────────────┐
+│                            │  │                            │
+│  App A    App B            │  │  App A    App B            │
+│  ┌────┐  ┌────┐           │  │  ┌────┐  ┌────┐           │
+│  │Bin │  │Bin │           │  │  │Bin │  │Bin │           │
+│  │Lib │  │Lib │           │  │  │Lib │  │Lib │           │
+│  └────┘  └────┘           │  │  └────┘  └────┘           │
+│  Guest OS  Guest OS       │  │  共享 Host Kernel          │
+│  ───────── ─────────       │  │  ───────────────────       │
+│  Hypervisor               │  │  Docker Engine             │
+│  ───────────               │  │  ───────────────           │
+│  Host OS                  │  │  Host OS                  │
+│  ────────                  │  │  ────────                  │
+│  Hardware                 │  │  Hardware                 │
+│                            │  │                            │
+│  每個 VM 有自己的 OS       │  │  容器共用 Host 的 OS kernel │
+│  啟動：30秒 - 2分鐘        │  │  啟動：0.5 - 3 秒           │
+│  大小：幾 GB               │  │  大小：幾十 MB              │
+└────────────────────────────┘  └────────────────────────────┘</code></pre>
+</div>
+
+<div class="card">
+  <h3>一句話記住</h3>
+  <p><strong>VM</strong>：虛擬出一整台電腦（包含作業系統）。隔離性強、資源消耗大。</p>
+  <p><strong>Container</strong>：只隔離應用程式和它的相依套件，共用 Host 的 OS kernel。輕量、快速。</p>
+</div>
+
+<h2>第二步：為你的 FastAPI 寫 Dockerfile</h2>
+
+<p>Dockerfile 是「建構映像檔的食譜」——告訴 Docker 這個容器裡要裝什麼。</p>
+
+<pre><code class="language-dockerfile"># Dockerfile — 放在你的 FastAPI 專案根目錄
+
+# ① 基底映像：官方的輕量 Python
+FROM python:3.12-slim
+
+# ② 設定工作目錄（容器內的資料夾）
+WORKDIR /app
+
+# ③ 先複製 requirements，利用 Docker 快取層
+#    （這樣 pip install 只有在 requirements 變動時才重跑）
+COPY requirements.txt .
+
+# ④ 安裝依賴
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ⑤ 複製專案程式碼
+COPY . .
+
+# ⑥ 建立非 root 使用者（資安基本動作）
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+# ⑦ 告訴 Docker 這個容器監聽哪個 port（文件用途，不實際綁定）
+EXPOSE 8000
+
+# ⑧ 啟動指令
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+
+<div class="callout">
+  <strong>🔑 COPY requirements 和 COPY . 為什麼要分開？</strong><br>
+  Docker 會快取每一個步驟。如果 <code>requirements.txt</code> 沒變，
+  下次 build 時 <code>pip install</code> 這層直接從快取拿，不用重跑。
+  如果合在一起寫，只要任何程式碼變動，pip install 就要重跑——浪費時間。
+</div>
+
+<h2>第三步：Docker Compose — 一鍵啟動整套服務</h2>
+
+<p>你的架構到現在包含：Nginx + FastAPI + PostgreSQL + Redis。Compose 讓它們一起啟動。</p>
+
+<pre><code class="language-yaml"># docker-compose.yml — 放在專案根目錄
+version: "3.9"
+
+services:
+  # === PostgreSQL ===
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}   # ← 從 .env 讀取，不寫死在檔案
+      POSTGRES_DB: myapp
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # 資料持久化（重啟不消失）
+    healthcheck:                           # 健康檢查：告訴 Compose 何時 DB 準備好了
+      test: ["CMD", "pg_isready", "-U", "myuser"]
+      interval: 5s
+      retries: 5
+
+  # === Redis ===
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes  # 開啟 AOF 持久化
+
+  # === FastAPI ===
+  api:
+    build: .                     # 用當前目錄的 Dockerfile 建構
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: postgresql://myuser:${DB_PASSWORD}@db:5432/myapp
+      REDIS_URL: redis://redis:6379
+      # ↑ 注意：host 是服務名稱（db、redis），不是 localhost！
+    depends_on:
+      db:
+        condition: service_healthy   # 等 DB 健康檢查通過才啟動
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app            # 開發模式：本地程式碼即時同步到容器
+    ports:
+      - "8000:8000"
+
+  # === Nginx ===
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro  # ro = read-only
+    ports:
+      - "80:80"           # 對外暴露 80 port
+    depends_on:
+      - api
+
+# === 命名 volume（Docker 管理，資料不會因容器刪除而消失）===
+volumes:
+  pgdata:
+  redisdata:</code></pre>
+
+<div class="card">
+  <h3>開發 vs 生產的 Docker 差異</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;"></th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">開發環境</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">生產環境</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">程式碼</td>
+      <td style="padding:0.4rem 0.5rem;"><code>volumes: .:/app</code>（hot reload）</td>
+      <td style="padding:0.4rem 0.5rem;">COPY 進映像檔（不可變）</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">uvicorn</td>
+      <td style="padding:0.4rem 0.5rem;"><code>--reload</code></td>
+      <td style="padding:0.4rem 0.5rem;">多 worker（<code>--workers 4</code>）</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;">Debug</td>
+      <td style="padding:0.4rem 0.5rem;">DEBUG=True, verbose log</td>
+      <td style="padding:0.4rem 0.5rem;">DEBUG=False</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;">Port</td>
+      <td style="padding:0.4rem 0.5rem;">直接暴露</td>
+      <td style="padding:0.4rem 0.5rem;">只透過 Nginx 暴露 80/443</td>
+    </tr>
+  </table>
+</div>
+
+<h2>第四步：常用 Docker 指令速查</h2>
+
+<pre><code class="language-bash"># 建構
+docker build -t myapp .              # 從 Dockerfile 建構映像檔
+
+# 執行
+docker run -d -p 8000:8000 myapp    # -d: 背景, -p: port 映射
+
+# 查看
+docker ps                            # 執行中的容器
+docker ps -a                         # 所有容器（含已停止）
+docker logs -f container_name        # 即時看 log
+
+# Compose
+docker-compose up -d                 # 啟動所有服務（背景）
+docker-compose down                  # 停止並刪除所有服務
+docker-compose logs -f api           # 只看 api 服務的 log
+docker-compose exec api bash         # 進入 api 容器的 shell
+
+# 清理
+docker system prune -a               # 刪除所有未使用的映像、容器、網路</code></pre>
+
+<h2>第五步：Docker 在整個架構中的位置</h2>
+
+<p>回到 Lesson 0001 的地圖——Docker 不是 request 路徑上的一站。它是<strong>包住所有站的盒子</strong>：</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">  ┌── Docker Host ──────────────────────────────────────┐
+  │                                                       │
+  │  ┌── nginx ──┐  ┌── api ──────┐  ┌── db ──┐         │
+  │  │  port 80  │  │  port 8000  │  │  :5432 │         │
+  │  └───────────┘  └─────────────┘  └────────┘         │
+  │                         │                             │
+  │                    ┌── redis ──┐                      │
+  │                    │  :6379    │                      │
+  │                    └───────────┘                      │
+  │                                                       │
+  │  所有服務透過 Docker 網路互通（service name = host）    │
+  │  db:5432, redis:6379, api:8000                       │
+  └──────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 注意：</strong>容器內各服務之間的通訊<strong>不經過 Nginx</strong>。Nginx 只處理外部進來的請求。
+  api → db 的連線是透過 Docker 內部網路直接連的（<code>db:5432</code>）。
+</div>
+
+<h2>🔰 練習</h2>
+
+<div class="quiz" id="quiz9">
+
+  <div class="quiz-question">
+    <p>Q1. Docker 容器和虛擬機（VM）最關鍵的區別是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> 容器比 VM 更安全</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> 容器共用 Host OS 的 kernel（沒有自己的 OS），VM 每個都有自己的 Guest OS——所以容器更輕量、啟動更快</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> 容器只能在 Linux 上執行，VM 可以跨平台</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> 容器使用硬體虛擬化，VM 使用軟體虛擬化</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. Dockerfile 中，為什麼要分開 COPY requirements.txt 和 COPY .？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> Docker 規定 requirements.txt 必須獨立一行</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> 利用 Docker 的分層快取——requirements.txt 沒變就不用重跑 pip install，大幅加速 build</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> 分開才能讓 pip install 正確找到 requirements.txt</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> 這是為了讓 requirements.txt 可以被 Git 追蹤</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. docker-compose.yml 中 <code>depends_on</code> 的 <code>condition: service_healthy</code> 解決了什麼問題？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> 確保容器有足夠的 CPU 資源</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> 確保依賴的服務（如 DB）真正準備好接受連線，而不只是「容器已啟動」——避免 FastAPI 在 PostgreSQL 還在初始化時就連線失敗</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> 限制服務只能使用健康的映像檔</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> 自動修復不健康的容器</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. Docker Compose 中，api 服務要連到 PostgreSQL，連線字串的 host 應該寫什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> localhost</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> 服務名稱（例如 <code>db</code>），Compose 內部 DNS 會自動解析</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> 127.0.0.1</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> VM 的對外 IP</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz9-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li><strong>Container ≠ VM</strong>：容器共用 Host kernel、沒有自己的 OS，所以啟動快、體積小。</li>
+    <li><strong>Dockerfile 分層快取</strong>：先 COPY requirements → pip install → 再 COPY 程式碼。不變的層直接從快取拿。</li>
+    <li><strong>docker-compose</strong> 管理多服務：一鍵啟動 Nginx + FastAPI + Redis + PostgreSQL。</li>
+    <li><strong>容器間通訊</strong>：host = 服務名稱（如 <code>db</code>、<code>redis</code>），不是 localhost。</li>
+    <li><strong>volume</strong>：資料庫檔案和 Redis 資料要存在 volume 中，容器刪除後資料才不會消失。</li>
+    <li><strong>開發 vs 生產</strong>：開發用 volume 掛載 hot reload；生產把程式 COPY 進映像檔、多 worker。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🎤 面試回答模板：「你有用過 Docker 嗎？為什麼要用？」</h3>
+  <p>
+    <em>「我們用 Docker 來確保開發、測試、生產環境的一致性。
+    每個服務（FastAPI、PostgreSQL、Redis、Nginx）各跑在自己的容器中，
+    用 docker-compose 一鍵啟動整套環境——新人第一天就能把整個後端跑起來。
+    容器化還解決了『在我電腦上可以跑』的問題：Docker 映像檔包含了 OS 層級的相依性，
+    在任何機器上跑出來的行為都完全一樣。
+    在生產環境中，我們把映像檔推到 container registry，VM 上只需要裝 Docker 就能部署，
+    不需要手動裝 Python、pip install 或設定 Nginx。」</em>
+  </p>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://docs.docker.com/get-started/" target="_blank">Docker 官方入門教學</a> — 互動式教學，在瀏覽器就能跑 Docker</li>
+  <li><a href="https://docs.docker.com/compose/gettingstarted/" target="_blank">Docker Compose 入門</a> — 多容器應用官方教學</li>
+  <li><a href="https://fastapi.tiangolo.com/deployment/docker/" target="_blank">FastAPI: Docker Deployment</a> — 官方 Docker 部署指南</li>
+  <li><a href="https://docs.docker.com/develop/dev-best-practices/" target="_blank">Docker 最佳實踐</a> — 官方推薦的 Dockerfile 寫法</li>
+  <li><strong>下一課預告：</strong> <a href="0010-system-design-interview.html">系統設計面試實戰</a></li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="0008-caching-strategies.html">← 上一課：快取策略</a>
+  <a href="0010-system-design-interview.html">下一課：系統設計面試 →</a>
+</nav>
+
+<script>
+const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
+const FEEDBACK = {
+  q1: { correct: '✅ 正確！容器和 VM 最關鍵的差別是：容器沒有自己的 OS，直接共用 Host 的 kernel，所以極度輕量（MB 級、秒級啟動）。VM 需要完整的 Guest OS（GB 級、分鐘級啟動）。', wrong: '❌ 核心差異在作業系統：VM 每個都有完整的 Guest OS，容器共用 Host 的 kernel。這使得容器比 VM 輕量得多。' },
+  q2: { correct: '✅ 正確！Docker 每一行指令會產生一個快取層。如果 requirements.txt 沒變，Docker 直接從快取拿 pip install 的結果。這是最重要的 Dockerfile 最佳實踐之一。', wrong: '❌ 這是 Docker 分層快取的最佳實踐。COPY requirements → pip install → COPY . 的順序確保 pip install 只在依賴變動時才重跑。' },
+  q3: { correct: '✅ 正確！<code>depends_on</code> 只保證啟動順序，不保證服務已準備好。加上 <code>condition: service_healthy</code> 和 healthcheck，Compose 會等到 PostgreSQL 真正接受連線後才啟動 FastAPI。', wrong: '❌ 預設的 depends_on 只保證容器「啟動了」，不保證裡面的服務（如 PostgreSQL）已接受連線。healthcheck + condition: service_healthy 解決了這個 race condition。' },
+  q4: { correct: '✅ 正確！Compose 內建 DNS，服務名稱就是 hostname。<code>db:5432</code> 會自動解析到 PostgreSQL 容器的 IP。寫 localhost 會連到自己容器內部。', wrong: '❌ 在 Compose 網路中，每個服務的 hostname 就是它的服務名稱。api 要連 PostgreSQL，host 要寫 <code>db</code>（服務名），不是 localhost。' }
+};
+
+document.getElementById('quiz9-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+    if (!selected) {
+      fb.innerHTML = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+    options.forEach(opt => { opt.disabled = true; });
+  }
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz9-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0002：CORS 深入解析</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>🚧 CORS 深入解析</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0002</span>
+  <span>·</span>
+  <span>⏱ ~20 min</span>
+  <span>·</span>
+  <span class="badge">security</span>
+  <span>·</span>
+  <span>← <a href="0001-http-request-lifecycle.html">Lesson 0001</a></span>
+</div>
+
+<h2>你一定看過這個錯誤</h2>
+
+<pre><code class="language-http">Access to fetch at 'https://api.yourdomain.com/users'
+from origin 'https://frontend.yourdomain.com' has been blocked
+by CORS policy: No 'Access-Control-Allow-Origin' header
+is present on the requested resource.</code></pre>
+
+<p>
+  這大概是後端開發者最常遇到的「它不是 bug，它是設計」的時刻。
+  你寫的 API 明明用 <code>curl</code> 或 Postman 測試都正常，但前端一呼叫就爆掉。
+  為什麼？
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>學完後，你能解釋 CORS 為什麼存在、preflight 是什麼、
+  以及如何正確設定 FastAPI 的 CORSMiddleware——並在面試中給出有深度的回答。
+</div>
+
+<h2>第一步：Same-Origin Policy（同源政策）</h2>
+
+<p>
+  要理解 CORS，必須先理解它要<strong>放鬆</strong>的那個規則：<strong>Same-Origin Policy (SOP)</strong>。
+</p>
+
+<div class="card">
+  <h3>🔐 Same-Origin Policy — 瀏覽器的預設安全規則</h3>
+  <p>
+    瀏覽器預設<strong>禁止</strong>一個網頁的 JavaScript 讀取另一個「來源」(origin) 的資源。
+    這是瀏覽器內建的安全機制，防止惡意網站偷取你在其他網站上的資料。
+  </p>
+  <p>
+    <strong>什麼是「同一個 origin」？</strong>三個要素必須<strong>完全一樣</strong>：
+  </p>
+  <ul>
+    <li><strong>Scheme</strong>（協議）：<code>https://</code></li>
+    <li><strong>Host</strong>（主機）：<code>api.example.com</code></li>
+    <li><strong>Port</strong>（埠號）：<code>:443</code>（https 預設）</li>
+  </ul>
+</div>
+
+<h3>Origin 比對練習</h3>
+
+<p>以下哪個 URL 和 <code>https://api.example.com:443/users</code> 是同一個 origin？</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">你的網頁：      https://frontend.example.com
+你想呼叫的 API： https://api.example.com
+
+Scheme 相同 ✅  (都是 https)
+Host 不同   ❌  (frontend.example.com ≠ api.example.com)
+Port 相同   ✅  (都是 443)
+
+→ 不同源！瀏覽器會阻擋這個請求。</code></pre>
+</div>
+
+<div class="callout">
+  <strong>💡 關鍵理解：</strong>SOP 只存在於<strong>瀏覽器</strong>中。<code>curl</code>、Postman、伺服器之間的 HTTP 呼叫完全不受 SOP 限制。
+  這就是為什麼你的 API 在 Postman 中正常，但在瀏覽器中壞掉——SOP 是瀏覽器在執行，不是你的伺服器在執行。
+</div>
+
+<h2>第二步：CORS 登場</h2>
+
+<p>
+  但現代 Web 架構中，前端（<code>frontend.example.com</code>）和後端（<code>api.example.com</code>）
+  分離部署是非常普遍的。CORS（Cross-Origin Resource Sharing，跨來源資源共享）就是一組規則，
+  讓伺服器可以「告訴瀏覽器」：「雖然我們不同源，但這個請求是安全的，你可以放行。」
+</p>
+
+<h3>CORS 的兩種請求模式</h3>
+
+<div class="card">
+  <h3>模式一：簡單請求（Simple Request）</h3>
+  <p>同時滿足以下<strong>全部</strong>條件時，瀏覽器會直接發送請求，不先問伺服器：</p>
+  <ul>
+    <li>Method 是 <code>GET</code>、<code>HEAD</code>、<code>POST</code> 三者之一</li>
+    <li>只使用「簡單 headers」：<code>Accept</code>、<code>Accept-Language</code>、<code>Content-Language</code>、<code>Content-Type</code></li>
+    <li><code>Content-Type</code> 只能是 <code>text/plain</code>、<code>multipart/form-data</code>、<code>application/x-www-form-urlencoded</code></li>
+    <li>沒有 ReadableStream、沒有 <code>XMLHttpRequest.upload</code> 事件監聽器</li>
+  </ul>
+  <p>→ 瀏覽器直接發 request，然後檢查 response 的 CORS header 來決定要不要把結果給前端 JavaScript。</p>
+</div>
+
+<div class="card">
+  <h3>模式二：預檢請求（Preflight Request）</h3>
+  <p>不符合簡單請求的條件時（例如用了 <code>PUT</code>、<code>DELETE</code>、<code>Authorization</code> header、<code>Content-Type: application/json</code>），瀏覽器會<strong>先發一個 OPTIONS 請求</strong>去問伺服器：「我可以發這個請求嗎？」</p>
+  <p>這就像進去一間大樓之前先問櫃檯：「我可以進去嗎？我可以帶這個包包嗎？我可以去 3 樓嗎？」——櫃檯說 OK 之後你才真的上樓。</p>
+</div>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌─ Preflight 流程 ─────────────────────────────────────┐
+│                                                       │
+│  瀏覽器                      API 伺服器                 │
+│    │                            │                     │
+│    │  OPTIONS /users/42         │                     │
+│    │  Origin: frontend.app      │                     │
+│    │  Access-Control-Req-Method: DELETE               │
+│    │  Access-Control-Req-Headers: Authorization       │
+│    │ ─────────────────────────→ │                     │
+│    │                            │ 伺服器檢查：          │
+│    │                            │ 「我允許 DELETE 嗎？」  │
+│    │                            │ 「我允許 Auth 嗎？」   │
+│    │                            │ 「我允許這個 origin?」 │
+│    │                            │                     │
+│    │  200 OK                    │                     │
+│    │  Access-Control-Allow-Origin: frontend.app       │
+│    │  Access-Control-Allow-Methods: GET, POST, DELETE │
+│    │  Access-Control-Allow-Headers: Authorization     │
+│    │ ←───────────────────────── │                     │
+│    │                            │                     │
+│    │  ✅ 預檢通過！              │                     │
+│    │                            │                     │
+│    │  DELETE /users/42          │                     │
+│    │  (帶上真正的 request)       │                     │
+│    │ ─────────────────────────→ │                     │
+│    │                            │                     │
+│    │  200 OK (response)         │                     │
+│    │ ←───────────────────────── │                     │
+└───────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<h2>第三步：關鍵 CORS Headers</h2>
+
+<div class="card">
+  <h3>Response Headers（伺服器回應給瀏覽器的）</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <th style="text-align:left; padding:0.4rem 0.5rem;">Header</th>
+      <th style="text-align:left; padding:0.4rem 0.5rem;">作用</th>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><code>Access-Control-Allow-Origin</code></td>
+      <td style="padding:0.4rem 0.5rem;">指定哪個 origin 可以存取。可以是 <code>*</code>（全部）或特定 origin。</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><code>Access-Control-Allow-Methods</code></td>
+      <td style="padding:0.4rem 0.5rem;">允許的 HTTP methods（只用於 preflight response）。</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><code>Access-Control-Allow-Headers</code></td>
+      <td style="padding:0.4rem 0.5rem;">允許的非簡單 request headers（只用於 preflight）。</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:0.4rem 0.5rem;"><code>Access-Control-Allow-Credentials</code></td>
+      <td style="padding:0.4rem 0.5rem;">設為 <code>true</code> 時，允許攜帶 cookie / Authorization header。此時 <code>Allow-Origin</code> 不能是 <code>*</code>。</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.5rem;"><code>Access-Control-Max-Age</code></td>
+      <td style="padding:0.4rem 0.5rem;">Preflight 結果可以快取多久（秒），避免每次都發 OPTIONS。</td>
+    </tr>
+  </table>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 面試常見陷阱：</strong><code>Access-Control-Allow-Origin: *</code> 和 <code>credentials: true</code> 不能同時使用。如果前端需要帶 cookie 或 Authorization header，你必須指定<strong>明確的 origin</strong>（不能用萬用字元）。
+</div>
+
+<h2>第四步：FastAPI 中的 CORS 設定</h2>
+
+<p>這是你可能已經在你的專案中寫過，但不一定完全理解每一行在做什麼的程式碼：</p>
+
+<pre><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# CORS 中介層 — 必須在其他 middleware 之前加入
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://frontend.example.com",  # ✅ 明確列出
+        "http://localhost:3000",          # ✅ 本地開發
+    ],
+    allow_credentials=True,   # 允許攜帶 cookie / auth header
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],      # 允許所有 request headers
+    expose_headers=["X-Request-ID"],  # 讓前端 JS 能讀取這些 response headers
+    max_age=600,              # preflight 快取 10 分鐘
+)</code></pre>
+
+<div class="callout">
+  <strong>🔑 回憶 Lesson 0001 的地圖：</strong>CORS 檢查發生在 ⑩ Middleware 層。
+  當一個跨域 request 進來時，FastAPI 的 CORSMiddleware 會在 request 到達你的路由函數<strong>之前</strong>就攔截
+  OPTIONS（preflight）請求，並自動加上正確的 CORS response headers。
+  對於一般請求，它會在 response 返回時加上 CORS headers。
+</div>
+
+<h2>🔰 練習：CORS 情境判斷</h2>
+
+<div class="quiz" id="quiz2">
+
+  <div class="quiz-question">
+    <p>Q1. 你的前端在 <code>https://app.example.com</code>，後端在 <code>https://api.example.com</code>。前端用 <code>fetch</code> 發了一個 GET 請求，帶了 <code>Authorization: Bearer &lt;token&gt;</code> header。瀏覽器會先發什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> 直接發送 GET 請求（簡單請求）</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> 先發 OPTIONS preflight，再發 GET</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> 直接阻擋，不發任何請求</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> 發送 POST 請求代替 GET</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. 為什麼用 <code>curl</code> 或 Postman 呼叫 API 不會觸發 CORS 錯誤？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> curl 和 Postman 會自動加上 CORS headers</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> Same-Origin Policy 是瀏覽器執行的規則，curl/Postman 不是瀏覽器</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> curl 和 Postman 預設使用 HTTP/2，不受 CORS 限制</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> curl 和 Postman 會自動繞過 DNS，直接連到 IP</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. 以下哪個組合<strong>不會</strong>觸發 preflight？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> GET 請求 + Content-Type: application/json</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> POST 請求 + Content-Type: text/plain</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> DELETE 請求 + 沒有特殊 header</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> GET 請求 + X-Custom-Header: value</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. 你的後端設定了 <code>allow_origins=["*"]</code> 和 <code>allow_credentials=True</code>。會發生什麼事？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> 一切正常運作，所有 origin 都可以帶 cookie</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> 伺服器啟動時會拋出錯誤</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> 瀏覽器會拒絕這個組合——CORS 規範禁止 allow-origin: * 與 credentials 同時使用</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> FastAPI 會自動把 allow_origins 改成特定的 origin</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz2-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<h2>🛠 實作練習：在你的專案中驗證 CORS</h2>
+
+<div class="card">
+  <h3>任務：觀察 Preflight</h3>
+  <ol>
+    <li>打開你的 FastAPI 專案，確認 <code>CORSMiddleware</code> 已設定</li>
+    <li>打開瀏覽器 DevTools → Network 分頁</li>
+    <li>從前端（另一個 origin）對 API 發送一個帶 <code>Authorization</code> header 的 PUT 請求</li>
+    <li>在 Network 中觀察：你會看到<strong>兩個請求</strong>——一個 <code>OPTIONS</code>（preflight）和一個 <code>PUT</code></li>
+    <li>點進 OPTIONS 請求，查看 response headers 中的 <code>Access-Control-Allow-*</code> 系列</li>
+  </ol>
+</div>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li><strong>Same-Origin Policy</strong> 是瀏覽器的安全規則，限制跨域讀取；CORS 是<strong>放鬆</strong>這個規則的機制。</li>
+    <li>Origin = scheme + host + port，三者缺一不可。</li>
+    <li><strong>簡單請求</strong>（GET/POST + 基本 headers）直接發送；<strong>非簡單請求</strong>（PUT/DELETE/JSON/自訂 header）需要先發 <strong>OPTIONS preflight</strong>。</li>
+    <li>CORS 錯誤是<strong>瀏覽器</strong>在阻擋，不是伺服器。curl/Postman 不受影響。</li>
+    <li><code>Access-Control-Allow-Origin: *</code> 和 <code>credentials: true</code> <strong>不能共存</strong>——這是面試經典題。</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🎤 面試回答模板：「請解釋 CORS」</h3>
+  <p>
+    <em>「CORS 是瀏覽器的安全機制。瀏覽器預設執行 Same-Origin Policy，禁止網頁的 JavaScript 跨域讀取資源。
+    CORS 讓伺服器可以透過特定的 HTTP response headers（如 Access-Control-Allow-Origin）
+    告訴瀏覽器哪些跨域請求是安全的。對於非簡單請求（如 PUT、DELETE、帶 Authorization header 的請求），
+    瀏覽器會先發一個 OPTIONS preflight 請求來確認伺服器的 CORS 政策。
+    這整個機制只存在於瀏覽器中——伺服器之間的 HTTP 呼叫不受 CORS 限制。」</em>
+  </p>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank">MDN: Cross-Origin Resource Sharing (CORS)</a> — CORS 的權威參考，所有 header 的完整說明</li>
+  <li><a href="https://fastapi.tiangolo.com/tutorial/cors/" target="_blank">FastAPI CORS 官方文件</a> — CORSMiddleware 的設定說明</li>
+  <li><a href="https://web.dev/articles/same-origin-policy" target="_blank">web.dev: Same-Origin Policy</a> — SOP 的圖解說明（英文）</li>
+  <li><strong>下一課預告：</strong> <a href="0003-reverse-proxy-nginx.html">反向代理與 Nginx 實戰</a> — 為什麼 uvicorn 不該直接暴露在 80 port？Nginx 怎麼設定？</li>
+</ul>
+
+<div class="callout">
+  <strong>❓ 有問題嗎？</strong>你可以在自己的 FastAPI 專案中實驗 CORS 設定，把遇到的任何錯誤訊息貼給我，我幫你分析。
+</div>
+
+<nav class="footer-nav">
+  <a href="0001-http-request-lifecycle.html">← 上一課：HTTP Request 生命週期</a>
+  <a href="0003-reverse-proxy-nginx.html">下一課：反向代理與 Nginx 實戰 →</a>
+</nav>
+
+<script>
+const ANSWERS = {
+  q1: 1, // Authorization header triggers preflight
+  q2: 1, // SOP is browser-only
+  q3: 1, // POST + text/plain is a simple request
+  q4: 2, // Browser rejects * with credentials
+};
+
+const FEEDBACK = {
+  q1: {
+    correct: '✅ 正確！<code>Authorization</code> header 不是「簡單 header」，所以瀏覽器會先發 OPTIONS preflight 確認伺服器是否接受這個 header，然後才發真正的 GET 請求。',
+    wrong: '❌ <code>Authorization</code> header 使這個請求變成「非簡單請求」，瀏覽器需要先發 OPTIONS preflight 取得許可。'
+  },
+  q2: {
+    correct: '✅ 正確！Same-Origin Policy 和 CORS 都是<strong>瀏覽器</strong>的安全機制。curl 和 Postman 是獨立的 HTTP client，它們不會執行 JavaScript、也沒有同源的概念。',
+    wrong: '❌ CORS 限制只存在於瀏覽器中。curl 和 Postman 不是瀏覽器，它們只是發送 HTTP 請求的工具，不會強制執行 Same-Origin Policy。'
+  },
+  q3: {
+    correct: '✅ 正確！POST + Content-Type: text/plain 滿足所有簡單請求的條件：safe method、簡單 Content-Type、無自訂 header。不會觸發 preflight。',
+    wrong: '❌ 複習一下簡單請求的條件：必須是 GET/HEAD/POST、Content-Type 只能是 text/plain、multipart/form-data、或 application/x-www-form-urlencoded、且不能有自訂 header。'
+  },
+  q4: {
+    correct: '✅ 正確！CORS 規範明確禁止 <code>Access-Control-Allow-Origin: *</code> 與 <code>Access-Control-Allow-Credentials: true</code> 同時使用。當你需要攜帶 cookie 或 auth token 時，必須明確列出允許的 origin。這是面試的經典陷阱題。',
+    wrong: '❌ CORS 規範不允許萬用字元 origin 與 credentials 同時使用。瀏覽器會直接拒絕這個組合。你需要把 <code>allow_origins</code> 設為明確的 origin 列表。'
+  }
+};
+
+document.getElementById('quiz2-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+
+    options.forEach(opt => {
+      opt.parentElement.classList.remove('correct', 'wrong');
+    });
+
+    if (!selected) {
+      fb.innerHTML = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.innerHTML = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+
+    options.forEach(opt => { opt.disabled = true; });
+  }
+
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz2-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)';
+    btn.style.color = '#0f1117';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)';
+    btn.style.color = '#0f1117';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 0001：HTTP Request 的完整生命週期</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+
+<h1>📡 HTTP Request 的完整生命週期</h1>
+
+<div class="lesson-meta">
+  <span>Lesson 0001</span>
+  <span>·</span>
+  <span>⏱ ~15 min</span>
+  <span>·</span>
+  <span class="badge">foundation</span>
+</div>
+
+<h2>為什麼先學這個？</h2>
+
+<p>
+  你已經能用 FastAPI 寫出 <code>@app.get("/items")</code>，但你有沒有想過：<strong>從使用者打開瀏覽器，到你的 Python 程式碼被執行，中間到底發生了什麼事？</strong>
+</p>
+
+<p>
+  CORS、反向代理、API 網關、鑑權——這些你之後要學的所有東西，都座落在這個 request 路徑的某個位置上。如果不先理解這條路徑的全貌，後面的每個主題都會像一座孤島。先有地圖，再認路。
+</p>
+
+<div class="callout tip">
+  <strong>🎯 本課目標：</strong>學完這堂課後，你能從頭到尾畫出一張 HTTP request 的旅程圖，並正確說出每一站的名稱和職責。
+</div>
+
+<h2>旅程開始：一個 Request 的一生</h2>
+
+<p>
+  假設使用者在瀏覽器輸入 <code>https://api.example.com/users/42</code>，以下是完整旅程：
+</p>
+
+<div class="diagram">
+<pre><code class="language-plaintext">┌─────────────────────────────────────────────────────────────────┐
+│  ① 瀏覽器                 ② DNS 解析              ③ TCP 連線      │
+│  輸入 URL ──────────→ 取得伺服器 IP ──────────→ 三次握手建立     │
+│                          93.184.216.34             TCP connection  │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  ④ TLS 握手               ⑤ HTTP Request          ⑥ 網路傳輸      │
+│  HTTPS 加密協商 ──────→ 發送 GET /users/42 ──→ 封包經過路由器    │
+│  (證書驗證 + 密鑰交換)     + Headers + Body        到達 VM 的網路卡 │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  ⑦ 反向代理 (Nginx)       ⑧ ASGI Server          ⑨ FastAPI App   │
+│  接收請求、做初步處理 ──→ uvicorn 轉發 ────────→ 你的 Python 程式  │
+│  (SSL termination、       (ASGI protocol)         路由 → 函數執行   │
+│   static files、限流)                                       │
+└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  ⑩ 中介層 (Middleware)    ⑪ 路由處理             ⑫ 回應返回       │
+│  CORS check ──────────→ /users/42 對應的 ──→ JSON Response       │
+│  Auth check              路徑函數被呼叫          沿原路返回瀏覽器    │
+│  Request ID                                                      │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+</div>
+
+<p>
+  上面這張圖就是後端工程師的「世界地圖」。我們來逐步解析每個站點。
+</p>
+
+<h2>階段一：建立連線（①–④）</h2>
+
+<div class="trace-step">
+  <div class="trace-num">①</div>
+  <div class="trace-content">
+    <strong>瀏覽器解析 URL</strong>
+    <span>瀏覽器從 <code>https://api.example.com/users/42</code> 中拆出：通訊協定 (HTTPS)、主機名稱 (api.example.com)、路徑 (/users/42)。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">②</div>
+  <div class="trace-content">
+    <strong>DNS 查詢</strong>
+    <span>瀏覽器問 DNS 伺服器：「<code>api.example.com</code> 的 IP 是多少？」→ 得到 <code>93.184.216.34</code>。這是網際網路的電話簿。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">③</div>
+  <div class="trace-content">
+    <strong>TCP 三次握手</strong>
+    <span>瀏覽器與伺服器建立可靠的 TCP 連線。SYN → SYN-ACK → ACK。這發生在 OSI 第 4 層（傳輸層），與 HTTP 無關——它只負責「建立一條可靠的通道」。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">④</div>
+  <div class="trace-content">
+    <strong>TLS 握手</strong>
+    <span>因為是 HTTPS，TCP 連線建立後還需要 TLS 加密協商。伺服器出示 SSL 憑證、雙方協商加密演算法、交換對稱密鑰。完成後，之後的所有 HTTP 資料都是加密的。</span>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>💡 關鍵理解：</strong>TCP（③）和 TLS（④）是兩層獨立的握手。TCP 先建立「能通話的線路」，TLS 再把這條線路「加密」。你的 FastAPI 程式碼完全不知道這些事——它們在抵達你的程式之前就處理完了。
+</div>
+
+<h2>階段二：請求到達伺服器（⑤–⑦）</h2>
+
+<div class="trace-step">
+  <div class="trace-num">⑤</div>
+  <div class="trace-content">
+    <strong>瀏覽器發送 HTTP Request</strong>
+    <span>一個標準的 HTTP request 長這樣：<br>
+<code>GET /users/42 HTTP/1.1</code><br>
+<code>Host: api.example.com</code><br>
+<code>Authorization: Bearer eyJhbGci...</code><br>
+<code>Accept: application/json</code></span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">⑥</div>
+  <div class="trace-content">
+    <strong>網路路由</strong>
+    <span>封包經過多個路由器在網際網路上跳轉，最終到達你 VM 的網路卡。你的雲端供應商（GCP/AWS/Azure）的防火牆可能在此處做第一層過濾。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">⑦</div>
+  <div class="trace-content">
+    <strong>反向代理（Nginx / Caddy）</strong>
+    <span>這是你伺服器上的「門房」。它接收 request，可以做：<br>
+    • <strong>SSL Termination</strong>：幫你解密 HTTPS，讓後面的 FastAPI 只需要處理 HTTP<br>
+    • <strong>靜態檔案</strong>：直接回傳圖片/CSS/JS，不勞煩 Python<br>
+    • <strong>負載均衡</strong>：把 request 分配給多個 uvicorn process<br>
+    • <strong>限流 / IP 黑名單</strong>：在請求碰到你的程式之前就擋掉惡意流量<br>
+    → 然後把 request 轉發給 <code>uvicorn</code>（通常在 <code>127.0.0.1:8000</code>）</span>
+  </div>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 常見誤解：</strong>很多人以為 <code>uvicorn main:app --host 0.0.0.0 --port 80</code> 就是「部署」。在生產環境中，你<strong>不應該</strong>讓 uvicorn 直接暴露在 80/443 port。前面一定要放 Nginx 或 Caddy。原因在後面的課程會詳細討論。
+</div>
+
+<h2>階段三：伺服器內部處理（⑧–⑪）</h2>
+
+<div class="trace-step">
+  <div class="trace-num">⑧</div>
+  <div class="trace-content">
+    <strong>ASGI Server (uvicorn)</strong>
+    <span>uvicorn 接收 Nginx 轉發來的 HTTP request，依照 <strong>ASGI 協議</strong> 將其轉換成 Python 能理解的資料結構（scope、receive、send），然後傳給 FastAPI app。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">⑨</div>
+  <div class="trace-content">
+    <strong>FastAPI 框架</strong>
+    <span>FastAPI 接管 ASGI 傳來的 request，建立 <code>Request</code> 物件。它解析 URL、headers、body，然後開始走內部管線。</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">⑩</div>
+  <div class="trace-content">
+    <strong>中介層（Middleware）</strong>
+    <span>在抵達你的路由函數之前，request 會先經過一層層 middleware。每一層可以：檢查、修改、或短路（直接回傳 response）。例如：<br>
+    • <strong>CORS Middleware</strong>：檢查 <code>Origin</code> header，決定是否允許跨域<br>
+    • <strong>Auth Middleware</strong>：驗證 JWT token，附加 user 資訊到 request<br>
+    • <strong>Request ID Middleware</strong>：為每個 request 加上唯一 ID 以便追蹤日誌</span>
+  </div>
+</div>
+
+<div class="trace-step">
+  <div class="trace-num">⑪</div>
+  <div class="trace-content">
+    <strong>路由匹配與函數執行</strong>
+    <span>FastAPI 根據 URL 路徑 <code>/users/42</code> 和 HTTP method <code>GET</code> 找到對應的函數。你的 Python 程式碼<strong>終於</strong>被執行了。</span>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>🔑 關鍵洞察：</strong>你的程式碼（⑪）只佔整個旅程的 <strong>1/12</strong>。前面 10 步和最後 1 步（回應返回）都不是你寫的，但它們決定了你的服務是否安全、快速、可靠。這就是為什麼你需要學這些「底層知識」。
+</div>
+
+<h2>階段四：回應返回（⑫）</h2>
+
+<p>
+  你的函數 return 一個 JSON 之後，response 沿著<strong>完全相同的路徑反向</strong>回去：middleware → ASGI → Nginx → 網路 → 瀏覽器。每一層都有機會再處理 response（例如加上 security headers）。
+</p>
+
+<h2>這張地圖如何連接後續課程</h2>
+
+<div class="card">
+  <h3>🗺 你在這張地圖上學到的，之後會用來理解：</h3>
+  <ul>
+    <li><strong>CORS</strong> → 發生在 ⑩ Middleware 層，檢查 request 的 <code>Origin</code> header</li>
+    <li><strong>反向代理</strong> → 就是 ⑦ Nginx，理解它為什麼是必備的基礎設施</li>
+    <li><strong>API 網關</strong> → ⑦ 的進化版，多了路由、鑑權、rate limiting、API versioning</li>
+    <li><strong>鑑權 (Auth)</strong> → 可在 ⑦（網關層）或 ⑩（middleware 層）執行</li>
+    <li><strong>資安</strong> → 每一層都有對應的安全威脅與防禦策略</li>
+  </ul>
+</div>
+
+<h2>🔰 練習：你能還原這張圖嗎？</h2>
+
+<p>試試看——把正確的階段填入對應的空白位置。這是 <strong>retrieval practice</strong>，刻意從記憶中提取知識能大幅提高長期記憶。</p>
+
+<div class="quiz" id="quiz1">
+  <div class="quiz-question">
+    <p>Q1. 當你在瀏覽器輸入 <code>https://api.example.com/items</code> 並按下 Enter，<strong>第一步</strong>發生的是什麼？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q1" value="0"> HTTP Request 被發送出去</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="1"> 瀏覽器解析 URL，分離出協議、主機名稱、路徑</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="2"> TCP 三次握手開始</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="3"> DNS 查詢取得 IP 位址</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q1"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2. 在一個標準的生產環境部署中，Nginx（反向代理）通常坐在哪個位置？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q2" value="0"> 在 uvicorn 和 FastAPI 之間</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="1"> 在瀏覽器和你的 VM 之間，uvicorn 的前面</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="2"> 在 FastAPI 和資料庫之間</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="3"> 在 DNS 伺服器旁邊</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q2"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3. 以下哪個操作最適合在「反向代理層（⑦）」處理，而不是在你的 FastAPI 程式碼中處理？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q3" value="0"> 驗證 JWT token 的簽名是否正確</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="1"> 根據使用者 ID 查詢資料庫</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="2"> SSL 終止（解密 HTTPS）和靜態檔案服務</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="3"> 檢查 request body 是否符合 JSON Schema</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q3"></div>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4. Middleware（中介層）在 FastAPI 中的執行順序是？</p>
+    <div class="quiz-options">
+      <label class="quiz-option"><input type="radio" name="q4" value="0"> 路由函數先執行，然後才經過 middleware</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="1"> Middleware 和路由函數同時執行</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="2"> Request 先經過所有 middleware，才到達路由函數；response 再反向經過 middleware</label>
+      <label class="quiz-option"><input type="radio" name="q4" value="3"> 隨機順序，取決於 middleware 的註冊時間</label>
+    </div>
+    <div class="quiz-feedback" id="fb-q4"></div>
+  </div>
+
+  <button id="quiz1-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: white; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+</div>
+
+<h2>📚 延伸閱讀</h2>
+
+<ul>
+  <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview" target="_blank">MDN: An overview of HTTP</a> — HTTP 協議的權威入門，20 分鐘讀完</li>
+  <li><a href="https://fastapi.tiangolo.com/tutorial/middleware/" target="_blank">FastAPI Middleware 文件</a> — 看看你專案中可能已經在用的 <code>CORSMiddleware</code> 是怎麼掛上去的</li>
+  <li><strong>下一課預告：</strong> <a href="0002-cors-deep-dive.html">CORS 深入解析</a> — 為什麼瀏覽器要阻擋你的 API 請求？Same-Origin Policy 是什麼？</li>
+</ul>
+
+<div class="summary-box">
+  <h3>📋 本課重點摘要</h3>
+  <ol>
+    <li>一個 HTTP request 的旅程有 <strong>12 個主要階段</strong>，你的 FastAPI 程式碼只佔其中 <strong>1 個</strong>。</li>
+    <li><strong>反向代理（Nginx）</strong>是你的伺服器門房，處理 SSL、靜態檔案和流量控制。</li>
+    <li><strong>Middleware</strong> 是 request 進入路由前的管線，CORS、Auth 檢查都發生在這裡。</li>
+    <li>理解這張「地圖」是學習所有後續主題的前提——每個主題都對應圖上的某個位置。</li>
+  </ol>
+</div>
+
+<div class="callout">
+  <strong>❓ 有問題嗎？</strong>直接在下方的對話中問我！我可以解釋任何一個階段、幫你畫更詳細的圖、或者用你自己的 FastAPI 專案舉例說明 request 實際經過的路徑。
+</div>
+
+<nav class="footer-nav">
+  <span>← 第一課</span>
+  <a href="0002-cors-deep-dive.html">下一課：CORS 深入解析 →</a>
+</nav>
+
+<script>
+// === Quiz logic ===
+const ANSWERS = {
+  q1: 1, // browser parses URL first
+  q2: 1, // nginx sits in front of uvicorn
+  q3: 2, // SSL termination and static files
+  q4: 2, // request → middleware chain → route → middleware chain → response
+};
+
+const FEEDBACK = {
+  q1: {
+    correct: '✅ 正確！瀏覽器做的第一件事是解析 URL，把協議、主機名稱、路徑分離出來。DNS 查詢是下一步。',
+    wrong: '❌ 再想想：瀏覽器需要先「看懂」你輸入的字串是什麼，才能決定下一步該做什麼。所以第一步是解析 URL 結構。'
+  },
+  q2: {
+    correct: '✅ 正確！Nginx 是反向代理，坐在網際網路和你的應用程式之間，uvicorn 的前面。它接收外部請求再轉發給內部的 uvicorn。',
+    wrong: '❌ Nginx 是「門房」，應該在最前面面對外部世界。它接收來自瀏覽器的請求，再轉發給內部的 uvicorn。'
+  },
+  q3: {
+    correct: '✅ 正確！SSL 終止和靜態檔案是 Nginx 的經典用途。SSL 解密很耗 CPU 但與業務邏輯無關；靜態檔案更不需要勞煩 Python 進程。',
+    wrong: '❌ 反向代理最適合處理與業務邏輯無關的基礎設施工作。SSL 解密和靜態檔案服務都是不需要知道你的應用邏輯就能做的事。'
+  },
+  q4: {
+    correct: '✅ 正確！這就是「洋蔥模型」(onion model)：request 從外層 middleware 一層層進去，到達核心的路由函數，response 再一層層出來。每一層 middleware 都有機會在進入時和離開時做處理。',
+    wrong: '❌ 想想洋蔥的結構：request 從外到內，response 從內到外。Middleware 像洋蔥的每一層皮，包裹著核心的路由函數。'
+  }
+};
+
+document.getElementById('quiz1-submit').addEventListener('click', () => {
+  let score = 0;
+  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+    const selected = document.querySelector(`input[name="${q}"]:checked`);
+    const fb = document.getElementById(`fb-${q}`);
+    const options = document.querySelectorAll(`input[name="${q}"]`);
+
+    // Reset styles
+    options.forEach(opt => {
+      opt.parentElement.classList.remove('correct', 'wrong');
+    });
+
+    if (!selected) {
+      fb.textContent = '⚠️ 請選擇一個答案。';
+      fb.className = 'quiz-feedback wrong show';
+      continue;
+    }
+
+    const chosen = parseInt(selected.value);
+    if (chosen === correctIdx) {
+      score++;
+      selected.parentElement.classList.add('correct');
+      fb.textContent = FEEDBACK[q].correct;
+      fb.className = 'quiz-feedback correct show';
+    } else {
+      selected.parentElement.classList.add('wrong');
+      // Also highlight the correct one
+      options[correctIdx].parentElement.classList.add('correct');
+      fb.textContent = FEEDBACK[q].wrong;
+      fb.className = 'quiz-feedback wrong show';
+    }
+
+    // Disable further changes
+    options.forEach(opt => { opt.disabled = true; });
+  }
+
+  const total = Object.keys(ANSWERS).length;
+  const btn = document.getElementById('quiz1-submit');
+  if (score === total) {
+    btn.textContent = `🎉 全對！(${score}/${total})`;
+    btn.style.background = 'var(--success)';
+  } else {
+    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+    btn.style.background = 'var(--warning)';
+  }
+  btn.disabled = true;
+});
+</script>
+
+<script>hljs.highlightAll();</script>
+
+</body>
+</html>
