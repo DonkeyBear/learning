@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning Hub — 學習課程索引</title>
+  <meta name="description" content="個人學習 monorepo，涵蓋後端架構、遊戲開發、Java 生態系、React Native 等多個技術主題。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="loader" aria-label="載入中" role="status">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="app" v-cloak>
+    <!-- Hero -->
+    <header class="hero container">
+      <div class="hero-eyebrow">📚 Personal Monorepo</div>
+      <h1>Learning Hub</h1>
+      <p>個人技術學習 monorepo，涵蓋後端架構、遊戲開發、Java 生態系、React Native 等多個技術主題。</p>
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-num">{{ courses.length }}</div>
+          <div class="stat-label">課程</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ totalLessons }}</div>
+          <div class="stat-label">堂課</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Section header -->
+      <div class="section-header">
+        <span class="section-title">所有課程</span>
+      </div>
+
+      <div class="course-grid">
+        <div
+          v-for="course in courses"
+          :key="course.id"
+          class="course-card"
+          @click="openModal(course)"
+        >
+          <div class="summary-top">
+            <span class="card-icon">{{ course.icon }}</span>
+            <span class="card-title">{{ course.title }}</span>
+            <span class="lesson-badge">{{ course.lessons.length }} 堂</span>
+          </div>
+          <p class="card-desc">{{ course.desc }}</p>
+        </div>
+      </div>
+
+      <!-- Modal -->
+      <Transition name="modal">
+        <div v-if="activeModal" class="modal-backdrop" @click.self="closeModal">
+          <div class="modal" role="dialog" :aria-label="activeModal.title">
+            <div class="modal-header">
+              <span class="modal-icon">{{ activeModal.icon }}</span>
+              <div class="modal-meta">
+                <h2 class="modal-title">{{ activeModal.title }}</h2>
+                <span class="lesson-badge">{{ activeModal.lessons.length }} 堂課</span>
+              </div>
+              <button class="modal-close" @click="closeModal" aria-label="關閉">✕</button>
+            </div>
+            <p class="modal-desc">{{ activeModal.desc }}</p>
+            <ol class="lesson-list">
+              <li v-for="(lesson, i) in activeModal.lessons" :key="lesson.href">
+                <a :href="lesson.href">
+                  <span class="ln">L{{ String(i + 1).padStart(3, '0') }}</span>
+                  {{ lesson.title }}
+                </a>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </Transition>
+    </main>
+
+    <!-- Footer -->
+    <footer class="container">
+      <p>
+        <a href="https://github.com/DonkeyBear/learning" target="_blank" rel="noopener">GitHub</a>
+      </p>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const { createApp, computed, ref, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const courses = [
+          {
+            id: 'backend-infra',
+            icon: '🌐',
+            title: '後端基礎架構知識',
+            desc: '補足後端「膠水層」知識——CORS、反向代理、API 閘道、鑑權、資安與容器化部署。從 HTTP 的完整生命週期到系統設計面試準備。',
+            lessons: [
+              { title: 'HTTP Request 的完整生命週期',         href: 'backend-infra/lessons/0001-http-request-lifecycle.html' },
+              { title: 'CORS 深入解析',                       href: 'backend-infra/lessons/0002-cors-deep-dive.html' },
+              { title: '反向代理與 Nginx 實戰',               href: 'backend-infra/lessons/0003-reverse-proxy-nginx.html' },
+              { title: 'API 網關 — 當 Nginx 不夠用時',        href: 'backend-infra/lessons/0004-api-gateway.html' },
+              { title: '鑑權系統 — JWT、OAuth2、Session',     href: 'backend-infra/lessons/0005-authentication-authorization.html' },
+              { title: '資安基礎 — OWASP Top 10 與常見攻擊防禦', href: 'backend-infra/lessons/0006-web-security-owasp.html' },
+              { title: '資料庫設計 — 索引、正規化、N+1、連線池', href: 'backend-infra/lessons/0007-database-design.html' },
+              { title: '快取策略 — Redis 實戰',               href: 'backend-infra/lessons/0008-caching-strategies.html' },
+              { title: '容器化 — Docker 與 Docker Compose',   href: 'backend-infra/lessons/0009-containerization-docker.html' },
+              { title: '系統設計面試 — 把所學全部串起來',     href: 'backend-infra/lessons/0010-system-design-interview.html' },
+            ],
+          },
+          {
+            id: 'mincraft-mod-with-java',
+            icon: '⛏️',
+            title: 'Minecraft MOD 開發（Java）',
+            desc: '以 Minecraft Fabric MOD 為切入點，從前端轉向 Java 後端生態系。涵蓋 JDK 環境、Java 語法、Fabric 架構與 SpringBoot 職涯目標。',
+            lessons: [
+              { title: 'Java 開發環境設定',                                 href: 'mincraft-mod-with-java/lessons/0001-java-dev-environment.html' },
+              { title: 'Java 語法速覽：從 TS/Python 視角看 Java',          href: 'mincraft-mod-with-java/lessons/0002-java-syntax-for-ts-python-devs.html' },
+              { title: '進入 Minecraft 的世界：Fabric MOD 環境建置',       href: 'mincraft-mod-with-java/lessons/0003-fabric-mod-environment-setup.html' },
+              { title: '第一個物品：註冊你的專屬神劍',                     href: 'mincraft-mod-with-java/lessons/0004-first-item.html' },
+              { title: '打造 3D 方塊與 Loot Table',                        href: 'mincraft-mod-with-java/lessons/0005-first-block.html' },
+              { title: '讓物品活起來：事件系統與自訂行為',                 href: 'mincraft-mod-with-java/lessons/0006-events-and-behavior.html' },
+            ],
+          },
+          {
+            id: 'indie-game-promo',
+            icon: '🎮',
+            title: 'Steam 獨立遊戲發行與行銷',
+            desc: '掌握 Steam 商店頁面優化、願望清單策略、在地化、新品節參展與站外引流。讓獨立遊戲在每年數萬款新作洪流中脫穎而出。',
+            lessons: [
+              { title: '類型市場適配度：在寫程式之前，先問市場是否存在', href: 'indie-game-promo/lessons/0001-genre-market-fit.html' },
+              { title: 'Steam 商店頁面早期建置',                          href: 'indie-game-promo/lessons/0002-steam-page-early-setup.html' },
+              { title: '標籤策略與演算法推薦',                            href: 'indie-game-promo/lessons/0003-tag-strategy.html' },
+              { title: '商店頁面在地化',                                  href: 'indie-game-promo/lessons/0004-localization.html' },
+            ],
+          },
+          {
+            id: 'react-native',
+            icon: '📱',
+            title: 'React Native 行動開發',
+            desc: '從 React 前端工程師轉型為 Mobile App 工程師。深入 RN runtime 架構、Expo 工作流、原生模組橋接與雙平台上架準備。',
+            lessons: [
+              { title: 'React Native 執行時架構心智模型', href: 'react-native/lessons/0001-react-native-runtime-architecture.html' },
+              { title: 'Expo 開發環境與專案結構',         href: 'react-native/lessons/0002-expo-setup-project-structure.html' },
+            ],
+          },
+          {
+            id: 'indie-game-project-management',
+            icon: '📋',
+            title: '單人遊戲開發專案管理',
+            desc: '從「想到哪做到哪」轉變為有節奏地推進。輕量務實的專案管理方法，幫助你把 Godot 密室逃脫遊戲從點子變成可交付的 Steam 產品。',
+            lessons: [
+              { title: '把「做一個關卡」變成可執行的 Backlog', href: 'indie-game-project-management/lessons/0001-work-breakdown.html' },
+            ],
+          },
+        ];
+
+        const totalLessons = computed(() =>
+          courses.reduce((sum, c) => sum + c.lessons.length, 0)
+        );
+
+        const activeModal = ref(null);
+
+        function openModal(course) {
+          activeModal.value = course;
+          document.body.style.overflow = 'hidden';
+        }
+        function closeModal() {
+          activeModal.value = null;
+          document.body.style.overflow = '';
+        }
+
+        // Close on Escape
+        window.addEventListener('keydown', e => {
+          if (e.key === 'Escape') closeModal();
+        });
+
+        // Remove loader once Vue has rendered
+        onMounted(() => {
+          const loader = document.getElementById('loader');
+          if (loader) loader.remove();
+        });
+
+        return { courses, totalLessons, activeModal, openModal, closeModal };
+      },
+    }).mount('#app');
+  </script>
+
+</body>
+</html>
