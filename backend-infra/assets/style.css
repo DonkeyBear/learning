@@ -241,7 +241,7 @@ hr {
 }
 
 .trace-content { flex: 1; }
-.trace-content strong { display: block; font-size: 0.95rem; }
+.trace-content > strong { display: block; font-size: 0.95rem; }
 .trace-content span { font-size: 0.85rem; color: var(--muted); }
 
 /* === Scrollbar (Webkit) === */
@@ -286,3 +286,18 @@ th {
   text-align: left;
   font-weight: 600;
 }
+
+/* === Lesson Navigation === */
+.lesson-nav {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.lesson-nav a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.lesson-nav a:hover {
+  text-decoration: underline;
+}
+

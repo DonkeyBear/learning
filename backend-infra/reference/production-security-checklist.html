@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>部署安全速查表 — Production Security Checklist</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+</head>
+
+<body>
+
+  <h1>📋 部署安全速查表</h1>
+
+  <div class="lesson-meta">
+    <span>Reference</span>
+    <span>·</span>
+    <span class="badge">cheatsheet</span>
+    <span>·</span>
+    <span>← <a href="../lessons/0011-production-deploy-security.html">Lesson 0011</a></span>
+  </div>
+
+  <p>這份速查表濃縮了 Lesson 0011 的核心配置，設計為可列印的快速參考格式。</p>
+
+  <h2>🖥 OS 層快速指令</h2>
+
+  <div class="card">
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">目的</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">指令</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">檢查監聽 port</td>
+        <td style="padding:0.4rem 0.5rem;"><code>ss -tlnp</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">找 SUID 檔案</td>
+        <td style="padding:0.4rem 0.5rem;"><code>find / -perm -4000 -type f 2>/dev/null</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">UFW 預設 deny</td>
+        <td style="padding:0.4rem 0.5rem;"><code>sudo ufw default deny incoming</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">UFW 允許 web</td>
+        <td style="padding:0.4rem 0.5rem;"><code>sudo ufw allow 80,443/tcp</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">啟用自動更新</td>
+        <td style="padding:0.4rem 0.5rem;"><code>sudo apt install unattended-upgrades && sudo dpkg-reconfigure unattended-upgrades</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Fail2Ban 狀態</td>
+        <td style="padding:0.4rem 0.5rem;"><code>sudo fail2ban-client status</code></td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">解除 Fail2Ban 封鎖</td>
+        <td style="padding:0.4rem 0.5rem;"><code>sudo fail2ban-client set JAILNAME unbanip IP</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <h2>🔑 SSH 安全設定</h2>
+
+  <pre><code class="language-ini"># /etc/ssh/sshd_config
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AllowUsers deployuser
+Port 2222</code></pre>
+
+  <h2>🔄 Nginx 安全設定骨架</h2>
+
+  <pre><code class="language-nginx"># 速率限制 zone
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=login:10m rate=2r/m;
+limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+
+server {
+    listen 443 ssl http2;
+    server_tokens off;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    client_max_body_size 10m;
+
+    # Security Headers
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    location / {
+        limit_req zone=api burst=30 nodelay;
+        limit_conn conn_per_ip 20;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
+
+    location /api/auth/ {
+        limit_req zone=login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}</code></pre>
+
+  <h2>🐍 FastAPI 安全 Middleware</h2>
+
+  <pre><code class="language-python"># 必備 Middleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from middleware.security import SecurityHeadersMiddleware
+
+# Host 驗證
+app.add_middleware(TrustedHostMiddleware,
+    allowed_hosts=["api.yourdomain.com", "localhost"])
+
+# CORS — 明確指定 origin
+app.add_middleware(CORSMiddleware,
+    allow_origins=["https://yourfrontend.com"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"])
+
+# Security Headers
+app.add_middleware(SecurityHeadersMiddleware)</code></pre>
+
+  <h2>🚦 速率限制速查（slowapi）</h2>
+
+  <div class="card">
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">端點</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">限制值</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">裝飾器</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">公開 GET</td>
+        <td style="padding:0.4rem 0.5rem;">100/min</td>
+        <td style="padding:0.4rem 0.5rem;"><code>@limiter.limit("100/minute")</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">公開 POST</td>
+        <td style="padding:0.4rem 0.5rem;">30/min</td>
+        <td style="padding:0.4rem 0.5rem;"><code>@limiter.limit("30/minute")</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">登入</td>
+        <td style="padding:0.4rem 0.5rem;">3/min</td>
+        <td style="padding:0.4rem 0.5rem;"><code>@limiter.limit("3/minute;10/hour")</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">註冊</td>
+        <td style="padding:0.4rem 0.5rem;">2/min · 10/day</td>
+        <td style="padding:0.4rem 0.5rem;"><code>@limiter.limit("2/minute;10/day")</code></td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">全域 default</td>
+        <td style="padding:0.4rem 0.5rem;">200/hour</td>
+        <td style="padding:0.4rem 0.5rem;"><code>default_limits=["200/hour"]</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <h2>⚡ Gunicorn 配置</h2>
+
+  <pre><code class="language-python"># gunicorn.conf.py
+import multiprocessing, os
+
+workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count()))
+worker_class = "uvicorn.workers.UvicornWorker"
+bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
+max_requests = 1000
+max_requests_jitter = 100
+preload_app = True
+worker_tmp_dir = "/dev/shm"
+timeout = 30</code></pre>
+
+  <h2>🛡 Fail2Ban 設定</h2>
+
+  <pre><code class="language-ini"># /etc/fail2ban/jail.local
+[DEFAULT]
+bantime  = 3600
+findtime = 600
+maxretry = 5
+
+[sshd]
+enabled  = true
+port     = 2222
+
+[nginx-api]
+enabled  = true
+filter   = nginx-limit-req
+logpath  = /var/log/nginx/error.log
+maxretry = 10
+findtime = 60
+bantime  = 3600
+
+[recidive]
+enabled  = true
+bantime  = 86400
+findtime = 86400
+maxretry = 3</code></pre>
+
+  <h2>🏰 防禦層級總覽</h2>
+
+  <div class="card">
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">層級</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">工具</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">防禦什麼</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">DNS / Edge</td>
+        <td style="padding:0.4rem 0.5rem;">Cloudflare</td>
+        <td style="padding:0.4rem 0.5rem;">DDoS、CDN 快取、IP 信譽過濾</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">平台</td>
+        <td style="padding:0.4rem 0.5rem;">GCP VPC Firewall / fly.io Proxy</td>
+        <td style="padding:0.4rem 0.5rem;">端口暴露控制、強制 HTTPS</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">OS</td>
+        <td style="padding:0.4rem 0.5rem;">UFW/iptables、Fail2Ban、SELinux</td>
+        <td style="padding:0.4rem 0.5rem;">未授權連線、暴力破解、提權</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">反向代理</td>
+        <td style="padding:0.4rem 0.5rem;">Nginx / Caddy</td>
+        <td style="padding:0.4rem 0.5rem;">TLS、Security Headers、速率限制</td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">應用</td>
+        <td style="padding:0.4rem 0.5rem;">slowapi、Middleware、Pydantic</td>
+        <td style="padding:0.4rem 0.5rem;">API 濫用、注入、CORS、Host Header 攻擊</td>
+      </tr>
+    </table>
+  </div>
+
+  <nav class="lesson-nav">
+    <a href="../lessons/0011-production-deploy-security.html">← 回到 Lesson 0011</a>
+  </nav>
+
+  <script>hljs.highlightAll();</script>
+
+</body>
+
+</html>

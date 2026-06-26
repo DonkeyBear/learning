@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0011：自建後端部署安全 — 從 VM 到應用層的全面加固</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+      }
+    });
+  </script>
+</head>
+
+<body>
+
+  <h1>🔐 自建後端部署安全 — 從 VM 到應用層的全面加固</h1>
+
+  <div class="lesson-meta">
+    <span>Lesson 0011</span>
+    <span>·</span>
+    <span>⏱ ~30 min</span>
+    <span>·</span>
+    <span class="badge">security</span>
+    <span>·</span>
+    <span>← <a href="0010-system-design-interview.html">Lesson 0010</a></span>
+  </div>
+
+  <h2>你的 API 上線了，然後呢？</h2>
+
+  <p>
+    你寫好了 FastAPI、通過了測試、docker build 成功——推到 fly.io 或 GCP VM 上之後，
+    <strong>真正的考驗才剛開始</strong>。公開到網路上幾小時內，你的伺服器就會被自動化掃描器探測、
+    被 bot 嘗試常見漏洞、被爬蟲抓取。這不是「會不會被攻擊」的問題，而是<strong>「什麼時候」</strong>的問題。
+  </p>
+
+  <div class="callout tip">
+    <strong>🎯 本課目標：</strong>掌握將 FastAPI 後端部署到 GCP VM 或 fly.io 時，從作業系統、網路層、反向代理到應用層的完整安全加固清單。
+    學完後你能自信地回答：「我把 API 部署到生產環境時，做了哪些安全措施」。
+  </div>
+
+  <hr>
+
+  <h2>🏰 分層防禦模型</h2>
+
+  <p>
+    資安的黃金法則：<strong>沒有一層防禦是完美的，但多層疊加可以讓攻擊者付出極高代價。</strong>
+    這就是 Defense in Depth（縱深防禦）。在你的部署架構中，每一層都有它的角色：
+  </p>
+
+  <div class="diagram">
+    <div class="mermaid">
+      graph TB
+      A["🌐 Internet 流量"] --> B["☁️ 平台防火牆<br />fly.io Proxy / GCP VPC Firewall"]
+      B --> C["🔒 OS 防火牆<br />iptables / nftables / UFW"]
+      C --> D["🔄 反向代理<br />Nginx / Caddy / fly.io Proxy"]
+      D --> E["🐍 應用層<br />FastAPI + Middleware"]
+      E --> F["🗄️ 資料庫 / 服務"]
+
+      style A fill:#2a2d3a,stroke:#6c8cff,color:#e1e1e6
+      style B fill:#161822,stroke:#fbbf24,color:#e1e1e6
+      style C fill:#161822,stroke:#f87171,color:#e1e1e6
+      style D fill:#161822,stroke:#4ade80,color:#e1e1e6
+      style E fill:#161822,stroke:#6c8cff,color:#e1e1e6
+      style F fill:#2a2d3a,stroke:#8b8b9e,color:#e1e1e6
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>各層防禦對應的威脅</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">層級</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">抵擋的攻擊</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">工具</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">平台層</td>
+        <td style="padding:0.4rem 0.5rem;">大流量 DDoS、端口掃描、IP 信譽過濾</td>
+        <td style="padding:0.4rem 0.5rem;">GCP VPC Firewall / fly.io Proxy</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">OS 層</td>
+        <td style="padding:0.4rem 0.5rem;">SSH 暴力破解、提權、未授權登入</td>
+        <td style="padding:0.4rem 0.5rem;">iptables、Fail2Ban、SELinux</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">反向代理層</td>
+        <td style="padding:0.4rem 0.5rem;">慢速攻擊、CC 攻擊、IP 濫用</td>
+        <td style="padding:0.4rem 0.5rem;">Nginx limit_req、fail2ban</td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">應用層</td>
+        <td style="padding:0.4rem 0.5rem;">API 濫用、注入、憑證暴力猜解、資料爬取</td>
+        <td style="padding:0.4rem 0.5rem;">slowapi、Middleware、輸入驗證</td>
+      </tr>
+    </table>
+  </div>
+
+  <hr>
+
+  <h2>☁️ 第一層：平台選擇與配置</h2>
+
+  <h3>選項 A：GCP Compute Engine VM</h3>
+
+  <p>
+    你完全掌控 OS——自由度高，但<strong>所有安全責任也在你身上</strong>（Shared Responsibility Model）。
+  </p>
+
+  <div class="card">
+    <h3>GCP VM 部署安全清單</h3>
+    <ol>
+      <li><strong>VPC Firewall Rules</strong>：預設 deny all ingress，只開放 80/443（必要時加 22）</li>
+      <li><strong>SSH 不允許來自 0.0.0.0/0</strong>：限定你的固定 IP 或用 Identity-Aware Proxy (IAP) 隧道</li>
+      <li><strong>關閉所有不必要的 port</strong>：PostgreSQL (5432)、Redis (6379) 等<strong>絕對不能</strong>對公網開放</li>
+      <li><strong>使用 Service Account 而非個人帳號</strong>：VM 綁定最小權限的 SA</li>
+      <li><strong>開啟 VPC Flow Logs</strong>：記錄所有網路流量，供日後稽查</li>
+    </ol>
+  </div>
+
+  <pre><code class="language-bash"># 檢查 VM 上哪些 port 在監聽（從 VM 內部執行）
+ss -tlnp
+
+# 常見應關閉的服務（除非你真的需要）
+sudo systemctl disable --now cups avahi-daemon bluetooth
+# cups:    列印服務
+# avahi:   mDNS/Bonjour（本地服務發現）
+# bluetooth: 藍牙 — 伺服器不需要</code></pre>
+
+  <h3>選項 B：fly.io</h3>
+
+  <p>
+    fly.io 是 PaaS——平台幫你處理很多底層安全。預設 <strong>deny all</strong>：只有你在 <code>fly.toml</code> 中宣告的 port 才會對外開放。
+    它的 edge proxy 自帶 Anycast 架構（天然分散大流量）、自動 TLS 憑證、以及 HTTP→HTTPS 強制重導向。
+  </p>
+
+  <div class="card">
+    <h3>fly.io 部署安全清單</h3>
+    <ol>
+      <li><strong>只暴露需要的 port</strong>：<code>fly.toml</code> 中 <code>[[services]]</code> 只宣告 80/443</li>
+      <li><strong>強制 HTTPS</strong>：internal_port 對外只走 TLS，handlers 中啟用 <code>force_https = true</code></li>
+      <li><strong>使用 Private Networking</strong>：App 與 DB 之間的溝通走 fly.io 內網（不經公網）</li>
+      <li><strong>善用 Fly Proxy 的 HTTP 正規化</strong>：它會幫你加上 <code>Fly-Client-IP</code>、<code>X-Forwarded-Proto</code> 等
+        header</li>
+      <li><strong>注意：fly.io 沒有 IP 白名單功能</strong>——如果你的 API 需要來源 IP 限制，要在應用層或搭配 Cloudflare 處理</li>
+    </ol>
+  </div>
+
+  <div class="callout warn">
+    <strong>⚠️ fly.io 的限制：</strong>fly.io edge proxy 不提供 WAF、DDoS scrubbing、或 IP reputation filtering。
+    對抗大流量 DDoS 還是建議前面掛 Cloudflare 或類似服務。fly.io 的 Anycast 可以分散部分流量，但不是專門的 DDoS 防護。
+  </div>
+
+  <pre><code class="language-toml"># fly.toml 安全配置範例
+app = "my-fastapi-app"
+primary_region = "sin"
+
+[build]
+  image = "python:3.12-slim"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8000
+  force_https = true
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+    [services.ports.tls_options]
+      alpn = ["h2", "http/1.1"]
+      versions = ["TLSv1.2", "TLSv1.3"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512</code></pre>
+
+  <hr>
+
+  <h2>🐧 第二層：作業系統加固（防提權）</h2>
+
+  <p>
+    這是你問的「如何防範提權」的核心。<strong>特權提升攻擊</strong>遵循固定套路：
+    攻擊者取得低權限 shell → 枚舉系統弱點 → 利用漏洞取得 root。
+    你的目標是<strong>讓每一步都極度困難</strong>。
+  </p>
+
+  <h3>SSH 防禦：這是你的大門</h3>
+
+  <pre><code class="language-bash"># /etc/ssh/sshd_config 的關鍵設定
+# 1. 禁止 root 直接登入
+PermitRootLogin no
+
+# 2. 禁止密碼登入 — 只用 SSH Key
+PasswordAuthentication no
+PubkeyAuthentication yes
+
+# 3. 如果你有固定 IP，限制 SSH 只接受特定來源
+# （在 /etc/hosts.allow 中設定，或直接用 iptables）
+# 更安全的做法：改用 GCP IAP Tunnel 或 Tailscale，完全不開 22 port
+
+# 4. 換掉預設的 22 port（降低自動化掃描的噪音）
+Port 2222
+
+# 5. 限制可以使用 SSH 的使用者
+AllowUsers deployuser
+
+# 修改後重啟
+sudo systemctl restart sshd</code></pre>
+
+  <h3>Fail2Ban：自動封鎖可疑 IP</h3>
+
+  <p>
+    Fail2Ban 監控 log 檔案，當某個 IP 在短時間內失敗太多次，自動用 iptables 封鎖它。
+    這是<strong>防止 SSH 暴力破解和 API 濫用的第一道自動化防線</strong>。
+  </p>
+
+  <pre><code class="language-ini"># /etc/fail2ban/jail.local
+
+# 預設設定
+[DEFAULT]
+bantime   = 3600       # 封鎖 1 小時
+findtime  = 600        # 10 分鐘內的失敗計數
+maxretry  = 5          # 失敗 5 次就封鎖
+ignoreip  = 127.0.0.1  # 白名單（你自己的固定 IP 也放這裡）
+
+# SSH 防護
+[sshd]
+enabled   = true
+port      = 2222       # 如果你改了 SSH port
+
+# Nginx API 速率限制防護
+[nginx-api]
+enabled   = true
+filter    = nginx-limit-req
+logpath   = /var/log/nginx/error.log
+maxretry  = 10
+findtime  = 60
+bantime   = 3600
+
+# 重複違規者 — 加倍懲罰
+[recidive]
+enabled   = true
+logpath   = /var/log/fail2ban.log
+bantime   = 86400      # 封鎖 24 小時
+findtime  = 86400
+maxretry  = 3</code></pre>
+
+  <h3>防止提權的核心措施</h3>
+
+  <div class="card">
+    <h3>🛡 提權防禦速查表</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">攻擊向量</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">防禦措施</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">SUID 二進位檔被濫用</td>
+        <td style="padding:0.4rem 0.5rem;"><code>find / -perm -4000 -type f 2>/dev/null</code> — 移除不必要的 SUID</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Sudo 設定不當</td>
+        <td style="padding:0.4rem 0.5rem;">嚴格 sudoers 白名單、移除 NOPASSWD、限制 wheel 群組成員</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Kernel 漏洞</td>
+        <td style="padding:0.4rem 0.5rem;">啟用自動安全性更新（unattended-upgrades）、定期重啟</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Cron job 劫持</td>
+        <td style="padding:0.4rem 0.5rem;">cron 目錄權限鎖定、腳本中使用絕對路徑</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">容器逃逸</td>
+        <td style="padding:0.4rem 0.5rem;">容器以非 root 執行、關閉 privileged mode、使用 seccomp</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">弱檔案權限</td>
+        <td style="padding:0.4rem 0.5rem;"><code>/etc/shadow</code>、SSH key 設為 600、關鍵檔案用 <code>chattr +i</code></td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">未修補的 sudo 漏洞</td>
+        <td style="padding:0.4rem 0.5rem;">保持 sudo 版本最新 — CVE-2025-32463 (CVSS 9.3) 是活躍攻擊目標</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>以非 root 執行你的應用</h3>
+
+  <p>
+    這是最基本也最重要的一步：<strong>永遠不要用 root 跑你的 FastAPI</strong>。
+    使用一般使用者或專門的應用使用者。
+  </p>
+
+  <pre><code class="language-bash"># 建立專用的應用使用者（無 shell、無家目錄）
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin fastapi
+
+# 你的應用目錄權限
+sudo chown -R fastapi:fastapi /opt/myapp
+sudo chmod 750 /opt/myapp
+
+# 用 systemd 以該使用者執行
+# /etc/systemd/system/fastapi.service:
+# [Service]
+# User=fastapi
+# Group=fastapi
+# ...</code></pre>
+
+  <pre><code class="language-dockerfile"># Dockerfile：以非 root 執行
+FROM python:3.12-slim
+
+# 建立非 root 使用者
+RUN groupadd -r fastapi && useradd -r -g fastapi fastapi
+
+WORKDIR /app
+COPY --chown=fastapi:fastapi . .
+
+USER fastapi
+
+CMD ["gunicorn", "main:app", "-c", "gunicorn.conf.py"]</code></pre>
+
+  <h3>防火牆：OS 層的最後防線</h3>
+
+  <pre><code class="language-bash"># UFW（Ubuntu 上最簡單的方式）
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 2222/tcp    # SSH（如果改了 port）
+sudo ufw enable
+
+# iptables（更細粒度控制）
+sudo iptables -A INPUT -i lo -j ACCEPT
+sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 2222 -s 你的固定IP -j ACCEPT  # SSH 只允許你的 IP
+sudo iptables -P INPUT DROP   # 預設拒絕所有其他連入
+
+# 儲存規則（重開機後保留）
+sudo apt install iptables-persistent
+sudo netfilter-persistent save</code></pre>
+
+  <div class="callout warn">
+    <strong>⚠️ 關鍵：先允許 SSH 再設定 DROP！</strong>如果你先設 DROP 再允許 SSH⋯⋯你就把自己鎖在伺服器外面了。
+    務必先在 INPUT chain 中加上 SSH 的 ACCEPT 規則，最後才是 <code>-P INPUT DROP</code>。
+  </div>
+
+  <hr>
+
+  <h2>🔄 第三層：反向代理安全（Nginx）</h2>
+
+  <p>
+    即使你用 fly.io（它有自己的 proxy），通常還是建議在應用前放一層 Nginx（或在 fly.io 上直接依賴其 proxy）。
+    若部署在 GCP VM 上，Nginx 是<strong>必備</strong>。它不只是反向代理，更是你的 Layer 7 防火牆。
+  </p>
+
+  <pre><code class="language-nginx"># /etc/nginx/sites-available/api — 安全配置範本
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+# 對高敏感路徑（登入、註冊）設定更嚴格的 zone
+limit_req_zone $binary_remote_addr zone=login:10m rate=3r/m;
+
+# 用 map 來處理真實客戶端 IP（如果你前面還有 CDN/Proxy）
+map $http_x_forwarded_for $client_real_ip {
+    default $remote_addr;
+    "~*(?P<ip>[^,]+)" $ip;
+}
+
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+
+    # 強制 HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.yourdomain.com;
+
+    # ── TLS 設定 ──
+    ssl_certificate     /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # ── 隱藏伺服器資訊 ──
+    server_tokens off;
+    proxy_hide_header X-Powered-By;
+    more_clear_headers Server;
+
+    # ── 請求大小限制（防止 oversized payload 攻擊）──
+    client_max_body_size 10m;
+    client_body_buffer_size 128k;
+
+    # ── 連線限制 ──
+    limit_conn conn_per_ip 20;       # 每個 IP 最多 20 個並行連線
+    limit_req zone=api burst=30 nodelay;  # 通配速率限制
+
+    # ── 安全性 headers ──
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    # ── Proxy 到 FastAPI ──
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 防止 slow loris / 慢速攻擊
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_connect_timeout 10s;
+    }
+
+    # 對登入端點更嚴格的速率限制
+    location /api/auth/ {
+        limit_req zone=login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 阻擋對敏感路徑的外部直接存取
+    location ~ ^/(admin|\.env|\.git|config) {
+        return 404;
+    }
+}</code></pre>
+
+  <div class="callout tip">
+    <strong>💡 你需要 <code>nginx-extras</code></strong>才能使用 <code>more_clear_headers</code>：
+    <code>sudo apt install nginx-extras</code>。或是省略那行，只用 <code>server_tokens off</code>。
+  </div>
+
+  <hr>
+
+  <h2>🐍 第四層：FastAPI 應用安全</h2>
+
+  <h3>Security Headers Middleware</h3>
+
+  <pre><code class="language-python"># middleware/security.py
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """為每個 response 加上安全性 headers"""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=()"
+        )
+        # 只有在 HTTPS 的情況下才加 HSTS
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+        return response
+
+
+# main.py
+from middleware.security import SecurityHeadersMiddleware
+
+app.add_middleware(SecurityHeadersMiddleware)</code></pre>
+
+  <h3>TrustedHostMiddleware — 防止 Host Header 攻擊</h3>
+
+  <pre><code class="language-python">from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "api.yourdomain.com",
+        "yourdomain.com",
+        # 開發環境
+        "localhost",
+        "127.0.0.1",
+    ],
+)</code></pre>
+
+  <h3>CORS：生產環境不要用 *</h3>
+
+  <pre><code class="language-python">from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://yourfrontend.com",
+        "https://admin.yourfrontend.com",
+    ],  # ← 明確列出，絕不用 ["*"]
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    expose_headers=["X-Process-Time", "X-RateLimit-Remaining"],
+    max_age=3600,
+)</code></pre>
+
+  <h3>Gunicorn 設定：生產級執行</h3>
+
+  <pre><code class="language-python"># gunicorn.conf.py
+import multiprocessing
+import os
+
+# Worker 數量：CPU 核心數即可（非同步 worker 不需要 2n+1 公式）
+workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count()))
+worker_class = "uvicorn.workers.UvicornWorker"
+bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
+
+# 防止 memory leak：每個 worker 處理 1000 個請求後重啟
+max_requests = 1000
+max_requests_jitter = 100
+
+# Timeout
+timeout = int(os.getenv("GUNICORN_TIMEOUT", "30"))
+graceful_timeout = 30
+keepalive = 5
+
+# 效能
+preload_app = True
+worker_tmp_dir = "/dev/shm"
+
+# Logging
+accesslog = "-"
+errorlog = "-"
+loglevel = os.getenv("LOG_LEVEL", "info")</code></pre>
+
+  <hr>
+
+  <h2>🚦 重點：API 濫用防護 — 速率限制與 IP 封鎖</h2>
+
+  <p>
+    這是你問題的核心：<strong>不需要鑑權的後端，怎麼防止被濫用？</strong>
+    答案是分層的速率限制策略。
+  </p>
+
+  <h3>方案一：slowapi（應用層）</h3>
+
+  <p>
+    slowapi 是 FastAPI 最成熟的速率限制套件，支援 in-memory 和 Redis 兩種後端。
+    它也支援 <strong>multi-tier limits</strong>——同一個端點可以同時有多層限制。
+  </p>
+
+  <pre><code class="language-python"># 安裝：pip install slowapi redis
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import FastAPI, Request
+
+# 真實 IP 提取（處理反向代理的情況）
+def get_real_ip(request: Request) -> str:
+    """優先從 X-Forwarded-For 取得真實客戶端 IP"""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    # fly.io 自訂 header
+    fly_ip = request.headers.get("Fly-Client-IP")
+    if fly_ip:
+        return fly_ip
+    return request.client.host if request.client else "unknown"
+
+# 自訂 key function：API key 優先，fallback 到 IP
+def get_rate_limit_key(request: Request) -> str:
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        return f"apikey:{api_key}"
+    return f"ip:{get_real_ip(request)}"
+
+# Redis backend（多 worker / 多實例必備）
+limiter = Limiter(
+    key_func=get_rate_limit_key,
+    storage_uri="redis://localhost:6379",  # 生產環境用 Redis
+    default_limits=["200/hour", "1000/day"],
+    headers_enabled=True,       # 自動加上 X-RateLimit-* headers
+    in_memory_fallback_enabled=True,  # Redis 掛了也不崩潰
+    strategy="moving-window",   # 滑動視窗（最準確）
+)
+
+app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)</code></pre>
+
+  <pre><code class="language-python"># 不同端點的分層速率限制
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+# 🔓 公開端點 — 無需鑑權，但限制較嚴
+@app.get("/api/public/items")
+@limiter.limit("100/minute")        # 每分鐘 100 次
+@limiter.limit("1000/hour")         # 每小時 1000 次
+async def public_items(request: Request):
+    return {"items": [...]}
+
+# 🔐 登入端點 — 極嚴格，防止暴力破解
+@app.post("/api/auth/login")
+@limiter.limit("3/minute;10/hour;20/day")
+async def login(request: Request):
+    ...
+
+# 📝 註冊端點
+@app.post("/api/auth/register")
+@limiter.limit("2/minute;10/day")  # 防止大量假帳號
+async def register(request: Request):
+    ...
+
+# 🛠 管理端點 — 只有特定 IP 能存取
+@app.get("/api/admin/stats")
+@limiter.limit("30/minute")
+async def admin_stats(request: Request):
+    ...
+
+# 全域 fallback（在上面 default_limits 已設定為 "200/hour"）
+</code></pre>
+
+  <div class="card">
+    <h3>未鑑權 API 的推薦限制值</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">端點類型</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">限制值</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">原因</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">公開讀取 (GET)</td>
+        <td style="padding:0.4rem 0.5rem;">60-100 / minute</td>
+        <td style="padding:0.4rem 0.5rem;">足夠正常使用，防止大量爬取</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">公開寫入 (POST)</td>
+        <td style="padding:0.4rem 0.5rem;">20-30 / minute</td>
+        <td style="padding:0.4rem 0.5rem;">寫入成本高，應更嚴格</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">登入</td>
+        <td style="padding:0.4rem 0.5rem;">3 / minute</td>
+        <td style="padding:0.4rem 0.5rem;">防止憑證暴力猜解</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">註冊</td>
+        <td style="padding:0.4rem 0.5rem;">2 / minute · 10 / day</td>
+        <td style="padding:0.4rem 0.5rem;">防止大量假帳號</td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">全域 fallback</td>
+        <td style="padding:0.4rem 0.5rem;">200 / hour · 1000 / day</td>
+        <td style="padding:0.4rem 0.5rem;">最後一道防線</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>方案二：Nginx 層的速率限制</h3>
+
+  <p>
+    搭配應用層的 slowapi，Nginx 層的 <code>limit_req</code> 可以<strong>在請求到達你的 Python 程式之前就拒絕</strong>，
+    節省伺服器資源。這是對抗大量濫用請求的關鍵。
+  </p>
+
+  <pre><code class="language-nginx"># 在 Nginx 中定義速率限制 zone
+# 10m = 10 MB 的共享記憶體（約可追蹤 16 萬個 IP）
+
+# rate=10r/s → 每秒 10 個請求（平滑速率）
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+# 用 URI 來區分不同端點的 zone（更精準）
+limit_req_zone $binary_remote_addr zone=login:10m rate=2r/m;
+
+server {
+    # ...
+
+    # 應用在特定路徑
+    location /api/auth/login {
+        limit_req zone=login burst=3 nodelay;
+        # burst=3   → 允許瞬間 3 個請求的緩衝
+        # nodelay   → 超過 rate 的請求直接拒絕（不要排隊）
+        proxy_pass http://backend;
+    }
+
+    location /api/ {
+        limit_req zone=api burst=30 nodelay;
+        limit_conn conn_per_ip 20;    # 同時只能 20 個連線
+        proxy_pass http://backend;
+    }
+}
+
+# 當被限制時，Nginx 回傳 503。
+# Fail2Ban 監控這個 503，自動封鎖重複觸發的 IP（見前面 jail.local）</code></pre>
+
+  <h3>方案三：Fail2Ban 動態封鎖</h3>
+
+  <p>
+    這是真正的「鎖 IP」機制。當同一個 IP 在短時間內反覆觸發速率限制，Fail2Ban 直接在 OS 防火牆層封鎖它，
+    <strong>連 Nginx 都不會碰到這個 IP 的後續請求</strong>。
+  </p>
+
+  <pre><code class="language-bash"># 建立自訂 filter：/etc/fail2ban/filter.d/nginx-api-abuse.conf
+# [Definition]
+# failregex = ^&lt;HOST&gt; -.*"(GET|POST).*" (429|403) .*$
+#             ^&lt;HOST&gt; -.*limiting requests.*$
+# ignoreregex =
+
+# Jail 設定追加到 /etc/fail2ban/jail.local：
+# [nginx-api-abuse]
+# enabled  = true
+# filter   = nginx-api-abuse
+# logpath  = /var/log/nginx/access.log
+# maxretry = 15        # 15 次 429/403
+# findtime = 60        # 60 秒內
+# bantime  = 7200      # 封鎖 2 小時
+# action   = iptables-allports[name=API-Abuse]</code></pre>
+
+  <hr>
+
+  <h2>🌊 DDoS 和端口掃描：你到底需要擔心什麼？</h2>
+
+  <h3>DDoS 攻擊的現實</h3>
+
+  <p>
+    <strong>誠實答案：如果你是一台小 VM 或 fly.io 實例，單靠自己的力量擋不住真正的 DDoS。</strong>
+    專業的 DDoS 攻擊流量可以到數十 Gbps——你整台 VM 的網路頻寬可能只有 1-10 Gbps。
+    「被 DDoS」的實際結果通常是<strong>你的雲端帳單爆炸</strong>，而不是你的伺服器撐住。
+  </p>
+
+  <div class="card">
+    <h3>DDoS 三層防禦策略</h3>
+    <ol>
+      <li>
+        <strong>前置 CDN / DDoS 清洗服務</strong>（對抗大流量攻擊的唯一解）<br>
+        Cloudflare（有免費方案）、AWS Shield、GCP Cloud Armor。<br>
+        把你的 DNS 指向 Cloudflare → 它幫你吸收/過濾惡意流量 → 只轉送乾淨流量到你的伺服器。
+      </li>
+      <li>
+        <strong>平台層的速率限制</strong><br>
+        GCP VPC Firewall 可以限制 per-IP 的連線速率。<br>
+        fly.io 的 Anycast 架構可以將流量分散到最近邊緣節點吸收部分衝擊。
+      </li>
+      <li>
+        <strong>應用層的資源保護</strong><br>
+        即使流量到了你的伺服器，Nginx + Fail2Ban + slowapi 確保你的應用不會被單一來源癱瘓。
+      </li>
+    </ol>
+  </div>
+
+  <div class="callout warn">
+    <strong>⚠️ 現實檢驗：</strong>對個人專案或小型服務而言，被真正的 DDoS 攻擊的機率不高。
+    你更可能遇到的是<b>單一 IP 的濫用爬蟲</b>或<b>自動化掃描</b>——這些用 rate limiting 和 fail2ban 就能有效防禦。
+    但如果你跑的是有商業價值的服務，Cloudflare 免費方案是最划算的投資。
+  </div>
+
+  <h3>端口掃描：不用太擔心</h3>
+
+  <p>
+    端口掃描是攻擊者的<strong>第一步</strong>——他們掃你的 IP 看哪些 port 開著，再針對性地攻擊。
+    但它本身不是威脅。你的防禦策略是：
+  </p>
+
+  <ol>
+    <li><strong>只開必要的 port</strong>（80/443），其他全部關閉 — 讓掃描器找不到任何可攻擊的入口</li>
+    <li><strong>不要用常見 port</strong>跑敏感服務（如 SSH 改 2222、DB 永遠不公開）</li>
+    <li><strong>Fail2Ban 會自動封鎖</strong>那些嘗試連到不存在 port 的行為（如果你設了對應的 filter）</li>
+    <li><strong>不需要 port knocking</strong> 這種複雜機制——SSH key 認證 + Fail2Ban 已經夠安全</li>
+  </ol>
+
+  <div class="callout tip">
+    <strong>💡 心態調整：</strong>不要把端口掃描當成「被攻擊了」——把它當成<b>背景噪音</b>。
+    網路上每台公開 IP 的機器，每天都會被自動化掃描數十到數百次。
+    只要你的 port 是關閉的，掃描器就找不到任何東西。
+  </div>
+
+  <hr>
+
+  <h2>📋 完整部署安全清單</h2>
+
+  <div class="summary-box">
+    <h3>☑️ 上線前逐一檢查</h3>
+
+    <h3 style="color:var(--success);">平台層</h3>
+    <ul>
+      <li>☐ 防火牆只開放 80/443（和特定 IP 的 SSH）</li>
+      <li>☐ SSH 不允許密碼登入、不允許 root 登入</li>
+      <li>☐ 若用 GCP VM：VPC Firewall default deny + 只允許必要的 ingress</li>
+      <li>☐ 若用 fly.io：<code>force_https = true</code>、只暴露需要的 port</li>
+      <li>☐ 考慮掛上 Cloudflare（免費方案即可獲得基本 DDoS 防護 + CDN）</li>
+    </ul>
+
+    <h3 style="color:var(--accent);">OS 層</h3>
+    <ul>
+      <li>☐ <code>unattended-upgrades</code> 啟用安全性自動更新</li>
+      <li>☐ Fail2Ban 啟用（SSH + Nginx API 防護）</li>
+      <li>☐ 關閉不必要的服務（cups、avahi、bluetooth...）</li>
+      <li>☐ <code>/tmp</code> 掛載為 noexec、nosuid</li>
+      <li>☐ 應用以非 root 使用者執行</li>
+      <li>☐ 檢查 SUID 二進位檔（移除不必要的）</li>
+    </ul>
+
+    <h3 style="color:var(--warning);">反向代理層</h3>
+    <ul>
+      <li>☐ Nginx <code>server_tokens off</code> + 隱藏版本資訊</li>
+      <li>☐ <code>client_max_body_size</code> 限制請求大小</li>
+      <li>☐ Security Headers（HSTS、X-Frame-Options、CSP、X-Content-Type-Options）</li>
+      <li>☐ <code>limit_req</code> + <code>limit_conn</code> 速率與連線限制</li>
+      <li>☐ 阻擋敏感路徑（<code>/.env</code>、<code>/.git</code>、<code>/admin</code>）的直接存取</li>
+      <li>☐ TLS 1.2+ only、禁用不安全的 cipher</li>
+    </ul>
+
+    <h3 style="color:var(--success);">應用層</h3>
+    <ul>
+      <li>☐ CORS <code>allow_origins</code> 明確指定（<strong>絕不用 *</strong>）</li>
+      <li>☐ TrustedHostMiddleware 限制允許的 hostname</li>
+      <li>☐ Security Headers Middleware</li>
+      <li>☐ slowapi 分層速率限制（public/api/auth 不同限制值）</li>
+      <li>☐ 所有端點有輸入驗證（Pydantic 預設就有，確保你沒手動繞過）</li>
+      <li>☐ Error response 不洩漏 stack trace（<code>debug=False</code>）</li>
+      <li>☐ Gunicorn + Uvicorn worker、非 root 執行</li>
+      <li>☐ Health check endpoint（<code>/health</code>）</li>
+    </ul>
+
+    <h3 style="color:var(--danger);">監控</h3>
+    <ul>
+      <li>☐ 日誌寫到檔案（或 stdout，由 systemd/journald 收集）</li>
+      <li>☐ Fail2Ban log 定期檢查</li>
+      <li>☐ 429 / 403 / 5xx 錯誤率監控（至少設定告警）</li>
+      <li>☐ 磁碟空間和 CPU 使用率的基本監控</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <h2>🔰 練習</h2>
+
+  <div class="quiz" id="quiz11">
+
+    <div class="quiz-question">
+      <p>Q1. 部署 FastAPI 到 GCP VM，SSH 安全設定哪個是<strong>錯誤</strong>的？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q1" value="0"> 禁用 root 登入（PermitRootLogin no）</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="1"> 禁用密碼登入，只用 SSH Key</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="2"> 把 SSH port 22 對 0.0.0.0/0
+          開放，方便隨時隨地連線</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="3"> 設定 Fail2Ban 監控 SSH 登入失敗並自動封鎖</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q1"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q2. 你的 API 沒有鑑權機制，如何防止同一個 IP 過度頻繁訪問？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q2" value="0"> 在每個端點手動檢查 IP 並計數</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="1"> 使用 slowapi + Nginx limit_req + Fail2Ban
+          三層速率限制，對不同端點設定不同限制值</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="2"> 把 API 改為需要 API Key 就好了</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="3"> 直接 ban 掉所有非台灣的 IP</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q2"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q3. 關於 DDoS 攻擊，以下哪個說法最正確？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q3" value="0"> 只要把伺服器防火牆設定好，就能擋住所有 DDoS 攻擊</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="1"> DDoS 只是讓伺服器變慢，不會有其他損失</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="2"> 單一台 VM 擋不住大流量 DDoS，需要前置 CDN/DDoS 清洗服務（如
+          Cloudflare）；小型服務更常遇到的是單一 IP 濫用而非真正的 DDoS</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="3"> DDoS 只發生在大型企業，個人專案不用擔心</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q3"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q4. 防止 Linux 伺服器特權提升的最有效措施是？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q4" value="0"> 把密碼設得很長</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="1"> 定期重啟伺服器</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="2"> 組合拳：保持核心套件更新 + 以非 root 執行應用 + 移除不必要的 SUID +
+          啟用 SELinux/AppArmor + 審計 sudo 使用</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="3"> 安裝防毒軟體</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q4"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q5. 在 FastAPI 中，<code>TrustedHostMiddleware</code> 的作用是什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q5" value="0"> 限制哪些 IP 可以連到伺服器</label>
+        <label class="quiz-option"><input type="radio" name="q5" value="1"> 防止 Host Header 攻擊——確保請求中的 Host header
+          是你預期的域名，而非攻擊者偽造的</label>
+        <label class="quiz-option"><input type="radio" name="q5" value="2"> 自動為信任的 host 加上 HTTPS</label>
+        <label class="quiz-option"><input type="radio" name="q5" value="3"> 驗證 JWT token 中的 iss (issuer) 欄位</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q5"></div>
+    </div>
+
+    <button id="quiz11-submit" style="
+    margin-top: 1rem; padding: 0.6rem 1.5rem;
+    background: var(--accent); color: #0f1117; border: none;
+    border-radius: 6px; font-size: 0.95rem; cursor: pointer;
+    font-weight: 600;
+  ">檢查答案</button>
+  </div>
+
+  <div class="summary-box">
+    <h3>📋 本課重點摘要</h3>
+    <ol>
+      <li><strong>縱深防禦</strong>：平台防火牆 → OS 防火牆 → 反向代理 → 應用層，沒有一層是完美的，疊加才安全。</li>
+      <li><strong>防提權</strong>：SSH key only + 非 root 執行 + 移除 SUID + 定期安全性更新 + SELinux/AppArmor + sudo 審計。</li>
+      <li><strong>速率限制三層</strong>：Nginx <code>limit_req</code>（擋在到達應用之前）→ slowapi（應用層精細控制）→ Fail2Ban（OS 層永ban）。</li>
+      <li><strong>未鑑權 API 防濫用</strong>：以 IP 為 key 做速率限制，公開讀 60-100/min、寫入 20-30/min、登入 3/min、全域 200/hour。</li>
+      <li><strong>DDoS 現實</strong>：單一 VM 擋不了大流量 DDoS，掛 Cloudflare 是最划算方案。你更可能遇到的是單一 IP 濫用爬蟲。</li>
+      <li><strong>端口掃描</strong>：背景噪音，不是攻擊。只開 80/443，其他全部關閉即可無視。</li>
+      <li><strong>Security Headers</strong>：成本最低、效果最好的安全措施之一——HSTS、X-Frame-Options、CSP、X-Content-Type-Options。</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3>🎤 面試回答模板：「你部署後端時會做哪些安全措施？」</h3>
+    <p>
+      <em>「我採用縱深防禦策略。首先是平台層——GCP 上用 VPC Firewall 預設 deny all、
+        只開 80/443；fly.io 上強制 HTTPS 且只暴露需要的 port。
+        OS 層方面，SSH 禁用密碼和 root 登入、開 Fail2Ban 自動封鎖可疑行為、
+        應用以非 root 使用者執行，並啟用自動安全性更新。
+        反向代理層，Nginx 設定 security headers（HSTS、CSP、X-Frame-Options）、
+        limit_req 和 limit_conn 做第一道速率控制。
+        應用層，CORS 明確指定允許的 origin、用 slowapi 做分層速率限制
+        （公開端點 100/min、登入 3/min）、所有輸入用 Pydantic 驗證。
+        如果是對外服務，我還會在 DNS 前面掛 Cloudflare 做 DDoS 防護和 CDN 加速。」</em>
+    </p>
+  </div>
+
+  <h2>📚 延伸閱讀</h2>
+  <ul>
+    <li><a href="https://fastapi.tiangolo.com/advanced/security/" target="_blank">FastAPI: Advanced Security</a> —
+      官方進階安全指南</li>
+    <li><a href="https://github.com/laurents/slowapi" target="_blank">slowapi GitHub</a> — FastAPI 速率限制的標準方案，文件完整</li>
+    <li><a href="https://www.fail2ban.org/" target="_blank">Fail2Ban 官方文件</a> — 自動化入侵防禦的必備工具</li>
+    <li><a href="https://nginx.org/en/docs/http/ngx_http_limit_req_module.html" target="_blank">Nginx: limit_req
+        模組文件</a> — 反向代理層速率限制的權威參考</li>
+    <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html" target="_blank">OWASP
+        REST Security Cheat Sheet</a> — REST API 安全的完整速查表</li>
+    <li><a href="https://cloud.google.com/vpc/docs/firewalls" target="_blank">GCP VPC Firewall 文件</a> — 雲端防火牆設定權威參考</li>
+    <li><a href="https://fly.io/docs/networking/services/" target="_blank">fly.io Networking & Services</a> — 了解 fly.io
+      的代理架構和安全機制</li>
+    <li><a href="https://ss64.com/bash/ss.html" target="_blank">Linux <code>ss</code> 指令</a> — 用來檢查伺服器上哪些 port 在監聽</li>
+    <li><a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu"
+        target="_blank">UFW 防火牆教學 (DigitalOcean)</a> — 新手友好的 UFW 設定指南</li>
+  </ul>
+
+  <div class="callout">
+    <strong>🎓 附加課程完成！</strong>這堂課涵蓋了將 FastAPI 部署到生產環境時需要考慮的所有安全層面。
+    核心訊息：<strong>不要只依賴一層防禦</strong>——多層疊加、互相備援，才是真正的安全姿勢。
+    接下來你可以：<br>
+    • 回到任何一堂課複習<br>
+    • 問我關於特定平台（fly.io / GCP / AWS）的深入配置<br>
+    • 讓我和你一起走一遍你的實際部署架構<br>
+    • 繼續學習其他主題
+  </div>
+
+  <nav class="footer-nav">
+    <a href="0010-system-design-interview.html">← 上一課：系統設計面試</a>
+    <a href="../reference/production-security-checklist.html">📄 參考文件：部署安全速查表 →</a>
+  </nav>
+
+  <script>
+    const ANSWERS = { q1: 2, q2: 1, q3: 2, q4: 2, q5: 1 };
+    const FEEDBACK = {
+      q1: {
+        correct: '✅ 正確！把 SSH 對 0.0.0.0/0 開放是最危險的做法。應該限制特定 IP、或使用 IAP Tunnel/Tailscale。',
+        wrong: '❌ 把 SSH port 22 對全世界開放是危險的。正確做法是用固定 IP 白名單，或用 IAP Tunnel / Tailscale 這類零信任方案。'
+      },
+      q2: {
+        correct: '✅ 正確！三層速率限制是最有效的方案：Nginx 擋在應用之前、slowapi 做精細控制、Fail2Ban 自動永ban。對不同端點設定不同閾值也很重要。',
+        wrong: '❌ 多層速率限制是最佳解。Nginx limit_req（擋在應用前）+ slowapi（精細控制）+ Fail2Ban（自動封鎖），才是完整的防線。手動計數不可靠，ban 掉整個地區也不實際。'
+      },
+      q3: {
+        correct: '✅ 正確！單一 VM 的頻寬擋不住真正的 DDoS。Cloudflare 免費方案是最划算的防護。小型服務更常見的威脅是單一 IP 的濫用爬蟲。',
+        wrong: '❌ 單一台 VM 的網路頻寬有限（通常 1-10 Gbps），真正的 DDoS 可以到數十甚至數百 Gbps。需要 CDN/DDoS 清洗服務才能吸收。'
+      },
+      q4: {
+        correct: '✅ 正確！防提權沒有單一解法，是組合拳：更新 + 最小權限 + 移除非必要 SUID + MAC（SELinux/AppArmor）+ 審計。',
+        wrong: '❌ 防提權需要多層措施。保持更新是必要的但不夠——以非 root 執行、移除 SUID、啟用 SELinux/AppArmor、審計 sudo 使用，都是同等重要的防線。'
+      },
+      q5: {
+        correct: '✅ 正確！TrustedHostMiddleware 檢查請求的 Host header，確保它在你白名單中。攻擊者可以偽造 Host header 來觸發 password reset 郵件發到錯誤域名等攻擊。',
+        wrong: '❌ TrustedHostMiddleware 是防止 Host Header 攻擊。攻擊者可以偽造 Host header 來進行 cache poisoning 或密碼重設劫持。它不處理 IP 過濾或 JWT 驗證。'
+      },
+    };
+
+    document.getElementById('quiz11-submit').addEventListener('click', () => {
+      let score = 0;
+      for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+        const selected = document.querySelector(`input[name="${q}"]:checked`);
+        const fb = document.getElementById(`fb-${q}`);
+        const options = document.querySelectorAll(`input[name="${q}"]`);
+        options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+        if (!selected) {
+          fb.innerHTML = '⚠️ 請選擇一個答案。';
+          fb.className = 'quiz-feedback wrong show';
+          continue;
+        }
+        const chosen = parseInt(selected.value);
+        if (chosen === correctIdx) {
+          score++;
+          selected.parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].correct;
+          fb.className = 'quiz-feedback correct show';
+        } else {
+          selected.parentElement.classList.add('wrong');
+          options[correctIdx].parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].wrong;
+          fb.className = 'quiz-feedback wrong show';
+        }
+        options.forEach(opt => { opt.disabled = true; });
+      }
+      const total = Object.keys(ANSWERS).length;
+      const btn = document.getElementById('quiz11-submit');
+      if (score === total) {
+        btn.textContent = `🎉 全對！(${score}/${total})`;
+        btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+      } else {
+        btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+        btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+      }
+      btn.disabled = true;
+    });
+  </script>
+
+  <script>hljs.highlightAll();</script>
+
+  <nav class="lesson-nav">
+    <a href="../../index.html">← 回到課程索引</a>
+  </nav>
+</body>
+
+</html>

@@ -1,84 +1,117 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lesson 0007：資料庫設計 — 索引、正規化、N+1、連線池</title>
-<link rel="stylesheet" href="../assets/style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0007：資料庫設計 — 索引、正規化、N+1、連線池</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+      }
+    });
+  </script>
 </head>
+
 <body>
 
-<h1>🗄 資料庫設計 — 索引、正規化、N+1、連線池</h1>
+  <h1>🗄 資料庫設計 — 索引、正規化、N+1、連線池</h1>
 
-<div class="lesson-meta">
-  <span>Lesson 0007</span>
-  <span>·</span>
-  <span>⏱ ~25 min</span>
-  <span>·</span>
-  <span class="badge">database</span>
-  <span>·</span>
-  <span>← <a href="0006-web-security-owasp.html">Lesson 0006</a></span>
-</div>
+  <div class="lesson-meta">
+    <span>Lesson 0007</span>
+    <span>·</span>
+    <span>⏱ ~25 min</span>
+    <span>·</span>
+    <span class="badge">database</span>
+    <span>·</span>
+    <span>← <a href="0006-web-security-owasp.html">Lesson 0006</a></span>
+  </div>
 
-<h2>你用 Firebase 存資料，然後呢？</h2>
+  <h2>你用 Firebase 存資料，然後呢？</h2>
 
-<p>
-  你會用 Firebase CRUD，這很棒。但面試官會問的問題通常是這些：
-  「這個查詢為什麼慢？」「你有沒有用索引？」「N+1 問題怎麼解？」
-  本課用<strong>關聯式資料庫（PostgreSQL/MySQL）</strong>的視角補足你的知識盲區，
-  並指出哪些概念 Firestore 已經幫你處理了、哪些還沒有。
-</p>
+  <p>
+    你會用 Firebase CRUD，這很棒。但面試官會問的問題通常是這些：
+    「這個查詢為什麼慢？」「你有沒有用索引？」「N+1 問題怎麼解？」
+    本課用<strong>關聯式資料庫（PostgreSQL/MySQL）</strong>的視角補足你的知識盲區，
+    並指出哪些概念 Firestore 已經幫你處理了、哪些還沒有。
+  </p>
 
-<div class="callout tip">
-  <strong>🎯 本課目標：</strong>能解釋索引原理、避開 N+1 問題、設定連線池，
-  並理解關聯式 vs NoSQL 的選擇邏輯。
-</div>
+  <div class="callout tip">
+    <strong>🎯 本課目標：</strong>能解釋索引原理、避開 N+1 問題、設定連線池，
+    並理解關聯式 vs NoSQL 的選擇邏輯。
+  </div>
 
-<h2>第一步：關聯式 vs NoSQL — 你已經在用 NoSQL 了</h2>
+  <h2>第一步：關聯式 vs NoSQL — 你已經在用 NoSQL 了</h2>
 
-<div class="card">
-  <h3>Firebase Firestore 幫你處理了什麼？</h3>
-  <p>Firestore 是文檔型 NoSQL。它自動幫你做了：</p>
-  <ul>
-    <li>✅ <strong>水平擴展</strong>：資料自動分片到多台機器</li>
-    <li>✅ <strong>索引</strong>：每個欄位都自動建了單欄索引</li>
-    <li>✅ <strong>連線管理</strong>：SDK 內部處理了連線池</li>
-    <li>✅ <strong>即時更新</strong>：WebSocket 監聽（關聯式 DB 做不到）</li>
-  </ul>
-  <p>但也意味著你<strong>沒學到</strong>這些——因為它們被藏起來了。面試中這些都是考點。</p>
-</div>
+  <div class="card">
+    <h3>Firebase Firestore 幫你處理了什麼？</h3>
+    <p>Firestore 是文檔型 NoSQL。它自動幫你做了：</p>
+    <ul>
+      <li>✅ <strong>水平擴展</strong>：資料自動分片到多台機器</li>
+      <li>✅ <strong>索引</strong>：每個欄位都自動建了單欄索引</li>
+      <li>✅ <strong>連線管理</strong>：SDK 內部處理了連線池</li>
+      <li>✅ <strong>即時更新</strong>：WebSocket 監聽（關聯式 DB 做不到）</li>
+    </ul>
+    <p>但也意味著你<strong>沒學到</strong>這些——因為它們被藏起來了。面試中這些都是考點。</p>
+  </div>
 
-<div class="diagram">
-<pre><code class="language-plaintext">┌── 關聯式（PostgreSQL / MySQL）──┐  ┌── NoSQL（Firestore / MongoDB）─┐
-│                                 │  │                                │
-│  資料結構：Table（表格）         │  │  資料結構：Collection（集合）    │
-│  關聯方式：JOIN + Foreign Key   │  │  關聯方式：巢狀文件 or 手動查詢  │
-│  查詢語言：SQL                  │  │  查詢語言：SDK API              │
-│  擴展方式：垂直（加 RAM/CPU）    │  │  擴展方式：水平（加機器）         │
-│  Schema：嚴格（migration）      │  │  Schema：彈性（無 schema）       │
-│  ACID：完整支援                 │  │  ACID：有限（Firestore 支援部分）│
-│                                 │  │                                │
-│  適合：                         │  │  適合：                         │
-│  • 資料間有複雜關聯              │  │  • 文件/樹狀結構               │
-│  • 需要複雜查詢（JOIN, 聚合）    │  │  • 需要即時同步                │
-│  • 金融/訂單（需要強一致性）      │  │  • 快速開發 MVP                │
-└─────────────────────────────────┘  └────────────────────────────────┘</code></pre>
-</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0;">
+    <div class="card" style="margin: 0;">
+      <h3
+        style="color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.8rem;">
+        📊 關聯式資料庫 (PostgreSQL / MySQL)</h3>
+      <ul style="list-style: none; padding-left: 0;">
+        <li style="margin: 0.5rem 0;">📦 <strong>資料結構</strong>：Table (表格)</li>
+        <li style="margin: 0.5rem 0;">🔗 <strong>關聯方式</strong>：JOIN + Foreign Key (外鍵)</li>
+        <li style="margin: 0.5rem 0;">💬 <strong>查詢語言</strong>：標準 SQL 語法</li>
+        <li style="margin: 0.5rem 0;">⚡ <strong>擴展方式</strong>：垂直擴展 (增加單機 RAM/CPU)</li>
+        <li style="margin: 0.5rem 0;">📋 <strong>Schema</strong>：嚴格限制 (需要 Migration)</li>
+        <li style="margin: 0.5rem 0;">🔐 <strong>ACID 事務</strong>：完整嚴格支援</li>
+        <li style="margin: 0.5rem 0; padding-top: 0.5rem; border-top: 1px solid var(--border); color: var(--text-dim);">
+          🎯 <strong>適合場景</strong>：資料間關係複雜、需要複雜 JOIN 查詢與資料高度一致的系統（如金融、交易系統）。
+        </li>
+      </ul>
+    </div>
 
-<div class="callout">
-  <strong>💡 面試金句：</strong>「我們用 Firestore 是因為初期需要快速開發和即時同步功能。
-  但隨著業務成長，某些需要複雜查詢和強一致性的模組（如訂單系統），
-  我們正在評估遷移到 PostgreSQL。」<br>
-  → 這表示你理解兩種 DB 的取捨，不是只會用 Firebase。
-</div>
+    <div class="card" style="margin: 0; border-color: var(--accent-dim);">
+      <h3
+        style="color: var(--accent); border-bottom: 2px solid var(--accent-dim); padding-bottom: 0.5rem; margin-bottom: 0.8rem;">
+        ⚡ NoSQL 資料庫 (Firestore / MongoDB)</h3>
+      <ul style="list-style: none; padding-left: 0;">
+        <li style="margin: 0.5rem 0;">📦 <strong>資料結構</strong>：Collection / Document (集合文件)</li>
+        <li style="margin: 0.5rem 0;">🔗 <strong>關聯方式</strong>：巢狀文件嵌入 (Denormalize) 或手動查詢</li>
+        <li style="margin: 0.5rem 0;">💬 <strong>查詢語言</strong>：各資料庫專屬的 SDK / API</li>
+        <li style="margin: 0.5rem 0;">⚡ <strong>擴展方式</strong>：水平擴展 (增加多台機器做 Sharding)</li>
+        <li style="margin: 0.5rem 0;">📋 <strong>Schema</strong>：動態彈性 (Schemaless)</li>
+        <li style="margin: 0.5rem 0;">🔐 <strong>ACID 事務</strong>：有限支援（依不同 NoSQL 特性而異）</li>
+        <li
+          style="margin: 0.5rem 0; padding-top: 0.5rem; border-top: 1px solid var(--accent-dim); color: var(--text-dim);">
+          🎯 <strong>適合場景</strong>：樹狀或大文檔型資料結構、需要 WebSocket 即時同步、高併發讀寫、或是快速迭代開發 MVP。
+        </li>
+      </ul>
+    </div>
+  </div>
 
-<h2>第二步：索引 — 為什麼查詢突然變慢？</h2>
+  <div class="callout">
+    <strong>💡 面試金句：</strong>「我們用 Firestore 是因為初期需要快速開發和即時同步功能。
+    但隨著業務成長，某些需要複雜查詢和強一致性的模組（如訂單系統），
+    我們正在評估遷移到 PostgreSQL。」<br>
+    → 這表示你理解兩種 DB 的取捨，不是只會用 Firebase。
+  </div>
 
-<h3>沒有索引時：全表掃描</h3>
+  <h2>第二步：索引 — 為什麼查詢突然變慢？</h2>
 
-<pre><code class="language-sql">-- 100 萬筆資料的 users 表
+  <h3>沒有索引時：全表掃描</h3>
+
+  <pre><code class="language-sql">-- 100 萬筆資料的 users 表
 SELECT * FROM users WHERE email = 'alice@example.com';
 -- PostgreSQL 要從頭到尾掃描 100 萬行 → 300ms
 
@@ -86,68 +119,101 @@ SELECT * FROM users WHERE email = 'alice@example.com';
 CREATE INDEX idx_users_email ON users(email);
 -- PostgreSQL 用 B-tree 直接跳到目標 → 0.1ms</code></pre>
 
-<div class="diagram">
-<pre><code class="language-plaintext">┌── B-tree 索引結構（簡化）───────────────────────────┐
-│                                                       │
-│                    [M]                     ← root node │
-│                   /   \                               │
-│              [D,G]     [Q,T]              ← internal  │
-│             /  |  \    /  |  \                        │
-│          [A-C][E-F][H-L][N-P][R-S][U-Z]   ← leaves   │
-│                                                       │
-│  查詢 "F" 的路徑：root → [D,G] → [E-F] → "F" ✓        │
-│  只走了 3 步，不是 26 步                               │
-│  複雜度：O(log n) vs 全表掃描 O(n)                    │
-└──────────────────────────────────────────────────────┘</code></pre>
-</div>
+  <div class="diagram">
+    <div class="mermaid">
+      flowchart TD
+      Root["Root Node<br />[M]"]
 
-<h3>常見索引類型</h3>
+      I1["Internal Node<br />[D, G]"]
+      I2["Internal Node<br />[Q, T]"]
 
-<div class="card">
-  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <th style="text-align:left; padding:0.4rem 0.5rem;">索引類型</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">用途</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">範例</th>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>B-tree（預設）</strong></td>
-      <td style="padding:0.4rem 0.5rem;">等於、大於小於、範圍查詢、排序</td>
-      <td style="padding:0.4rem 0.5rem;"><code>WHERE email = ?</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>複合索引</strong></td>
-      <td style="padding:0.4rem 0.5rem;">多個欄位一起查詢</td>
-      <td style="padding:0.4rem 0.5rem;"><code>WHERE user_id=1 AND status='active'</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>Unique 索引</strong></td>
-      <td style="padding:0.4rem 0.5rem;">保證欄位值唯一（email、username）</td>
-      <td style="padding:0.4rem 0.5rem;"><code>UNIQUE(email)</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>全文索引</strong></td>
-      <td style="padding:0.4rem 0.5rem;">模糊搜尋、關鍵字搜尋</td>
-      <td style="padding:0.4rem 0.5rem;"><code>WHERE content LIKE '%keyword%'</code></td>
-    </tr>
-    <tr>
-      <td style="padding:0.4rem 0.5rem;"><strong>Partial 索引</strong></td>
-      <td style="padding:0.4rem 0.5rem;">只對符合條件的 row 建索引</td>
-      <td style="padding:0.4rem 0.5rem;"><code>WHERE deleted_at IS NULL</code></td>
-    </tr>
-  </table>
-</div>
+      L1["Leaf Node<br />[A - C]"]
+      L2["Leaf Node<br />[E - F]"]
+      L3["Leaf Node<br />[H - L]"]
+      L4["Leaf Node<br />[N - P]"]
+      L5["Leaf Node<br />[R - S]"]
+      L6["Leaf Node<br />[U - Z]"]
 
-<div class="callout warn">
-  <strong>⚠️ 索引不是免費的：</strong>每個索引都會拖慢寫入（INSERT/UPDATE/DELETE）速度，
-  並佔用磁碟空間。不要「每欄都加」，而是<strong>對查詢中 WHERE、JOIN、ORDER BY 的欄位加索引</strong>。
-</div>
+      Root -->|A-L| I1
+      Root -->|N-Z| I2
 
-<h2>第三步：N+1 問題 — 後端面試必考</h2>
+      I1 -->|A-C| L1
+      I1 -->|E-F| L2
+      I1 -->|H-L| L3
 
-<p>這可能是 ORM 使用者最容易踩的效能陷阱。</p>
+      I2 -->|N-P| L4
+      I2 -->|R-S| L5
+      I2 -->|U-Z| L6
 
-<pre><code class="language-python"># 🚨 N+1 問題：1 次查詢拿到 100 個 user，
+      linkStyle 0 stroke:#6c8cff,stroke-width:3px;
+      linkStyle 3 stroke:#4ade80,stroke-width:3px;
+
+      style Root fill:#1a1d2b,stroke:#3d4f8a,color:#e1e1e6
+      style I1 fill:#1a1d2b,stroke:#6c8cff,color:#e1e1e6
+      style I2 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L1 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L2 fill:#1a1d2b,stroke:#4ade80,color:#e1e1e6,stroke-width:2px
+      style L3 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L4 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L5 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L6 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+    </div>
+    <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-dim);">
+      <strong>🔍 尋找 "F" 的路徑（藍綠色高亮）：</strong><br />
+      ① 從 <strong>Root [M]</strong> 出發，得知 "F" 比 "M" 小，往左側分支出發。<br />
+      ② 到達 <strong>Internal Node [D, G]</strong>，比對發現 "F" 介於 "D" 與 "G" 之間，往中間分支出發。<br />
+      ③ 順利抵達 <strong>Leaf Node [E - F]</strong> 找到目標 "F"。<br />
+      💡 <strong>總步數</strong>：僅需 3 步（比全表掃描搜尋字母的複雜度大為縮短）。複雜度：<strong>O(log n)</strong> vs 全表掃描 <strong>O(n)</strong>。
+    </div>
+  </div>
+
+  <h3>常見索引類型</h3>
+
+  <div class="card">
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">索引類型</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">用途</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">範例</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>B-tree（預設）</strong></td>
+        <td style="padding:0.4rem 0.5rem;">等於、大於小於、範圍查詢、排序</td>
+        <td style="padding:0.4rem 0.5rem;"><code>WHERE email = ?</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>複合索引</strong></td>
+        <td style="padding:0.4rem 0.5rem;">多個欄位一起查詢</td>
+        <td style="padding:0.4rem 0.5rem;"><code>WHERE user_id=1 AND status='active'</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>Unique 索引</strong></td>
+        <td style="padding:0.4rem 0.5rem;">保證欄位值唯一（email、username）</td>
+        <td style="padding:0.4rem 0.5rem;"><code>UNIQUE(email)</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>全文索引</strong></td>
+        <td style="padding:0.4rem 0.5rem;">模糊搜尋、關鍵字搜尋</td>
+        <td style="padding:0.4rem 0.5rem;"><code>WHERE content LIKE '%keyword%'</code></td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;"><strong>Partial 索引</strong></td>
+        <td style="padding:0.4rem 0.5rem;">只對符合條件的 row 建索引</td>
+        <td style="padding:0.4rem 0.5rem;"><code>WHERE deleted_at IS NULL</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>⚠️ 索引不是免費的：</strong>每個索引都會拖慢寫入（INSERT/UPDATE/DELETE）速度，
+    並佔用磁碟空間。不要「每欄都加」，而是<strong>對查詢中 WHERE、JOIN、ORDER BY 的欄位加索引</strong>。
+  </div>
+
+  <h2>第三步：N+1 問題 — 後端面試必考</h2>
+
+  <p>這可能是 ORM 使用者最容易踩的效能陷阱。</p>
+
+  <pre><code class="language-python"># 🚨 N+1 問題：1 次查詢拿到 100 個 user，
 #        然後對每個 user 再發 1 次查詢拿 orders
 #        總共 1 + 100 = 101 次查詢！
 
@@ -179,35 +245,72 @@ for order in all_orders:
     orders_by_user.setdefault(order.user_id, []).append(order)
 # 總查詢次數：2</code></pre>
 
-<div class="callout">
-  <strong>💡 Firestore 使用者的注意事項：</strong>Firestore 的資料是巢狀文件（document → subcollection），
-  讀取 subcollection 是<strong>獨立的查詢</strong>。如果你遍歷 100 個 user document，
-  然後對每個 user 去讀 subcollection，這就是 Firestore 版的 N+1！
-  解法也是一樣：用 <code>collectionGroup</code> 一次查詢，或重新設計資料結構來避免。
-</div>
+  <div class="callout">
+    <strong>💡 Firestore 使用者的注意事項：</strong>Firestore 的資料是巢狀文件（document → subcollection），
+    讀取 subcollection 是<strong>獨立的查詢</strong>。如果你遍歷 100 個 user document，
+    然後對每個 user 去讀 subcollection，這就是 Firestore 版的 N+1！
+    解法也是一樣：用 <code>collectionGroup</code> 一次查詢，或重新設計資料結構來避免。
+  </div>
 
-<h2>第四步：連線池（Connection Pool）</h2>
+  <h2>第四步：連線池（Connection Pool）</h2>
 
-<p>資料庫連線很貴——建立 TCP、TLS、認證。連線池就是<strong>預先建立一批連線，重複使用</strong>。</p>
+  <p>資料庫連線很貴——建立 TCP、TLS、認證。連線池就是<strong>預先建立一批連線，重複使用</strong>。</p>
 
-<div class="diagram">
-<pre><code class="language-plaintext">┌── 沒有連線池 ──────────────┐  ┌── 有連線池 ───────────────┐
-│                            │  │                            │
-│  request 1: 建立連線(50ms) │  │  request 1: 拿池中連線(0ms)│
-│             查詢(5ms)      │  │             查詢(5ms)      │
-│             關閉(10ms)     │  │             歸還連線(0ms)   │
-│             ── 65ms       │  │             ── 5ms        │
-│                            │  │                            │
-│  request 2: 建立連線(50ms) │  │  request 2: 拿池中連線(0ms)│
-│             查詢(5ms)      │  │             查詢(5ms)      │
-│             關閉(10ms)     │  │             歸還連線(0ms)   │
-│             ── 65ms       │  │             ── 5ms        │
-│                            │  │                            │
-│  1000 個請求：65 秒         │  │  1000 個請求：5 秒         │
-└────────────────────────────┘  └────────────────────────────┘</code></pre>
-</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0;">
+    <div class="card" style="margin: 0; border-color: var(--danger-bg);">
+      <h3
+        style="color: var(--danger); border-bottom: 2px solid var(--danger-bg); padding-bottom: 0.5rem; margin-bottom: 0.8rem;">
+        ❌ 沒有連線池 (每次重新建立)</h3>
+      <ul style="list-style: none; padding-left: 0; font-size: 0.9rem;">
+        <li style="margin: 0.8rem 0;">
+          <strong>📬 Request 1:</strong><br />
+          • 建立 TCP/TLS 連線 ➔ <span style="color: var(--danger);">50ms</span><br />
+          • 執行 SQL 查詢 ➔ <span style="color: var(--success);">5ms</span><br />
+          • 關閉資料庫連線 ➔ <span style="color: var(--danger);">10ms</span><br />
+          ⏱️ 總耗時：<strong style="color: var(--danger);">65ms</strong>
+        </li>
+        <li style="margin: 0.8rem 0; border-top: 1px dashed var(--border); padding-top: 0.8rem;">
+          <strong>📬 Request 2:</strong><br />
+          • 建立 TCP/TLS 連線 ➔ <span style="color: var(--danger);">50ms</span><br />
+          • 執行 SQL 查詢 ➔ <span style="color: var(--success);">5ms</span><br />
+          • 關閉資料庫連線 ➔ <span style="color: var(--danger);">10ms</span><br />
+          ⏱️ 總耗時：<strong style="color: var(--danger);">65ms</strong>
+        </li>
+        <li style="margin: 0.8rem 0; border-top: 2px solid var(--border); padding-top: 0.8rem; font-size: 1rem;">
+          📊 <strong>1,000 個請求總耗時：</strong><br />
+          ⌛ 累計花費約 <strong style="color: var(--danger);">65 秒</strong> (建立連線成為系統最大瓶頸)
+        </li>
+      </ul>
+    </div>
 
-<pre><code class="language-python"># FastAPI + SQLAlchemy 連線池設定
+    <div class="card" style="margin: 0; border-color: var(--success-bg);">
+      <h3
+        style="color: var(--success); border-bottom: 2px solid var(--success-bg); padding-bottom: 0.5rem; margin-bottom: 0.8rem;">
+        ✅ 有連線池 (重複使用連線)</h3>
+      <ul style="list-style: none; padding-left: 0; font-size: 0.9rem;">
+        <li style="margin: 0.8rem 0;">
+          <strong>📬 Request 1:</strong><br />
+          • 從池中直接租借連線 ➔ <span style="color: var(--success);">0ms</span><br />
+          • 執行 SQL 查詢 ➔ <span style="color: var(--success);">5ms</span><br />
+          • 歸還連線回池中 ➔ <span style="color: var(--success);">0ms</span><br />
+          ⏱️ 總耗時：<strong style="color: var(--success);">5ms</strong>
+        </li>
+        <li style="margin: 0.8rem 0; border-top: 1px dashed var(--border); padding-top: 0.8rem;">
+          <strong>📬 Request 2:</strong><br />
+          • 從池中直接租借連線 ➔ <span style="color: var(--success);">0ms</span><br />
+          • 執行 SQL 查詢 ➔ <span style="color: var(--success);">5ms</span><br />
+          • 歸還連線回池中 ➔ <span style="color: var(--success);">0ms</span><br />
+          ⏱️ 總耗時：<strong style="color: var(--success);">5ms</strong>
+        </li>
+        <li style="margin: 0.8rem 0; border-top: 2px solid var(--border); padding-top: 0.8rem; font-size: 1rem;">
+          📊 <strong>1,000 個請求總耗時：</strong><br />
+          🚀 累計花費僅 <strong style="color: var(--success);">5 秒</strong> (效能提升達 13 倍！)
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <pre><code class="language-python"># FastAPI + SQLAlchemy 連線池設定
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -232,11 +335,11 @@ def get_db():
     finally:
         db.close()  # 歸還連線到池中，不是真的關掉 TCP</code></pre>
 
-<h2>第五步：交易（Transaction）與 ACID</h2>
+  <h2>第五步：交易（Transaction）與 ACID</h2>
 
-<p>這在 Firestore 中稱為 batch write / transaction，在 SQL 中更強大。</p>
+  <p>這在 Firestore 中稱為 batch write / transaction，在 SQL 中更強大。</p>
 
-<pre><code class="language-python"># 轉帳：從 A 扣 100、加到 B
+  <pre><code class="language-python"># 轉帳：從 A 扣 100、加到 B
 # 🚨 沒有交易：如果第二步失敗，錢就消失了！
 
 # ✅ 用交易確保原子性
@@ -246,172 +349,182 @@ with engine.begin() as conn:        # begin() = 開始交易
     # ↑ 任何一步失敗 → 自動 rollback，全部復原
     # ↑ 全部成功 → commit，同時生效</code></pre>
 
-<div class="card">
-  <h3>ACID 一分鐘速記</h3>
-  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;"><strong>A</strong>tomicity</td>
-      <td style="padding:0.3rem 0.5rem;">全部成功或全部失敗</td>
-      <td style="padding:0.3rem 0.5rem;">轉帳不會扣了 A 沒加 B</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;"><strong>C</strong>onsistency</td>
-      <td style="padding:0.3rem 0.5rem;">交易前後資料都符合規則</td>
-      <td style="padding:0.3rem 0.5rem;">balance 永遠 ≥ 0（check constraint）</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;"><strong>I</strong>solation</td>
-      <td style="padding:0.3rem 0.5rem;">併發交易不互相干擾</td>
-      <td style="padding:0.3rem 0.5rem;">兩人同時轉帳不會出錯</td>
-    </tr>
-    <tr>
-      <td style="padding:0.3rem 0.5rem;"><strong>D</strong>urability</td>
-      <td style="padding:0.3rem 0.5rem;">Commit 後的資料不會消失</td>
-      <td style="padding:0.3rem 0.5rem;">停電重開後資料還在</td>
-    </tr>
-  </table>
-</div>
-
-<h2>🔰 練習</h2>
-
-<div class="quiz" id="quiz7">
-
-  <div class="quiz-question">
-    <p>Q1. 為什麼不能每個欄位都加索引？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q1" value="0"> 資料庫有索引數量上限</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="1"> 每個索引都會拖慢寫入（INSERT/UPDATE/DELETE）並佔用磁碟空間，過多索引反而傷害效能</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="2"> 索引只對 SELECT 有效，對其他操作無效</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="3"> 索引會讓查詢結果不正確</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q1"></div>
+  <div class="card">
+    <h3>ACID 一分鐘速記</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;"><strong>A</strong>tomicity</td>
+        <td style="padding:0.3rem 0.5rem;">全部成功或全部失敗</td>
+        <td style="padding:0.3rem 0.5rem;">轉帳不會扣了 A 沒加 B</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;"><strong>C</strong>onsistency</td>
+        <td style="padding:0.3rem 0.5rem;">交易前後資料都符合規則</td>
+        <td style="padding:0.3rem 0.5rem;">balance 永遠 ≥ 0（check constraint）</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;"><strong>I</strong>solation</td>
+        <td style="padding:0.3rem 0.5rem;">併發交易不互相干擾</td>
+        <td style="padding:0.3rem 0.5rem;">兩人同時轉帳不會出錯</td>
+      </tr>
+      <tr>
+        <td style="padding:0.3rem 0.5rem;"><strong>D</strong>urability</td>
+        <td style="padding:0.3rem 0.5rem;">Commit 後的資料不會消失</td>
+        <td style="padding:0.3rem 0.5rem;">停電重開後資料還在</td>
+      </tr>
+    </table>
   </div>
 
-  <div class="quiz-question">
-    <p>Q2. 以下哪個是 N+1 問題的典型描述？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q2" value="0"> 1 個請求呼叫了 N 個不同的 API 端點</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="1"> 先查詢取得 N 筆主資料，然後對每一筆再發 1 次查詢拿關聯資料，總共 N+1 次資料庫查詢</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="2"> 資料庫同時有 N+1 個連線</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="3"> 前端發了 N 次請求，後端回了 N+1 次回應</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q2"></div>
-  </div>
+  <h2>🔰 練習</h2>
 
-  <div class="quiz-question">
-    <p>Q3. 連線池（Connection Pool）解決的核心問題是什麼？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q3" value="0"> 讓資料庫查詢變得更快</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="1"> 避免每次都重新建立 TCP/TLS 連線的高成本，重複使用已建立的連線</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="2"> 將資料分散到多台伺服器</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="3"> 加密資料庫連線</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q3"></div>
-  </div>
+  <div class="quiz" id="quiz7">
 
-  <div class="quiz-question">
-    <p>Q4. 轉帳場景中，Transaction 的 Atomicity（原子性）保證了什麼？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q4" value="0"> 轉帳速度最快</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="1"> 扣款和入帳要麼都成功、要麼都失敗——不會出現只扣了 A 的錢但沒加到 B 的情況</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="2"> 轉帳時其他使用者無法讀取帳戶餘額</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="3"> 轉帳記錄永久保存</label>
+    <div class="quiz-question">
+      <p>Q1. 為什麼不能每個欄位都加索引？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q1" value="0"> 資料庫有索引數量上限</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="1">
+          每個索引都會拖慢寫入（INSERT/UPDATE/DELETE）並佔用磁碟空間，過多索引反而傷害效能</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="2"> 索引只對 SELECT 有效，對其他操作無效</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="3"> 索引會讓查詢結果不正確</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q1"></div>
     </div>
-    <div class="quiz-feedback" id="fb-q4"></div>
-  </div>
 
-  <button id="quiz7-submit" style="
+    <div class="quiz-question">
+      <p>Q2. 以下哪個是 N+1 問題的典型描述？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q2" value="0"> 1 個請求呼叫了 N 個不同的 API 端點</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="1"> 先查詢取得 N 筆主資料，然後對每一筆再發 1 次查詢拿關聯資料，總共 N+1
+          次資料庫查詢</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="2"> 資料庫同時有 N+1 個連線</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="3"> 前端發了 N 次請求，後端回了 N+1 次回應</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q2"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q3. 連線池（Connection Pool）解決的核心問題是什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q3" value="0"> 讓資料庫查詢變得更快</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="1"> 避免每次都重新建立 TCP/TLS 連線的高成本，重複使用已建立的連線</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="2"> 將資料分散到多台伺服器</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="3"> 加密資料庫連線</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q3"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q4. 轉帳場景中，Transaction 的 Atomicity（原子性）保證了什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q4" value="0"> 轉帳速度最快</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="1"> 扣款和入帳要麼都成功、要麼都失敗——不會出現只扣了 A 的錢但沒加到 B
+          的情況</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="2"> 轉帳時其他使用者無法讀取帳戶餘額</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="3"> 轉帳記錄永久保存</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q4"></div>
+    </div>
+
+    <button id="quiz7-submit" style="
     margin-top: 1rem; padding: 0.6rem 1.5rem;
     background: var(--accent); color: #0f1117; border: none;
     border-radius: 6px; font-size: 0.95rem; cursor: pointer;
     font-weight: 600;
   ">檢查答案</button>
-</div>
+  </div>
 
-<div class="summary-box">
-  <h3>📋 本課重點摘要</h3>
-  <ol>
-    <li><strong>關聯式 vs NoSQL</strong>：Firestore 適合快速開發和即時同步；PostgreSQL 適合複雜查詢和強一致性。</li>
-    <li><strong>索引</strong>：B-tree 把查詢從 O(n) 降到 O(log n)。但每次寫入都要更新索引，不要每欄都加。</li>
-    <li><strong>N+1 問題</strong>：1 次查主表 + N 次查關聯 = N+1 次。用 <code>joinedload</code>（eager loading）或批次查詢解決。</li>
-    <li><strong>連線池</strong>：重複使用 DB 連線，避免每次都重新建立 TCP/TLS。SQLAlchemy 內建支援。</li>
-    <li><strong>ACID</strong>：交易保證原子性（全部都做或全部不做）——轉帳不會掉錢。</li>
-  </ol>
-</div>
+  <div class="summary-box">
+    <h3>📋 本課重點摘要</h3>
+    <ol>
+      <li><strong>關聯式 vs NoSQL</strong>：Firestore 適合快速開發和即時同步；PostgreSQL 適合複雜查詢和強一致性。</li>
+      <li><strong>索引</strong>：B-tree 把查詢從 O(n) 降到 O(log n)。但每次寫入都要更新索引，不要每欄都加。</li>
+      <li><strong>N+1 問題</strong>：1 次查主表 + N 次查關聯 = N+1 次。用 <code>joinedload</code>（eager loading）或批次查詢解決。</li>
+      <li><strong>連線池</strong>：重複使用 DB 連線，避免每次都重新建立 TCP/TLS。SQLAlchemy 內建支援。</li>
+      <li><strong>ACID</strong>：交易保證原子性（全部都做或全部不做）——轉帳不會掉錢。</li>
+    </ol>
+  </div>
 
-<div class="card">
-  <h3>🎤 面試回答模板：「你的 API 發現某個端點很慢，怎麼排查？」</h3>
-  <p>
-    <em>「我會從幾個方向排查：第一，看是否有 N+1 問題——用 SQLAlchemy 的 <code>echo=True</code>
-    或資料庫的 slow query log 看查詢數量和時間。如果是 N+1，改用 eager loading。
-    第二，檢查是否缺索引——用 <code>EXPLAIN ANALYZE</code> 看查詢計畫，
-    如果出現 Seq Scan（全表掃描）就表示需要索引。第三，檢查連線池設定——
-    連線池太小會導致請求排隊等連線；太大會浪費資料庫資源。
-    第四，考慮加快取（Redis）來減少重複查詢。」</em>
-  </p>
-</div>
+  <div class="card">
+    <h3>🎤 面試回答模板：「你的 API 發現某個端點很慢，怎麼排查？」</h3>
+    <p>
+      <em>「我會從幾個方向排查：第一，看是否有 N+1 問題——用 SQLAlchemy 的 <code>echo=True</code>
+        或資料庫的 slow query log 看查詢數量和時間。如果是 N+1，改用 eager loading。
+        第二，檢查是否缺索引——用 <code>EXPLAIN ANALYZE</code> 看查詢計畫，
+        如果出現 Seq Scan（全表掃描）就表示需要索引。第三，檢查連線池設定——
+        連線池太小會導致請求排隊等連線；太大會浪費資料庫資源。
+        第四，考慮加快取（Redis）來減少重複查詢。」</em>
+    </p>
+  </div>
 
-<h2>📚 延伸閱讀</h2>
-<ul>
-  <li><a href="https://use-the-index-luke.com/" target="_blank">Use The Index, Luke!</a> — 索引教學的經典網站，圖解 B-tree 運作</li>
-  <li><a href="https://docs.sqlalchemy.org/en/20/core/pooling.html" target="_blank">SQLAlchemy Connection Pooling</a> — 連線池的完整設定說明</li>
-  <li><a href="https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html#joined-eager-loading" target="_blank">SQLAlchemy: Eager Loading</a> — 解決 N+1 的官方文件</li>
-  <li><strong>下一課預告：</strong> <a href="0008-caching-strategies.html">快取策略：Redis 實戰</a></li>
-</ul>
+  <h2>📚 延伸閱讀</h2>
+  <ul>
+    <li><a href="https://use-the-index-luke.com/" target="_blank">Use The Index, Luke!</a> — 索引教學的經典網站，圖解 B-tree 運作</li>
+    <li><a href="https://docs.sqlalchemy.org/en/20/core/pooling.html" target="_blank">SQLAlchemy Connection Pooling</a>
+      — 連線池的完整設定說明</li>
+    <li><a href="https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html#joined-eager-loading"
+        target="_blank">SQLAlchemy: Eager Loading</a> — 解決 N+1 的官方文件</li>
+    <li><strong>下一課預告：</strong> <a href="0008-caching-strategies.html">快取策略：Redis 實戰</a></li>
+  </ul>
 
-<nav class="footer-nav">
-  <a href="0006-web-security-owasp.html">← 上一課：資安基礎</a>
-  <a href="0008-caching-strategies.html">下一課：快取策略 →</a>
-</nav>
+  <nav class="footer-nav">
+    <a href="0006-web-security-owasp.html">← 上一課：資安基礎</a>
+    <a href="0008-caching-strategies.html">下一課：快取策略 →</a>
+  </nav>
 
-<script>
-const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
-const FEEDBACK = {
-  q1: { correct: '✅ 正確！索引不是免費午餐：每次寫入都要更新所有相關索引。索引太多會明顯拖慢 INSERT/UPDATE/DELETE，並吃掉磁碟空間。只對 WHERE、JOIN、ORDER BY 的欄位加索引。', wrong: '❌ 索引的代價是寫入效能和磁碟空間。每個索引在每次 INSERT/UPDATE/DELETE 時都要更新，過多索引會大幅拖慢寫入。' },
-  q2: { correct: '✅ 正確！這是 ORM 使用中最常見的效能陷阱。先查主表拿 N 筆，然後在迴圈中對每筆資料再查關聯表，總共 N+1 次查詢。用 eager loading 或批次查詢解決。', wrong: '❌ N+1 指的是資料庫查詢次數的爆炸：1 次查主表拿到 N 筆資料，然後對每一筆再個別查關聯資料 → 總共 N+1 次。' },
-  q3: { correct: '✅ 正確！連線池的核心價值是「重複使用」——建立資料庫連線的 TCP/TLS handshake 成本很高（50-100ms），預先建立一批連線並重複使用可以省掉這個開銷。', wrong: '❌ 連線池解決的是連線建立的開銷（TCP handshake + TLS + 認證 = 50-100ms）。預先建立連線，request 來時直接拿來用，用完歸還，不重複建立。' },
-  q4: { correct: '✅ 正確！原子性 = all or nothing。在轉帳中，要麼扣款和入帳都成功（commit），要麼都失敗（rollback）。絕不會出現扣了錢但沒入帳的狀態。', wrong: '❌ 原子性（Atomicity）就是「不可分割」——整個交易是一個原子單位，要麼全部生效，要麼全部復原。這保證了轉帳中不會出現「只扣不存」的災難。' }
-};
+  <script>
+    const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
+    const FEEDBACK = {
+      q1: { correct: '✅ 正確！索引不是免費午餐：每次寫入都要更新所有相關索引。索引太多會明顯拖慢 INSERT/UPDATE/DELETE，並吃掉磁碟空間。只對 WHERE、JOIN、ORDER BY 的欄位加索引。', wrong: '❌ 索引的代價是寫入效能和磁碟空間。每個索引在每次 INSERT/UPDATE/DELETE 時都要更新，過多索引會大幅拖慢寫入。' },
+      q2: { correct: '✅ 正確！這是 ORM 使用中最常見的效能陷阱。先查主表拿 N 筆，然後在迴圈中對每筆資料再查關聯表，總共 N+1 次查詢。用 eager loading 或批次查詢解決。', wrong: '❌ N+1 指的是資料庫查詢次數的爆炸：1 次查主表拿到 N 筆資料，然後對每一筆再個別查關聯資料 → 總共 N+1 次。' },
+      q3: { correct: '✅ 正確！連線池的核心價值是「重複使用」——建立資料庫連線的 TCP/TLS handshake 成本很高（50-100ms），預先建立一批連線並重複使用可以省掉這個開銷。', wrong: '❌ 連線池解決的是連線建立的開銷（TCP handshake + TLS + 認證 = 50-100ms）。預先建立連線，request 來時直接拿來用，用完歸還，不重複建立。' },
+      q4: { correct: '✅ 正確！原子性 = all or nothing。在轉帳中，要麼扣款和入帳都成功（commit），要麼都失敗（rollback）。絕不會出現扣了錢但沒入帳的狀態。', wrong: '❌ 原子性（Atomicity）就是「不可分割」——整個交易是一個原子單位，要麼全部生效，要麼全部復原。這保證了轉帳中不會出現「只扣不存」的災難。' }
+    };
 
-document.getElementById('quiz7-submit').addEventListener('click', () => {
-  let score = 0;
-  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
-    const selected = document.querySelector(`input[name="${q}"]:checked`);
-    const fb = document.getElementById(`fb-${q}`);
-    const options = document.querySelectorAll(`input[name="${q}"]`);
-    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
-    if (!selected) {
-      fb.innerHTML = '⚠️ 請選擇一個答案。';
-      fb.className = 'quiz-feedback wrong show';
-      continue;
-    }
-    const chosen = parseInt(selected.value);
-    if (chosen === correctIdx) {
-      score++;
-      selected.parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].correct;
-      fb.className = 'quiz-feedback correct show';
-    } else {
-      selected.parentElement.classList.add('wrong');
-      options[correctIdx].parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].wrong;
-      fb.className = 'quiz-feedback wrong show';
-    }
-    options.forEach(opt => { opt.disabled = true; });
-  }
-  const total = Object.keys(ANSWERS).length;
-  const btn = document.getElementById('quiz7-submit');
-  if (score === total) {
-    btn.textContent = `🎉 全對！(${score}/${total})`;
-    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
-  } else {
-    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
-    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
-  }
-  btn.disabled = true;
-});
-</script>
+    document.getElementById('quiz7-submit').addEventListener('click', () => {
+      let score = 0;
+      for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+        const selected = document.querySelector(`input[name="${q}"]:checked`);
+        const fb = document.getElementById(`fb-${q}`);
+        const options = document.querySelectorAll(`input[name="${q}"]`);
+        options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+        if (!selected) {
+          fb.innerHTML = '⚠️ 請選擇一個答案。';
+          fb.className = 'quiz-feedback wrong show';
+          continue;
+        }
+        const chosen = parseInt(selected.value);
+        if (chosen === correctIdx) {
+          score++;
+          selected.parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].correct;
+          fb.className = 'quiz-feedback correct show';
+        } else {
+          selected.parentElement.classList.add('wrong');
+          options[correctIdx].parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].wrong;
+          fb.className = 'quiz-feedback wrong show';
+        }
+        options.forEach(opt => { opt.disabled = true; });
+      }
+      const total = Object.keys(ANSWERS).length;
+      const btn = document.getElementById('quiz7-submit');
+      if (score === total) {
+        btn.textContent = `🎉 全對！(${score}/${total})`;
+        btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+      } else {
+        btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+        btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+      }
+      btn.disabled = true;
+    });
+  </script>
 
-<script>hljs.highlightAll();</script>
+  <script>hljs.highlightAll();</script>
+
+  <nav class="lesson-nav">
+    <a href="../../index.html">← 回到課程索引</a>
+  </nav>
 </body>
+
 </html>

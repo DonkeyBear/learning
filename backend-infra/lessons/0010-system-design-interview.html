@@ -1,145 +1,170 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lesson 0010：系統設計面試 — 把所學全部串起來</title>
-<link rel="stylesheet" href="../assets/style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0010：系統設計面試 — 把所學全部串起來</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+      }
+    });
+  </script>
 </head>
+
 <body>
 
-<h1>🏗 系統設計面試 — 把所學全部串起來</h1>
+  <h1>🏗 系統設計面試 — 把所學全部串起來</h1>
 
-<div class="lesson-meta">
-  <span>Lesson 0010</span>
-  <span>·</span>
-  <span>⏱ ~30 min</span>
-  <span>·</span>
-  <span class="badge">capstone</span>
-  <span>·</span>
-  <span>← <a href="0009-containerization-docker.html">Lesson 0009</a></span>
-</div>
+  <div class="lesson-meta">
+    <span>Lesson 0010</span>
+    <span>·</span>
+    <span>⏱ ~30 min</span>
+    <span>·</span>
+    <span class="badge">capstone</span>
+    <span>·</span>
+    <span>← <a href="0009-containerization-docker.html">Lesson 0009</a></span>
+  </div>
 
-<h2>為什麼面試要考系統設計？</h2>
+  <h2>為什麼面試要考系統設計？</h2>
 
-<p>
-  初階後端面試考你「會不會寫 code」。中高階面試考你「會不會<strong>想</strong>」——
-  給你一個模糊的需求，你能不能把它拆解成具體的元件，做出合理的取捨，
-  並用前面九堂課學到的知識來支撐你的設計決策。
-</p>
+  <p>
+    初階後端面試考你「會不會寫 code」。中高階面試考你「會不會<strong>想</strong>」——
+    給你一個模糊的需求，你能不能把它拆解成具體的元件，做出合理的取捨，
+    並用前面九堂課學到的知識來支撐你的設計決策。
+  </p>
 
-<div class="callout tip">
-  <strong>🎯 本課目標：</strong>掌握系統設計面試的四步框架，能夠在 45 分鐘內從零設計出一個可擴展的系統，
-  並在每個決策點引用前面學到的概念來支撐你的論點。
-</div>
+  <div class="callout tip">
+    <strong>🎯 本課目標：</strong>掌握系統設計面試的四步框架，能夠在 45 分鐘內從零設計出一個可擴展的系統，
+    並在每個決策點引用前面學到的概念來支撐你的論點。
+  </div>
 
-<h2>第一步：系統設計的四步框架</h2>
+  <h2>第一步：系統設計的四步框架</h2>
 
-<p>面試中最常見的失敗模式是「一上來就畫架構圖」。正確的做法是先釐清需求。</p>
+  <p>面試中最常見的失敗模式是「一上來就畫架構圖」。正確的做法是先釐清需求。</p>
 
-<div class="card">
-  <h3>🔄 四步框架（35-45 分鐘）</h3>
+  <div class="card">
+    <h3>🔄 四步框架（35-45 分鐘）</h3>
 
-  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <th style="text-align:left; padding:0.4rem 0.5rem; width:2rem;">#</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">階段</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem; width:5rem;">時間</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">你要做的事</th>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;">1</td>
-      <td style="padding:0.4rem 0.5rem;"><strong>釐清需求</strong></td>
-      <td style="padding:0.4rem 0.5rem;">5-8 min</td>
-      <td style="padding:0.4rem 0.5rem;">問清楚功能範圍、使用者量、讀寫比、延遲要求</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;">2</td>
-      <td style="padding:0.4rem 0.5rem;"><strong>估算規模</strong></td>
-      <td style="padding:0.4rem 0.5rem;">3-5 min</td>
-      <td style="padding:0.4rem 0.5rem;">算 QPS、儲存量、頻寬——數字驅動設計</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;">3</td>
-      <td style="padding:0.4rem 0.5rem;"><strong>高層設計</strong></td>
-      <td style="padding:0.4rem 0.5rem;">10-15 min</td>
-      <td style="padding:0.4rem 0.5rem;">畫架構圖、定義 API、選資料庫</td>
-    </tr>
-    <tr>
-      <td style="padding:0.4rem 0.5rem;">4</td>
-      <td style="padding:0.4rem 0.5rem;"><strong>深度探討</strong></td>
-      <td style="padding:0.4rem 0.5rem;">10-15 min</td>
-      <td style="padding:0.4rem 0.5rem;">挑 2-3 個瓶頸深入：怎麼擴展、怎麼處理故障</td>
-    </tr>
-  </table>
-</div>
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem; width:2rem;">#</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">階段</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem; width:5rem;">時間</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">你要做的事</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">1</td>
+        <td style="padding:0.4rem 0.5rem;"><strong>釐清需求</strong></td>
+        <td style="padding:0.4rem 0.5rem;">5-8 min</td>
+        <td style="padding:0.4rem 0.5rem;">問清楚功能範圍、使用者量、讀寫比、延遲要求</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">2</td>
+        <td style="padding:0.4rem 0.5rem;"><strong>估算規模</strong></td>
+        <td style="padding:0.4rem 0.5rem;">3-5 min</td>
+        <td style="padding:0.4rem 0.5rem;">算 QPS、儲存量、頻寬——數字驅動設計</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">3</td>
+        <td style="padding:0.4rem 0.5rem;"><strong>高層設計</strong></td>
+        <td style="padding:0.4rem 0.5rem;">10-15 min</td>
+        <td style="padding:0.4rem 0.5rem;">畫架構圖、定義 API、選資料庫</td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">4</td>
+        <td style="padding:0.4rem 0.5rem;"><strong>深度探討</strong></td>
+        <td style="padding:0.4rem 0.5rem;">10-15 min</td>
+        <td style="padding:0.4rem 0.5rem;">挑 2-3 個瓶頸深入：怎麼擴展、怎麼處理故障</td>
+      </tr>
+    </table>
+  </div>
 
-<div class="callout warn">
-  <strong>⚠️ 最常見的錯誤：</strong>跳過需求釐清，直接開始畫圖。這會讓你做出錯誤的假設。
-  面試官想看的是你<strong>問問題的能力</strong>——好的工程師先理解問題，再設計解法。
-</div>
+  <div class="callout warn">
+    <strong>⚠️ 最常見的錯誤：</strong>跳過需求釐清，直接開始畫圖。這會讓你做出錯誤的假設。
+    面試官想看的是你<strong>問問題的能力</strong>——好的工程師先理解問題，再設計解法。
+  </div>
 
-<h2>第二步：實戰演練 — 設計一個縮網址服務</h2>
+  <h2>第二步：實戰演練 — 設計一個縮網址服務</h2>
 
-<p>題目：「設計一個像 bit.ly 的縮網址服務。」這是系統設計面試的經典入門題。</p>
+  <p>題目：「設計一個像 bit.ly 的縮網址服務。」這是系統設計面試的經典入門題。</p>
 
-<h3>階段 1：釐清需求（你要主動問！）</h3>
+  <h3>階段 1：釐清需求（你要主動問！）</h3>
 
-<div class="card">
-  <h3>🙋 你應該問的問題</h3>
-  <ul>
-    <li>「使用者需要登入才能縮網址嗎？還是匿名也可以用？」<br>
+  <div class="card">
+    <h3>🙋 你應該問的問題</h3>
+    <ul>
+      <li>「使用者需要登入才能縮網址嗎？還是匿名也可以用？」<br>
         → <em>面試官：匿名可用，但註冊用戶可以看到自己的縮網址統計</em></li>
-    <li>「生成的短網址有 expiration 嗎？」<br>
+      <li>「生成的短網址有 expiration 嗎？」<br>
         → <em>面試官：預設永遠有效，但付費用戶可以設過期時間</em></li>
-    <li>「大概有多少使用者？每天生成多少短網址？」<br>
+      <li>「大概有多少使用者？每天生成多少短網址？」<br>
         → <em>面試官：每天 1 億次寫入，讀取是寫入的 10 倍（10 億次 redirect）</em></li>
-    <li>「短網址多長？」<br>
+      <li>「短網址多長？」<br>
         → <em>面試官：7 個字元，由 [a-zA-Z0-9] 組成</em></li>
-    <li>「redirect 的延遲要求？」<br>
+      <li>「redirect 的延遲要求？」<br>
         → <em>面試官：要在 10ms 內完成 redirect</em></li>
-  </ul>
-</div>
+    </ul>
+  </div>
 
-<h3>階段 2：估算規模（數字驅動設計）</h3>
+  <h3>階段 2：估算規模（數字驅動設計）</h3>
 
-<div class="diagram">
-<pre><code class="language-plaintext">┌── 規模估算 ──────────────────────────────────────────┐
-│                                                       │
-│  寫入：1 億 / 天 ≈ 1,200 QPS                         │
-│  讀取：10 億 / 天 ≈ 12,000 QPS                       │
-│                                                       │
-│  每筆短網址資料大小：                                  │
-│    short_url:  7 chars ≈ 7 bytes                     │
-│    long_url:   平均 100 bytes                         │
-│    user_id:    8 bytes                                │
-│    created_at: 8 bytes                                │
-│    ─────────                                           │
-│    總計：約 130 bytes / 筆                             │
-│                                                       │
-│  每天新增：1 億筆 × 130 bytes = 13 GB / 天            │
-│  一年：13 GB × 365 ≈ 4.7 TB                          │
-│  五年：約 24 TB                                       │
-│                                                       │
-│  結論：需要分散式儲存，單一 DB 不夠                    │
-│        讀取 12,000 QPS 需要快取層                     │
-│        寫入 1,200 QPS 需要非同步處理                  │
-└──────────────────────────────────────────────────────┘</code></pre>
-</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+    <div class="card"
+      style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--accent); background: var(--card-bg);">
+      <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">📊 QPS 吞吐量</h4>
+      <div style="font-size: 0.9rem; line-height: 1.6;">
+        <p style="margin: 0.3rem 0;"><strong>寫入：</strong>1 億 / 天 ≈ <code style="color: var(--warning);">1,200 QPS</code>
+        </p>
+        <p style="margin: 0.3rem 0;"><strong>讀取：</strong>10 億 / 天 ≈ <code
+            style="color: var(--success);">12,000 QPS</code></p>
+        <p style="margin: 0.3rem 0; font-size: 0.8rem; color: var(--text-dim);">* 讀寫比約為 10 : 1</p>
+      </div>
+    </div>
+    <div class="card"
+      style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--warning); background: var(--card-bg);">
+      <h4 style="margin: 0 0 0.5rem; color: var(--warning); font-size: 1rem;">💾 儲存空間估算</h4>
+      <div style="font-size: 0.9rem; line-height: 1.6;">
+        <p style="margin: 0.3rem 0;"><strong>每筆資料：</strong>約 <code>130 bytes</code></p>
+        <p style="margin: 0.3rem 0;"><strong>每天新增：</strong>13 GB / 天</p>
+        <p style="margin: 0.3rem 0;"><strong>五年容量：</strong>約 <code style="color: var(--danger);">24 TB</code></p>
+        <div
+          style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.5rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
+          short_url (7B) + long_url (100B) + user_id (8B) + created_at (8B)
+        </div>
+      </div>
+    </div>
+    <div class="card"
+      style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--success); background: var(--card-bg);">
+      <h4 style="margin: 0 0 0.5rem; color: var(--success); font-size: 1rem;">💡 核心架構決策</h4>
+      <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-dim);">
+        <p style="margin: 0.3rem 0;"><strong style="color: var(--text);">分散式儲存：</strong>單一 DB 無法負荷 24TB 級區</p>
+        <p style="margin: 0.3rem 0;"><strong style="color: var(--text);">快取快取層：</strong>應對 12,000 QPS 熱點讀取</p>
+        <p style="margin: 0.3rem 0;"><strong style="color: var(--text);">非同步寫入：</strong>避免統計寫入阻塞關鍵路徑</p>
+      </div>
+    </div>
+  </div>
 
-<div class="callout">
-  <strong>🔑 回憶 Lesson 0007-0008：</strong>12,000 QPS 的讀取量，PostgreSQL 撐得住但很勉強。
-  但 10ms 延遲要求 + 讀寫比 10:1 → 這是 Cache-Aside 模式的完美場景（Lesson 0008）！
-  熱門 URL 的快取命中率會非常高。
-</div>
+  <div class="callout">
+    <strong>🔑 回憶 Lesson 0007-0008：</strong>12,000 QPS 的讀取量，PostgreSQL 撐得住但很勉強。
+    但 10ms 延遲要求 + 讀寫比 10:1 → 這是 Cache-Aside 模式的完美場景（Lesson 0008）！
+    熱門 URL 的快取命中率會非常高。
+  </div>
 
-<h3>階段 3：高層設計</h3>
+  <h3>階段 3：高層設計</h3>
 
-<p><strong>API 設計：</strong></p>
+  <p><strong>API 設計：</strong></p>
 
-<pre><code class="language-http"># 建立短網址
+  <pre><code class="language-http"># 建立短網址
 POST /api/shorten
   Body:   { "long_url": "https://...", "custom_alias?": "mylink" }
   Header: Authorization: Bearer &lt;JWT&gt; (optional)
@@ -154,9 +179,9 @@ GET /api/stats/{short_code}
   Header: Authorization: Bearer &lt;JWT&gt;
   → 200  { "clicks": 15234, "created_at": "..." }</code></pre>
 
-<p><strong>短碼生成演算法：</strong></p>
+  <p><strong>短碼生成演算法：</strong></p>
 
-<pre><code class="language-python"># 選項 A：Hash 長網址 → 取前 7 字元（有碰撞風險）
+  <pre><code class="language-python"># 選項 A：Hash 長網址 → 取前 7 字元（有碰撞風險）
 # 選項 B：Base62 編碼自增 ID → 保證不重複（本設計採用）
 # 選項 C：預先生成一批短碼存起來（像航空公司的票號池）
 
@@ -174,288 +199,295 @@ def encode_base62(num: int) -> str:
 # 62^7 = 3.5 兆個短碼，夠用幾十年
 # Snowflake ID → base62 → 7 字元短碼</code></pre>
 
-<p><strong>架構圖：</strong></p>
+  <p><strong>架構圖：</strong></p>
 
-<div class="diagram">
-<pre><code class="language-plaintext">                     ┌─────────────┐
-                     │  Cloudflare │  CDN + DDoS 防護
-                     │  (DNS)      │
-                     └──────┬──────┘
-                            │
-                     ┌──────┴──────┐
-                     │   Nginx     │  SSL termination
-                     │   :443      │  rate limiting: 100 req/s per IP
-                     └──────┬──────┘
-                            │
-                     ┌──────┴──────┐
-                     │   Kong      │  集中 JWT 驗證
-                     │   API GW    │  路由：/api/* → api, GET /* → redirect
-                     └──────┬──────┘
-                            │
-              ┌─────────────┼─────────────┐
-              │             │             │
-       ┌──────┴──────┐ ┌───┴────┐ ┌─────┴──────┐
-       │  Redirect   │ │  API   │ │  Worker    │  非同步處理
-       │  Service    │ │Service │ │  Service   │  點擊統計寫入
-       │  (12K QPS)  │ │(1.2K)  │ │            │
-       └──────┬──────┘ └───┬────┘ └─────┬──────┘
-              │             │             │
-       ┌──────┴──────┐      │             │
-       │   Redis     │ ←── ┘             │
-       │  (short→long│                   │
-       │   mapping)  │                   │
-       └─────────────┘                   │
-              │                          │
-              │  cache miss               │
-              ↓                          ↓
-       ┌──────────────────────────────────┐
-       │     PostgreSQL (sharded)         │
-       │     依 short_code prefix 分片    │
-       └──────────────────────────────────┘</code></pre>
-</div>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TD
+    User(["使用者"]) --> CF["🌐 Cloudflare CDN<br><small>(DNS & Edge Cache)</small>"]:::external
+    CF --> Nginx["⚙️ Nginx 反向代理<br><small>(SSL / 限流 100 req/s)</small>"]:::proxy
+    Nginx --> GW["🔀 Kong API Gateway<br><small>(JWT 驗證 / 路由分流)</small>"]:::gateway
 
-<div class="callout">
-  <strong>🔗 這張圖用了哪些課的知識？</strong><br>
-  • Nginx 在最前面（Lesson 0003）→ SSL、rate limiting<br>
-  • API Gateway 做路由和集中鑑權（Lesson 0004）<br>
-  • JWT 驗證在 Gateway 層（Lesson 0005）<br>
-  • Redis Cache-Aside 模式處理海量讀取（Lesson 0008）<br>
-  • PostgreSQL + sharding 處理海量寫入（Lesson 0007）<br>
-  • 非同步 Worker 處理點擊統計——降低寫入延遲（本課）
-</div>
+    subgraph AppServer ["應用伺服器層"]
+        Redirect["⚡ Redirect Service<br><small>(12K QPS 導向)</small>"]:::service
+        APIService["📝 API Service<br><small>(1.2K QPS 管理)</small>"]:::service
+        Worker["⚙️ Worker Service<br><small>(非同步統計處理)</small>"]:::service
+    end
 
-<h3>階段 4：深度探討 — 主動提出瓶頸和解法</h3>
+    GW -->|"GET /* (導向請求)"| Redirect
+    GW -->|"POST/GET /api/*"| APIService
+    
+    Redirect -->|"1. 查詢對應"| Redis["💾 Redis 快取<br><small>(short → long URL)</small>"]:::storage
+    APIService -->|"寫入快取"| Redis
 
-<div class="card">
-  <h3>🔴 瓶頸 1：熱門 URL 的讀取壓力</h3>
-  <p><strong>問題：</strong>某個爆紅的短網址可能有 100 萬 QPS。</p>
-  <p><strong>解法：</strong>Redis 快取 + CDN。在 Cloudflare 層設 Cache-Control header，熱門短網址直接從 CDN 邊緣節點回應 302，根本不進到後端。</p>
-</div>
+    Redis -->|"2. Cache Miss"| DB[("🐘 PostgreSQL (Sharded)<br><small>依 short_code 分片</small>")]:::db
+    APIService -->|"讀寫資料庫"| DB
 
-<div class="card">
-  <h3>🔴 瓶頸 2：短碼生成需要全域唯一的 ID</h3>
-  <p><strong>問題：</strong>多台 API server 同時生 ID 不能碰撞。</p>
-  <p><strong>解法：</strong>Twitter Snowflake 演算法——41 bits timestamp + 10 bits machine ID + 12 bits sequence number = 在每台機器上本地生成唯一 ID，不依賴資料庫。</p>
-</div>
+    Redirect -.->|"3. 傳送點擊事件 (非同步)"| Worker
+    Worker -->|"4. 批量更新點擊數"| DB
 
-<div class="card">
-  <h3>🔴 瓶頸 3：資料庫寫入瓶頸</h3>
-  <p><strong>問題：</strong>每天 1 億筆寫入，單一 PostgreSQL 不夠。</p>
-  <p><strong>解法：</strong>Sharding——依 short_code 的前 2 個字元來分片。62² = 3844 個 shard。
-  每個 shard 每天只處理 1 億 / 3844 ≈ 2.6 萬筆寫入，輕鬆應付。</p>
-</div>
-
-<h2>第三步：你的九堂課如何在這裡收斂</h2>
-
-<div class="card">
-  <h3>🗺 系統設計面試中，每堂課的出場時機</h3>
-  <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <th style="text-align:left; padding:0.3rem 0.5rem;">課程</th>
-      <th style="text-align:left; padding:0.3rem 0.5rem;">在系統設計中你會說</th>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0001 HTTP 生命週期</td>
-      <td style="padding:0.3rem 0.5rem;">「request 先經過 CDN → Nginx → API GW → 後端」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0002 CORS</td>
-      <td style="padding:0.3rem 0.5rem;">「前端 SPA 和 API 不同 origin，Gateway 層處理 CORS」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0003 反向代理</td>
-      <td style="padding:0.3rem 0.5rem;">「Nginx 在最前面處理 SSL 和 rate limiting」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0004 API 網關</td>
-      <td style="padding:0.3rem 0.5rem;">「API Gateway 做路由、鑑權、和 API versioning」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0005 鑑權</td>
-      <td style="padding:0.3rem 0.5rem;">「JWT 在 Gateway 層驗證，後端服務信任 header」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0006 資安</td>
-      <td style="padding:0.3rem 0.5rem;">「輸入驗證防 injection，SSRF 防護在 fetch URL 的端點」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0007 資料庫</td>
-      <td style="padding:0.3rem 0.5rem;">「short_code 欄位加 unique index，用 sharding 水平擴展」</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.3rem 0.5rem;">0008 快取</td>
-      <td style="padding:0.3rem 0.5rem;">「Cache-Aside + TTL 30 天，熱門 URL 命中率 99%+」</td>
-    </tr>
-    <tr>
-      <td style="padding:0.3rem 0.5rem;">0009 容器化</td>
-      <td style="padding:0.3rem 0.5rem;">「每個服務跑在獨立容器中，k8s 管理擴縮」</td>
-    </tr>
-  </table>
-</div>
-
-<h2>🔰 練習：你來設計</h2>
-
-<p>以下是兩個練習題。選一題，用四步框架在紙上或白板上練習 30 分鐘。</p>
-
-<div class="card">
-  <h3>練習題 A：設計一個即時聊天系統（如 LINE/Discord 的簡化版）</h3>
-  <p>提示：思考 WebSocket、訊息儲存、離線訊息、群組聊天、已讀狀態。</p>
-</div>
-
-<div class="card">
-  <h3>練習題 B：設計一個 API Rate Limiter</h3>
-  <p>提示：思考計數器存在哪裡（Redis！）、滑動視窗演算法、分散式環境下的一致性、對應的 HTTP status code。</p>
-</div>
-
-<div class="quiz" id="quiz10">
-
-  <div class="quiz-question">
-    <p>Q1. 系統設計面試中，<strong>第一步</strong>應該做什麼？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q1" value="0"> 畫出完整的架構圖</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="1"> 釐清需求：問清楚功能範圍、使用者量、讀寫比、延遲要求</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="2"> 選擇用什麼資料庫</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="3"> 寫出所有 API endpoint</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q1"></div>
+    %% Styling & Colors
+    classDef external fill:#1a1d2b,stroke:#ff8f42,stroke-width:2px,color:#fff;
+    classDef proxy fill:#1a1d2b,stroke:#4ade80,stroke-width:2px,color:#fff;
+    classDef gateway fill:#1a1d2b,stroke:#6c8cff,stroke-width:2px,color:#fff;
+    classDef service fill:#161822,stroke:#3d4f8a,stroke-width:1px,color:#fff;
+    classDef storage fill:#111420,stroke:#fbbf24,stroke-width:2px,color:#fff;
+    classDef db fill:#111420,stroke:#a0a0b0,stroke-width:2px,color:#fff;
+    </pre>
   </div>
 
-  <div class="quiz-question">
-    <p>Q2. 為什麼縮網址服務的 redirect 延遲必須做到極低（&lt;10ms）？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q2" value="0"> 因為使用者在等——每多 100ms 延遲就會影響使用者體驗和轉換率</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="1"> 因為短網址有字元數限制</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="2"> 因為負載均衡器要求低延遲</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="3"> 因為 DNS 解析需要低延遲</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q2"></div>
+  <div class="callout">
+    <strong>🔗 這張圖用了哪些課的知識？</strong><br>
+    • Nginx 在最前面（Lesson 0003）→ SSL、rate limiting<br>
+    • API Gateway 做路由和集中鑑權（Lesson 0004）<br>
+    • JWT 驗證在 Gateway 層（Lesson 0005）<br>
+    • Redis Cache-Aside 模式處理海量讀取（Lesson 0008）<br>
+    • PostgreSQL + sharding 處理海量寫入（Lesson 0007）<br>
+    • 非同步 Worker 處理點擊統計——降低寫入延遲（本課）
   </div>
 
-  <div class="quiz-question">
-    <p>Q3. 系統設計中，「估算規模」的目的不是算出精確數字，而是什麼？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q3" value="0"> 讓面試官知道你會算數學</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="1"> 用數字驅動設計決策——QPS 決定要不要用快取、儲存量決定要不要 sharding</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="2"> 算出專案需要多少預算</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="3"> 讓 HR 知道你的期望薪資</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q3"></div>
+  <h3>階段 4：深度探討 — 主動提出瓶頸和解法</h3>
+
+  <div class="card">
+    <h3>🔴 瓶頸 1：熱門 URL 的讀取壓力</h3>
+    <p><strong>問題：</strong>某個爆紅的短網址可能有 100 萬 QPS。</p>
+    <p><strong>解法：</strong>Redis 快取 + CDN。在 Cloudflare 層設 Cache-Control header，熱門短網址直接從 CDN 邊緣節點回應 302，根本不進到後端。</p>
   </div>
 
-  <div class="quiz-question">
-    <p>Q4. 在縮網址服務中，為什麼 redirect 走 Redis 快取而不是每次都查 PostgreSQL？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q4" value="0"> PostgreSQL 不支援 key-value 查詢</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="1"> Redirect 是讀多寫少（10:1）、需要亞毫秒延遲（&lt;1ms）、QPS 極高——Redis 的純記憶體 key-value 查詢完美匹配這個場景</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="2"> PostgreSQL 的 license 不允許用在縮網址</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="3"> Redis 有內建的 URL 縮短功能</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q4"></div>
+  <div class="card">
+    <h3>🔴 瓶頸 2：短碼生成需要全域唯一的 ID</h3>
+    <p><strong>問題：</strong>多台 API server 同時生 ID 不能碰撞。</p>
+    <p><strong>解法：</strong>Twitter Snowflake 演算法——41 bits timestamp + 10 bits machine ID + 12 bits sequence number =
+      在每台機器上本地生成唯一 ID，不依賴資料庫。</p>
   </div>
 
-  <button id="quiz10-submit" style="
+  <div class="card">
+    <h3>🔴 瓶頸 3：資料庫寫入瓶頸</h3>
+    <p><strong>問題：</strong>每天 1 億筆寫入，單一 PostgreSQL 不夠。</p>
+    <p><strong>解法：</strong>Sharding——依 short_code 的前 2 個字元來分片。62² = 3844 個 shard。
+      每個 shard 每天只處理 1 億 / 3844 ≈ 2.6 萬筆寫入，輕鬆應付。</p>
+  </div>
+
+  <h2>第三步：你的九堂課如何在這裡收斂</h2>
+
+  <div class="card">
+    <h3>🗺 系統設計面試中，每堂課的出場時機</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.3rem 0.5rem;">課程</th>
+        <th style="text-align:left; padding:0.3rem 0.5rem;">在系統設計中你會說</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0001 HTTP 生命週期</td>
+        <td style="padding:0.3rem 0.5rem;">「request 先經過 CDN → Nginx → API GW → 後端」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0002 CORS</td>
+        <td style="padding:0.3rem 0.5rem;">「前端 SPA 和 API 不同 origin，Gateway 層處理 CORS」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0003 反向代理</td>
+        <td style="padding:0.3rem 0.5rem;">「Nginx 在最前面處理 SSL 和 rate limiting」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0004 API 網關</td>
+        <td style="padding:0.3rem 0.5rem;">「API Gateway 做路由、鑑權、和 API versioning」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0005 鑑權</td>
+        <td style="padding:0.3rem 0.5rem;">「JWT 在 Gateway 層驗證，後端服務信任 header」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0006 資安</td>
+        <td style="padding:0.3rem 0.5rem;">「輸入驗證防 injection，SSRF 防護在 fetch URL 的端點」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0007 資料庫</td>
+        <td style="padding:0.3rem 0.5rem;">「short_code 欄位加 unique index，用 sharding 水平擴展」</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.3rem 0.5rem;">0008 快取</td>
+        <td style="padding:0.3rem 0.5rem;">「Cache-Aside + TTL 30 天，熱門 URL 命中率 99%+」</td>
+      </tr>
+      <tr>
+        <td style="padding:0.3rem 0.5rem;">0009 容器化</td>
+        <td style="padding:0.3rem 0.5rem;">「每個服務跑在獨立容器中，k8s 管理擴縮」</td>
+      </tr>
+    </table>
+  </div>
+
+  <h2>🔰 練習：你來設計</h2>
+
+  <p>以下是兩個練習題。選一題，用四步框架在紙上或白板上練習 30 分鐘。</p>
+
+  <div class="card">
+    <h3>練習題 A：設計一個即時聊天系統（如 LINE/Discord 的簡化版）</h3>
+    <p>提示：思考 WebSocket、訊息儲存、離線訊息、群組聊天、已讀狀態。</p>
+  </div>
+
+  <div class="card">
+    <h3>練習題 B：設計一個 API Rate Limiter</h3>
+    <p>提示：思考計數器存在哪裡（Redis！）、滑動視窗演算法、分散式環境下的一致性、對應的 HTTP status code。</p>
+  </div>
+
+  <div class="quiz" id="quiz10">
+
+    <div class="quiz-question">
+      <p>Q1. 系統設計面試中，<strong>第一步</strong>應該做什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q1" value="0"> 畫出完整的架構圖</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="1"> 釐清需求：問清楚功能範圍、使用者量、讀寫比、延遲要求</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="2"> 選擇用什麼資料庫</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="3"> 寫出所有 API endpoint</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q1"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q2. 為什麼縮網址服務的 redirect 延遲必須做到極低（&lt;10ms）？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q2" value="0"> 因為使用者在等——每多 100ms 延遲就會影響使用者體驗和轉換率</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="1"> 因為短網址有字元數限制</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="2"> 因為負載均衡器要求低延遲</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="3"> 因為 DNS 解析需要低延遲</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q2"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q3. 系統設計中，「估算規模」的目的不是算出精確數字，而是什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q3" value="0"> 讓面試官知道你會算數學</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="1"> 用數字驅動設計決策——QPS 決定要不要用快取、儲存量決定要不要
+          sharding</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="2"> 算出專案需要多少預算</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="3"> 讓 HR 知道你的期望薪資</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q3"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q4. 在縮網址服務中，為什麼 redirect 走 Redis 快取而不是每次都查 PostgreSQL？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q4" value="0"> PostgreSQL 不支援 key-value 查詢</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="1"> Redirect 是讀多寫少（10:1）、需要亞毫秒延遲（&lt;1ms）、QPS
+          極高——Redis 的純記憶體 key-value 查詢完美匹配這個場景</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="2"> PostgreSQL 的 license 不允許用在縮網址</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="3"> Redis 有內建的 URL 縮短功能</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q4"></div>
+    </div>
+
+    <button id="quiz10-submit" style="
     margin-top: 1rem; padding: 0.6rem 1.5rem;
     background: var(--accent); color: #0f1117; border: none;
     border-radius: 6px; font-size: 0.95rem; cursor: pointer;
     font-weight: 600;
   ">檢查答案</button>
-</div>
+  </div>
 
-<div class="summary-box">
-  <h3>📋 系統設計面試的四步框架（背起來）</h3>
-  <ol>
-    <li><strong>釐清需求</strong>（5-8 min）— 功能範圍、使用者量、讀寫比、延遲要求。問！</li>
-    <li><strong>估算規模</strong>（3-5 min）— QPS、儲存量。數字驅動設計。</li>
-    <li><strong>高層設計</strong>（10-15 min）— 畫架構圖 + API + DB schema。</li>
-    <li><strong>深度探討</strong>（10-15 min）— 挑瓶頸深入：快取、sharding、擴展。</li>
-  </ol>
-</div>
+  <div class="summary-box">
+    <h3>📋 系統設計面試的四步框架（背起來）</h3>
+    <ol>
+      <li><strong>釐清需求</strong>（5-8 min）— 功能範圍、使用者量、讀寫比、延遲要求。問！</li>
+      <li><strong>估算規模</strong>（3-5 min）— QPS、儲存量。數字驅動設計。</li>
+      <li><strong>高層設計</strong>（10-15 min）— 畫架構圖 + API + DB schema。</li>
+      <li><strong>深度探討</strong>（10-15 min）— 挑瓶頸深入：快取、sharding、擴展。</li>
+    </ol>
+  </div>
 
-<div class="card">
-  <h3>🎤 面試中你可以用來展示深度的句子</h3>
+  <div class="card">
+    <h3>🎤 面試中你可以用來展示深度的句子</h3>
+    <ul>
+      <li>「讀寫比 10:1 → 用 Cache-Aside 模式，Redis 存熱門資料」</li>
+      <li>「Nginx 在最前面處理 SSL termination 和 rate limiting」</li>
+      <li>「API Gateway 集中做 JWT 驗證，後端服務只信任 proxy header」</li>
+      <li>「用 Snowflake 演算法在應用層生成唯一 ID，不依賴 DB 自增」</li>
+      <li>「Sharding key 選 short_code prefix，62² 個 shard 均勻分布」</li>
+      <li>「非同步 worker 處理次要寫入（統計），不阻塞關鍵路徑」</li>
+      <li>「CDN 層設 Cache-Control，讓 redirect 在邊緣節點完成」</li>
+    </ul>
+  </div>
+
+  <h2>🎓 十堂課完成！下一步？</h2>
+
+  <div class="card">
+    <h3>你可以選擇：</h3>
+    <ul>
+      <li>🔄 <strong>回頭複習</strong>任何一堂課，重做測驗加深記憶</li>
+      <li>🎤 <strong>模擬面試</strong>：對我說「模擬面試」，我扮演面試官考你這十堂課的內容</li>
+      <li>📝 <strong>練習系統設計</strong>：挑本課的練習題，把你的設計畫出來，貼給我幫你 review</li>
+      <li>📚 <strong>繼續深入</strong>：告訴我你想深入哪個主題（K8s、CI/CD、Observability、Message Queue）</li>
+    </ul>
+  </div>
+
+  <h2>📚 延伸閱讀</h2>
   <ul>
-    <li>「讀寫比 10:1 → 用 Cache-Aside 模式，Redis 存熱門資料」</li>
-    <li>「Nginx 在最前面處理 SSL termination 和 rate limiting」</li>
-    <li>「API Gateway 集中做 JWT 驗證，後端服務只信任 proxy header」</li>
-    <li>「用 Snowflake 演算法在應用層生成唯一 ID，不依賴 DB 自增」</li>
-    <li>「Sharding key 選 short_code prefix，62² 個 shard 均勻分布」</li>
-    <li>「非同步 worker 處理次要寫入（統計），不阻塞關鍵路徑」</li>
-    <li>「CDN 層設 Cache-Control，讓 redirect 在邊緣節點完成」</li>
+    <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer (GitHub)</a>
+      — 最知名的系統設計學習資源，130k+ stars</li>
+    <li><a href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321"
+        target="_blank">《Designing Data-Intensive Applications》— Martin Kleppmann</a> — 後端聖經。這本書讀完，面試中沒有你答不出來的架構題。</li>
+    <li><a href="https://bytebytego.com/" target="_blank">ByteByteGo</a> — Alex Xu 的系統設計課程，圖解極佳（前 Amazon 工程師）</li>
   </ul>
-</div>
 
-<h2>🎓 十堂課完成！下一步？</h2>
+  <nav class="footer-nav">
+    <a href="0009-containerization-docker.html">← 上一課：容器化</a>
+    <a href="0011-production-deploy-security.html">下一課：部署安全加固 →</a>
+  </nav>
 
-<div class="card">
-  <h3>你可以選擇：</h3>
-  <ul>
-    <li>🔄 <strong>回頭複習</strong>任何一堂課，重做測驗加深記憶</li>
-    <li>🎤 <strong>模擬面試</strong>：對我說「模擬面試」，我扮演面試官考你這十堂課的內容</li>
-    <li>📝 <strong>練習系統設計</strong>：挑本課的練習題，把你的設計畫出來，貼給我幫你 review</li>
-    <li>📚 <strong>繼續深入</strong>：告訴我你想深入哪個主題（K8s、CI/CD、Observability、Message Queue）</li>
-  </ul>
-</div>
+  <script>
+    const ANSWERS = { q1: 1, q2: 0, q3: 1, q4: 1 };
+    const FEEDBACK = {
+      q1: { correct: '✅ 正確！需求釐清是系統設計面試最重要的一步。好的工程師先問問題、理解限制，再做設計。直接畫圖是最常見的失敗模式。', wrong: '❌ 第一步永遠是釐清需求。不問清楚就設計 = 在錯誤的方向上狂奔。問功能範圍、使用者量、讀寫比、延遲要求。' },
+      q2: { correct: '✅ 正確！縮網址的核心價值就是「快速跳轉」。每增加 100ms 延遲，使用者就會感受到卡頓。Amazon 的研究顯示每 100ms 延遲就會損失 1% 的銷售。', wrong: '❌ 使用者在點短網址時期的是「立刻跳轉」。redirect 延遲是這個產品的核心體驗指標，必須極低——這也是為什麼要用 CDN + Redis 而不是每次都查 DB。' },
+      q3: { correct: '✅ 正確！估算的目的是讓數字說話：QPS 上萬 → 需要快取；每天 TB 級寫入 → 需要 sharding。數字讓你的設計決策有依據，不是憑感覺。', wrong: '❌ 估算規模不是為了精確，而是為了讓設計決策有數字支撐。當你說「需要快取」，你要能說出 QPS 是多少。當你說「需要 sharding」，你要能說出每天寫入量。' },
+      q4: { correct: '✅ 正確！Redirect 場景是「讀多寫少 + 高 QPS + 低延遲」的完美典範。Redis 的記憶體 key-value 查詢在 0.1ms 內完成，PostgreSQL 需要 1-5ms。對於 12,000 QPS 的場景，這個差距是決定性的。', wrong: '❌ Redirect 是讀多寫少的極端案例（10:1），且延遲要求極嚴（<10ms）。Redis 記憶體查詢（0.1ms）vs PostgreSQL 磁碟查詢（1-5ms）在 12,000 QPS 下差距巨大。快取命中率 99%+ 時，DB 只承受 120 QPS。' }
+    };
 
-<h2>📚 延伸閱讀</h2>
-<ul>
-  <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank">System Design Primer (GitHub)</a> — 最知名的系統設計學習資源，130k+ stars</li>
-  <li><a href="https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321" target="_blank">《Designing Data-Intensive Applications》— Martin Kleppmann</a> — 後端聖經。這本書讀完，面試中沒有你答不出來的架構題。</li>
-  <li><a href="https://bytebytego.com/" target="_blank">ByteByteGo</a> — Alex Xu 的系統設計課程，圖解極佳（前 Amazon 工程師）</li>
-</ul>
+    document.getElementById('quiz10-submit').addEventListener('click', () => {
+      let score = 0;
+      for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+        const selected = document.querySelector(`input[name="${q}"]:checked`);
+        const fb = document.getElementById(`fb-${q}`);
+        const options = document.querySelectorAll(`input[name="${q}"]`);
+        options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+        if (!selected) {
+          fb.innerHTML = '⚠️ 請選擇一個答案。';
+          fb.className = 'quiz-feedback wrong show';
+          continue;
+        }
+        const chosen = parseInt(selected.value);
+        if (chosen === correctIdx) {
+          score++;
+          selected.parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].correct;
+          fb.className = 'quiz-feedback correct show';
+        } else {
+          selected.parentElement.classList.add('wrong');
+          options[correctIdx].parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].wrong;
+          fb.className = 'quiz-feedback wrong show';
+        }
+        options.forEach(opt => { opt.disabled = true; });
+      }
+      const total = Object.keys(ANSWERS).length;
+      const btn = document.getElementById('quiz10-submit');
+      if (score === total) {
+        btn.textContent = `🎉 全對！(${score}/${total})`;
+        btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+      } else {
+        btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+        btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+      }
+      btn.disabled = true;
+    });
+  </script>
 
-<nav class="footer-nav">
-  <a href="0009-containerization-docker.html">← 上一課：容器化</a>
-  <span>🎉 課程完成！</span>
-</nav>
+  <script>hljs.highlightAll();</script>
 
-<script>
-const ANSWERS = { q1: 1, q2: 0, q3: 1, q4: 1 };
-const FEEDBACK = {
-  q1: { correct: '✅ 正確！需求釐清是系統設計面試最重要的一步。好的工程師先問問題、理解限制，再做設計。直接畫圖是最常見的失敗模式。', wrong: '❌ 第一步永遠是釐清需求。不問清楚就設計 = 在錯誤的方向上狂奔。問功能範圍、使用者量、讀寫比、延遲要求。' },
-  q2: { correct: '✅ 正確！縮網址的核心價值就是「快速跳轉」。每增加 100ms 延遲，使用者就會感受到卡頓。Amazon 的研究顯示每 100ms 延遲就會損失 1% 的銷售。', wrong: '❌ 使用者在點短網址時期的是「立刻跳轉」。redirect 延遲是這個產品的核心體驗指標，必須極低——這也是為什麼要用 CDN + Redis 而不是每次都查 DB。' },
-  q3: { correct: '✅ 正確！估算的目的是讓數字說話：QPS 上萬 → 需要快取；每天 TB 級寫入 → 需要 sharding。數字讓你的設計決策有依據，不是憑感覺。', wrong: '❌ 估算規模不是為了精確，而是為了讓設計決策有數字支撐。當你說「需要快取」，你要能說出 QPS 是多少。當你說「需要 sharding」，你要能說出每天寫入量。' },
-  q4: { correct: '✅ 正確！Redirect 場景是「讀多寫少 + 高 QPS + 低延遲」的完美典範。Redis 的記憶體 key-value 查詢在 0.1ms 內完成，PostgreSQL 需要 1-5ms。對於 12,000 QPS 的場景，這個差距是決定性的。', wrong: '❌ Redirect 是讀多寫少的極端案例（10:1），且延遲要求極嚴（<10ms）。Redis 記憶體查詢（0.1ms）vs PostgreSQL 磁碟查詢（1-5ms）在 12,000 QPS 下差距巨大。快取命中率 99%+ 時，DB 只承受 120 QPS。' }
-};
-
-document.getElementById('quiz10-submit').addEventListener('click', () => {
-  let score = 0;
-  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
-    const selected = document.querySelector(`input[name="${q}"]:checked`);
-    const fb = document.getElementById(`fb-${q}`);
-    const options = document.querySelectorAll(`input[name="${q}"]`);
-    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
-    if (!selected) {
-      fb.innerHTML = '⚠️ 請選擇一個答案。';
-      fb.className = 'quiz-feedback wrong show';
-      continue;
-    }
-    const chosen = parseInt(selected.value);
-    if (chosen === correctIdx) {
-      score++;
-      selected.parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].correct;
-      fb.className = 'quiz-feedback correct show';
-    } else {
-      selected.parentElement.classList.add('wrong');
-      options[correctIdx].parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].wrong;
-      fb.className = 'quiz-feedback wrong show';
-    }
-    options.forEach(opt => { opt.disabled = true; });
-  }
-  const total = Object.keys(ANSWERS).length;
-  const btn = document.getElementById('quiz10-submit');
-  if (score === total) {
-    btn.textContent = `🎉 全對！(${score}/${total})`;
-    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
-  } else {
-    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
-    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
-  }
-  btn.disabled = true;
-});
-</script>
-
-<script>hljs.highlightAll();</script>
+  <nav class="lesson-nav">
+    <a href="../../index.html">← 回到課程索引</a>
+  </nav>
 </body>
+
 </html>

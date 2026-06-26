@@ -1,70 +1,88 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lesson 0008：快取策略 — Redis 實戰</title>
-<link rel="stylesheet" href="../assets/style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 0008：快取策略 — Redis 實戰</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+      }
+    });
+  </script>
 </head>
+
 <body>
 
-<h1>⚡ 快取策略 — Redis 實戰</h1>
+  <h1>⚡ 快取策略 — Redis 實戰</h1>
 
-<div class="lesson-meta">
-  <span>Lesson 0008</span>
-  <span>·</span>
-  <span>⏱ ~20 min</span>
-  <span>·</span>
-  <span class="badge">performance</span>
-  <span>·</span>
-  <span>← <a href="0007-database-design.html">Lesson 0007</a></span>
-</div>
+  <div class="lesson-meta">
+    <span>Lesson 0008</span>
+    <span>·</span>
+    <span>⏱ ~20 min</span>
+    <span>·</span>
+    <span class="badge">performance</span>
+    <span>·</span>
+    <span>← <a href="0007-database-design.html">Lesson 0007</a></span>
+  </div>
 
-<h2>資料庫已經有索引了，還要快取幹嘛？</h2>
+  <h2>資料庫已經有索引了，還要快取幹嘛？</h2>
 
-<p>
-  索引把查詢從 300ms 降到 0.1ms，很讚。但 Redis 可以做到 <strong>0.01ms</strong>——
-  而且不消耗資料庫的連線和 CPU。當你的 API 每秒要處理 1000 個請求時，
-  資料庫撐不住，Redis 撐得住。
-</p>
+  <p>
+    索引把查詢從 300ms 降到 0.1ms，很讚。但 Redis 可以做到 <strong>0.01ms</strong>——
+    而且不消耗資料庫的連線和 CPU。當你的 API 每秒要處理 1000 個請求時，
+    資料庫撐不住，Redis 撐得住。
+  </p>
 
-<div class="callout tip">
-  <strong>🎯 本課目標：</strong>能解釋快取的三種模式、寫出 FastAPI + Redis 的整合程式碼、
-  並說出快取失效的經典解法。
-</div>
+  <div class="callout tip">
+    <strong>🎯 本課目標：</strong>能解釋快取的三種模式、寫出 FastAPI + Redis 的整合程式碼、
+    並說出快取失效的經典解法。
+  </div>
 
-<h2>第一步：快取在哪一層？</h2>
+  <h2>第一步：快取在哪一層？</h2>
 
-<p>回憶 Lesson 0001 的地圖——快取可以發生在很多層：</p>
+  <p>回憶 Lesson 0001 的地圖——快取可以發生在很多層：</p>
 
-<div class="diagram">
-<pre><code class="language-plaintext">┌── 快取的層級（由上到下）────────────────────────────┐
-│                                                       │
-│  瀏覽器快取    Cache-Control: max-age=3600           │
-│     ↓               ↓                                │
-│  CDN 快取       Cloudflare / CloudFront              │
-│     ↓               ↓                                │
-│  Nginx 快取     proxy_cache (靜態內容)               │
-│     ↓               ↓                                │
-│  API Gateway    response caching                     │
-│     ↓               ↓                                │
-│  🎯 Redis       應用層快取 ← 本課主題                 │
-│     ↓               ↓                                │
-│  資料庫          PostgreSQL shared_buffers           │
-│                                                       │
-│  💡 越上層越快、越省資源，但越難保證資料一致性         │
-└──────────────────────────────────────────────────────┘</code></pre>
-</div>
+  <div class="diagram">
+    <div class="mermaid">
+      flowchart TD
+      L1["① 瀏覽器快取<br />(Cache-Control: max-age=3600)"]
+      L2["② CDN 快取<br />(Cloudflare / CloudFront)"]
+      L3["③ Nginx 快取<br />(proxy_cache 靜態內容)"]
+      L4["④ API Gateway 快取<br />(Response Caching)"]
+      L5["⑤ 應用層快取 (🆕 本課主題)<br />(🎯 Redis)"]
+      L6["⑥ 資料庫緩衝區<br />(PostgreSQL shared_buffers)"]
 
-<h2>第二步：三種快取模式</h2>
+      L1 --> L2 --> L3 --> L4 --> L5 --> L6
 
-<h3>模式一：Cache-Aside（旁路快取）— 最常用</h3>
+      style L1 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L2 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L3 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L4 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+      style L5 fill:#1a1d2b,stroke:#6c8cff,color:#6c8cff,stroke-width:2px
+      style L6 fill:#1a1d2b,stroke:#2a2d3a,color:#e1e1e6
+    </div>
+    <div class="callout tip" style="margin: 1rem 0 0; font-size: 0.85rem;">
+      💡 <strong>核心規律</strong>：越往上層（越接近用戶）速度越快、越節省伺服器資源，但資料一致性的維護難度也越高。
+    </div>
+  </div>
 
-<p>應用程式自己管快取邏輯。快取沒中就自己去查 DB，然後回填快取。</p>
+  <h2>第二步：三種快取模式</h2>
 
-<pre><code class="language-python"># Cache-Aside：FastAPI 實作
+  <h3>模式一：Cache-Aside（旁路快取）— 最常用</h3>
+
+  <p>應用程式自己管快取邏輯。快取沒中就自己去查 DB，然後回填快取。</p>
+
+  <pre><code class="language-python"># Cache-Aside：FastAPI 實作
 import redis.asyncio as redis
 import json
 
@@ -85,18 +103,18 @@ async def get_user(user_id: int):
     await r.setex(f"user:{user_id}", 300, json.dumps(user.to_dict()))
     return user</code></pre>
 
-<div class="callout">
-  <strong>💡 Cache-Aside 的優缺點：</strong><br>
-  ✅ 簡單、靈活——快取邏輯完全在應用程式掌控中<br>
-  ❌ 程式碼重複（每個查詢都要寫 if-else）<br>
-  ❌ 快取和 DB 之間有時間差——可能拿到舊資料
-</div>
+  <div class="callout">
+    <strong>💡 Cache-Aside 的優缺點：</strong><br>
+    ✅ 簡單、靈活——快取邏輯完全在應用程式掌控中<br>
+    ❌ 程式碼重複（每個查詢都要寫 if-else）<br>
+    ❌ 快取和 DB 之間有時間差——可能拿到舊資料
+  </div>
 
-<h3>模式二：Write-Through（寫穿透）</h3>
+  <h3>模式二：Write-Through（寫穿透）</h3>
 
-<p>寫入時<strong>同時</strong>更新快取和資料庫。快取永遠是最新的。</p>
+  <p>寫入時<strong>同時</strong>更新快取和資料庫。快取永遠是最新的。</p>
 
-<pre><code class="language-python"># Write-Through
+  <pre><code class="language-python"># Write-Through
 async def update_user(user_id: int, data: dict):
     # ① 先寫 DB
     await db.execute(update(User).where(User.id == user_id).values(**data))
@@ -104,11 +122,11 @@ async def update_user(user_id: int, data: dict):
     await r.setex(f"user:{user_id}", 300, json.dumps(data))
     # → 下次讀取一定命中快取，且是最新資料</code></pre>
 
-<h3>模式三：Write-Behind（寫後寫）</h3>
+  <h3>模式三：Write-Behind（寫後寫）</h3>
 
-<p>先寫快取，<strong>非同步</strong>再寫 DB。寫入延遲最低，但風險最高。</p>
+  <p>先寫快取，<strong>非同步</strong>再寫 DB。寫入延遲最低，但風險最高。</p>
 
-<pre><code class="language-python"># Write-Behind（高風險，慎用）
+  <pre><code class="language-python"># Write-Behind（高風險，慎用）
 async def increment_view_count(article_id: int):
     # ① 立刻更新 Redis
     await r.incr(f"views:{article_id}")
@@ -116,60 +134,61 @@ async def increment_view_count(article_id: int):
     # 如果 Redis 在 flush 前掛掉 → 資料遺失！
 </code></pre>
 
-<div class="card">
-  <h3>三種模式一句話總結</h3>
-  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <th style="text-align:left; padding:0.4rem 0.5rem;">模式</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">口訣</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">一致性</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">適用場景</th>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;">Cache-Aside</td>
-      <td style="padding:0.4rem 0.5rem;">讀的時候順便存一份</td>
-      <td style="padding:0.4rem 0.5rem; color:var(--warning);">可能不一致</td>
-      <td style="padding:0.4rem 0.5rem;">讀多寫少（大部分場景）</td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;">Write-Through</td>
-      <td style="padding:0.4rem 0.5rem;">寫 DB 順便寫快取</td>
-      <td style="padding:0.4rem 0.5rem; color:var(--success);">強一致</td>
-      <td style="padding:0.4rem 0.5rem;">需要即時最新資料</td>
-    </tr>
-    <tr>
-      <td style="padding:0.4rem 0.5rem;">Write-Behind</td>
-      <td style="padding:0.4rem 0.5rem;">先寫快取，晚點寫 DB</td>
-      <td style="padding:0.4rem 0.5rem; color:var(--danger);">可能遺失</td>
-      <td style="padding:0.4rem 0.5rem;">計數器、高吞吐寫入</td>
-    </tr>
-  </table>
-</div>
+  <div class="card">
+    <h3>三種模式一句話總結</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">模式</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">口訣</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">一致性</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">適用場景</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Cache-Aside</td>
+        <td style="padding:0.4rem 0.5rem;">讀的時候順便存一份</td>
+        <td style="padding:0.4rem 0.5rem; color:var(--warning);">可能不一致</td>
+        <td style="padding:0.4rem 0.5rem;">讀多寫少（大部分場景）</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;">Write-Through</td>
+        <td style="padding:0.4rem 0.5rem;">寫 DB 順便寫快取</td>
+        <td style="padding:0.4rem 0.5rem; color:var(--success);">強一致</td>
+        <td style="padding:0.4rem 0.5rem;">需要即時最新資料</td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;">Write-Behind</td>
+        <td style="padding:0.4rem 0.5rem;">先寫快取，晚點寫 DB</td>
+        <td style="padding:0.4rem 0.5rem; color:var(--danger);">可能遺失</td>
+        <td style="padding:0.4rem 0.5rem;">計數器、高吞吐寫入</td>
+      </tr>
+    </table>
+  </div>
 
-<h2>第三步：快取失效 — 電腦科學最難的問題之一</h2>
+  <h2>第三步：快取失效 — 電腦科學最難的問題之一</h2>
 
-<blockquote>There are only two hard things in Computer Science: cache invalidation and naming things. — Phil Karlton</blockquote>
+  <blockquote>There are only two hard things in Computer Science: cache invalidation and naming things. — Phil Karlton
+  </blockquote>
 
-<h3>策略一：TTL（Time To Live）— 最簡單</h3>
+  <h3>策略一：TTL（Time To Live）— 最簡單</h3>
 
-<pre><code class="language-python"># 設一個過期時間，時間到就自動刪除
+  <pre><code class="language-python"># 設一個過期時間，時間到就自動刪除
 await r.setex("user:42", 300, user_json)  # 5 分鐘後過期
 # ✅ 簡單、自動
 # ❌ 5 分鐘內的資料可能是舊的</code></pre>
 
-<h3>策略二：主動失效 — 最精確</h3>
+  <h3>策略二：主動失效 — 最精確</h3>
 
-<pre><code class="language-python"># 資料更新時，立刻刪掉對應的快取
+  <pre><code class="language-python"># 資料更新時，立刻刪掉對應的快取
 async def update_user(user_id: int, data: dict):
     await db.execute(update(User).where(User.id == user_id).values(**data))
     await r.delete(f"user:{user_id}")  # ← 立刻刪除舊快取
     # 下次讀取時 Cache-Aside 會自動回填新的</code></pre>
 
-<h3>策略三：Cache Stampede 防護</h3>
+  <h3>策略三：Cache Stampede 防護</h3>
 
-<p>當熱門資料的快取過期，瞬間大量請求同時去查 DB——可能打掛資料庫。</p>
+  <p>當熱門資料的快取過期，瞬間大量請求同時去查 DB——可能打掛資料庫。</p>
 
-<pre><code class="language-python"># 🚨 Cache Stampede：1000 個請求同時發現快取過期
+  <pre><code class="language-python"># 🚨 Cache Stampede：1000 個請求同時發現快取過期
 # → 1000 個請求同時去打 DB → DB 被打爆
 
 # ✅ 解法：互斥鎖（只有第一個請求去查 DB，其他等結果）
@@ -194,195 +213,205 @@ async def get_user_safe(user_id: int):
         await asyncio.sleep(0.1)
         return await get_user_safe(user_id)  # 重試（這次應該命中快取）</code></pre>
 
-<h2>第四步：Redis 不只是快取</h2>
+  <h2>第四步：Redis 不只是快取</h2>
 
-<div class="card">
-  <h3>Redis 常用資料型別 — 面試亮點</h3>
-  <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-    <tr style="border-bottom:1px solid var(--border);">
-      <th style="text-align:left; padding:0.4rem 0.5rem;">型別</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">用途</th>
-      <th style="text-align:left; padding:0.4rem 0.5rem;">範例</th>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>String</strong></td>
-      <td style="padding:0.4rem 0.5rem;">一般快取、計數器</td>
-      <td style="padding:0.4rem 0.5rem;"><code>INCR page:views</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>Hash</strong></td>
-      <td style="padding:0.4rem 0.5rem;">物件快取（可單獨更新欄位）</td>
-      <td style="padding:0.4rem 0.5rem;"><code>HSET user:42 name "Alice"</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>List</strong></td>
-      <td style="padding:0.4rem 0.5rem;">訊息佇列、最新動態</td>
-      <td style="padding:0.4rem 0.5rem;"><code>LPUSH notifications "msg"</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>Set</strong></td>
-      <td style="padding:0.4rem 0.5rem;">去重、共同好友、標籤</td>
-      <td style="padding:0.4rem 0.5rem;"><code>SADD tags:article1 "python"</code></td>
-    </tr>
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:0.4rem 0.5rem;"><strong>Sorted Set</strong></td>
-      <td style="padding:0.4rem 0.5rem;">排行榜、優先佇列</td>
-      <td style="padding:0.4rem 0.5rem;"><code>ZADD leaderboard 1000 "Alice"</code></td>
-    </tr>
-    <tr>
-      <td style="padding:0.4rem 0.5rem;"><strong>Pub/Sub</strong></td>
-      <td style="padding:0.4rem 0.5rem;">即時通知、WebSocket 廣播</td>
-      <td style="padding:0.4rem 0.5rem;"><code>PUBLISH channel "event"</code></td>
-    </tr>
-  </table>
-</div>
-
-<div class="callout">
-  <strong>🔑 面試加分點：</strong>「我們用 Redis 不只做快取——Sorted Set 做排行榜、
-  String + INCR 做 rate limiting 計數器、Pub/Sub 做跨 process 的即時通知。」
-  這表示你理解 Redis 的更多可能性。
-</div>
-
-<h2>🔰 練習</h2>
-
-<div class="quiz" id="quiz8">
-
-  <div class="quiz-question">
-    <p>Q1. Cache-Aside 模式的運作流程是什麼？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q1" value="0"> 寫入時先寫快取，讀取時直接讀快取</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="1"> 讀取時先查快取，沒中再查 DB 並回填快取；寫入時直接寫 DB 並刪除/更新快取</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="2"> 所有讀寫都經過快取，快取負責同步到 DB</label>
-      <label class="quiz-option"><input type="radio" name="q1" value="3"> 快取和 DB 各自獨立運作，定時同步</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q1"></div>
+  <div class="card">
+    <h3>Redis 常用資料型別 — 面試亮點</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left; padding:0.4rem 0.5rem;">型別</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">用途</th>
+        <th style="text-align:left; padding:0.4rem 0.5rem;">範例</th>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>String</strong></td>
+        <td style="padding:0.4rem 0.5rem;">一般快取、計數器</td>
+        <td style="padding:0.4rem 0.5rem;"><code>INCR page:views</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>Hash</strong></td>
+        <td style="padding:0.4rem 0.5rem;">物件快取（可單獨更新欄位）</td>
+        <td style="padding:0.4rem 0.5rem;"><code>HSET user:42 name "Alice"</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>List</strong></td>
+        <td style="padding:0.4rem 0.5rem;">訊息佇列、最新動態</td>
+        <td style="padding:0.4rem 0.5rem;"><code>LPUSH notifications "msg"</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>Set</strong></td>
+        <td style="padding:0.4rem 0.5rem;">去重、共同好友、標籤</td>
+        <td style="padding:0.4rem 0.5rem;"><code>SADD tags:article1 "python"</code></td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:0.4rem 0.5rem;"><strong>Sorted Set</strong></td>
+        <td style="padding:0.4rem 0.5rem;">排行榜、優先佇列</td>
+        <td style="padding:0.4rem 0.5rem;"><code>ZADD leaderboard 1000 "Alice"</code></td>
+      </tr>
+      <tr>
+        <td style="padding:0.4rem 0.5rem;"><strong>Pub/Sub</strong></td>
+        <td style="padding:0.4rem 0.5rem;">即時通知、WebSocket 廣播</td>
+        <td style="padding:0.4rem 0.5rem;"><code>PUBLISH channel "event"</code></td>
+      </tr>
+    </table>
   </div>
 
-  <div class="quiz-question">
-    <p>Q2. Cache Stampede（快取踩踏）是什麼情境？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q2" value="0"> 快取伺服器被 DDoS 攻擊</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="1"> 熱門資料的快取同時過期，瞬間大量請求全部穿透到 DB，可能打掛資料庫</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="2"> 快取中的資料過多導致記憶體不足</label>
-      <label class="quiz-option"><input type="radio" name="q2" value="3"> 不同使用者看到不同的快取版本</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q2"></div>
+  <div class="callout">
+    <strong>🔑 面試加分點：</strong>「我們用 Redis 不只做快取——Sorted Set 做排行榜、
+    String + INCR 做 rate limiting 計數器、Pub/Sub 做跨 process 的即時通知。」
+    這表示你理解 Redis 的更多可能性。
   </div>
 
-  <div class="quiz-question">
-    <p>Q3. 為什麼 Redis 比 PostgreSQL 查詢快這麼多？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q3" value="0"> Redis 使用更先進的 B-tree 實作</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="1"> Redis 的資料全部存在 RAM 中，沒有磁碟 I/O、沒有查詢解析、沒有交易開銷——純記憶體 key-value 查找</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="2"> Redis 內建 AI 預測查詢結果</label>
-      <label class="quiz-option"><input type="radio" name="q3" value="3"> PostgreSQL 故意設計得比較慢</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q3"></div>
-  </div>
+  <h2>🔰 練習</h2>
 
-  <div class="quiz-question">
-    <p>Q4. 你用 Redis 存了 user session，但 Redis 重啟後所有 session 都不見了。這是為什麼？如何防止？</p>
-    <div class="quiz-options">
-      <label class="quiz-option"><input type="radio" name="q4" value="0"> Redis 的資料結構不支援 session 儲存</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="1"> 預設 Redis 只有記憶體儲存。需要開啟 RDB snapshot 或 AOF 持久化，才能在重啟後恢復資料</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="2"> Session 資料有 TTL，重啟後 TTL 會重置</label>
-      <label class="quiz-option"><input type="radio" name="q4" value="3"> Redis 本身就不適合存 session</label>
-    </div>
-    <div class="quiz-feedback" id="fb-q4"></div>
-  </div>
+  <div class="quiz" id="quiz8">
 
-  <button id="quiz8-submit" style="
+    <div class="quiz-question">
+      <p>Q1. Cache-Aside 模式的運作流程是什麼？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q1" value="0"> 寫入時先寫快取，讀取時直接讀快取</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="1"> 讀取時先查快取，沒中再查 DB 並回填快取；寫入時直接寫 DB
+          並刪除/更新快取</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="2"> 所有讀寫都經過快取，快取負責同步到 DB</label>
+        <label class="quiz-option"><input type="radio" name="q1" value="3"> 快取和 DB 各自獨立運作，定時同步</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q1"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q2. Cache Stampede（快取踩踏）是什麼情境？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q2" value="0"> 快取伺服器被 DDoS 攻擊</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="1"> 熱門資料的快取同時過期，瞬間大量請求全部穿透到 DB，可能打掛資料庫</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="2"> 快取中的資料過多導致記憶體不足</label>
+        <label class="quiz-option"><input type="radio" name="q2" value="3"> 不同使用者看到不同的快取版本</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q2"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q3. 為什麼 Redis 比 PostgreSQL 查詢快這麼多？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q3" value="0"> Redis 使用更先進的 B-tree 實作</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="1"> Redis 的資料全部存在 RAM 中，沒有磁碟
+          I/O、沒有查詢解析、沒有交易開銷——純記憶體 key-value 查找</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="2"> Redis 內建 AI 預測查詢結果</label>
+        <label class="quiz-option"><input type="radio" name="q3" value="3"> PostgreSQL 故意設計得比較慢</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q3"></div>
+    </div>
+
+    <div class="quiz-question">
+      <p>Q4. 你用 Redis 存了 user session，但 Redis 重啟後所有 session 都不見了。這是為什麼？如何防止？</p>
+      <div class="quiz-options">
+        <label class="quiz-option"><input type="radio" name="q4" value="0"> Redis 的資料結構不支援 session 儲存</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="1"> 預設 Redis 只有記憶體儲存。需要開啟 RDB snapshot 或 AOF
+          持久化，才能在重啟後恢復資料</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="2"> Session 資料有 TTL，重啟後 TTL 會重置</label>
+        <label class="quiz-option"><input type="radio" name="q4" value="3"> Redis 本身就不適合存 session</label>
+      </div>
+      <div class="quiz-feedback" id="fb-q4"></div>
+    </div>
+
+    <button id="quiz8-submit" style="
     margin-top: 1rem; padding: 0.6rem 1.5rem;
     background: var(--accent); color: #0f1117; border: none;
     border-radius: 6px; font-size: 0.95rem; cursor: pointer;
     font-weight: 600;
   ">檢查答案</button>
-</div>
+  </div>
 
-<div class="summary-box">
-  <h3>📋 本課重點摘要</h3>
-  <ol>
-    <li><strong>Cache-Aside</strong>（旁路快取）是最常用的模式：讀快取 → 沒中查 DB → 回填。</li>
-    <li><strong>Write-Through</strong> 寫 DB 時同步更新快取，保證一致性。</li>
-    <li><strong>Write-Behind</strong> 先寫快取再非同步寫 DB，最快但有遺失風險。</li>
-    <li><strong>Cache Stampede</strong>：熱資料過期 → 大量請求同時打 DB。用<strong>互斥鎖</strong>讓只有第一個請求去查 DB。</li>
-    <li><strong>Redis 不只是快取</strong>——Sorted Set（排行榜）、Pub/Sub（即時通知）、String + INCR（限流計數器）。</li>
-    <li>預設 Redis 資料在記憶體中，重啟就沒了。開<strong>持久化</strong>（RDB/AOF）才能恢復。</li>
-  </ol>
-</div>
+  <div class="summary-box">
+    <h3>📋 本課重點摘要</h3>
+    <ol>
+      <li><strong>Cache-Aside</strong>（旁路快取）是最常用的模式：讀快取 → 沒中查 DB → 回填。</li>
+      <li><strong>Write-Through</strong> 寫 DB 時同步更新快取，保證一致性。</li>
+      <li><strong>Write-Behind</strong> 先寫快取再非同步寫 DB，最快但有遺失風險。</li>
+      <li><strong>Cache Stampede</strong>：熱資料過期 → 大量請求同時打 DB。用<strong>互斥鎖</strong>讓只有第一個請求去查 DB。</li>
+      <li><strong>Redis 不只是快取</strong>——Sorted Set（排行榜）、Pub/Sub（即時通知）、String + INCR（限流計數器）。</li>
+      <li>預設 Redis 資料在記憶體中，重啟就沒了。開<strong>持久化</strong>（RDB/AOF）才能恢復。</li>
+    </ol>
+  </div>
 
-<div class="card">
-  <h3>🎤 面試回答模板：「你們怎麼用快取？」</h3>
-  <p>
-    <em>「我們用 Redis 做 Cache-Aside 模式的應用層快取。讀取 API 時先查 Redis，
-    沒命中才查 PostgreSQL 並回填快取（TTL 5 分鐘）。寫入時主動刪除對應快取，
-    讓下次讀取自動載入新資料。對於熱門資料，我們用 Redis 的 SETNX 實作輕量級鎖來防止 Cache Stampede。
-    除了快取，我們也用 Redis Sorted Set 做排行榜、String INCR 做 rate limiting 計數器。
-    生產環境中開啟了 AOF 持久化，防止重啟後資料全部遺失。」</em>
-  </p>
-</div>
+  <div class="card">
+    <h3>🎤 面試回答模板：「你們怎麼用快取？」</h3>
+    <p>
+      <em>「我們用 Redis 做 Cache-Aside 模式的應用層快取。讀取 API 時先查 Redis，
+        沒命中才查 PostgreSQL 並回填快取（TTL 5 分鐘）。寫入時主動刪除對應快取，
+        讓下次讀取自動載入新資料。對於熱門資料，我們用 Redis 的 SETNX 實作輕量級鎖來防止 Cache Stampede。
+        除了快取，我們也用 Redis Sorted Set 做排行榜、String INCR 做 rate limiting 計數器。
+        生產環境中開啟了 AOF 持久化，防止重啟後資料全部遺失。」</em>
+    </p>
+  </div>
 
-<h2>📚 延伸閱讀</h2>
-<ul>
-  <li><a href="https://redis.io/docs/latest/develop/get-started/" target="_blank">Redis 官方入門</a> — 所有資料型別的互動式教學</li>
-  <li><a href="https://redis.io/docs/latest/develop/use/patterns/" target="_blank">Redis Caching Patterns</a> — 官方推薦的快取模式</li>
-  <li><a href="https://redis-py.readthedocs.io/en/stable/" target="_blank">redis-py 文件</a> — Python 的 Redis client 完整 API</li>
-  <li><strong>下一課預告：</strong> <a href="0009-containerization-docker.html">容器化：Docker 與 Docker Compose</a></li>
-</ul>
+  <h2>📚 延伸閱讀</h2>
+  <ul>
+    <li><a href="https://redis.io/docs/latest/develop/get-started/" target="_blank">Redis 官方入門</a> — 所有資料型別的互動式教學</li>
+    <li><a href="https://redis.io/docs/latest/develop/use/patterns/" target="_blank">Redis Caching Patterns</a> —
+      官方推薦的快取模式</li>
+    <li><a href="https://redis-py.readthedocs.io/en/stable/" target="_blank">redis-py 文件</a> — Python 的 Redis client 完整
+      API</li>
+    <li><strong>下一課預告：</strong> <a href="0009-containerization-docker.html">容器化：Docker 與 Docker Compose</a></li>
+  </ul>
 
-<nav class="footer-nav">
-  <a href="0007-database-design.html">← 上一課：資料庫設計</a>
-  <a href="0009-containerization-docker.html">下一課：容器化 →</a>
-</nav>
+  <nav class="footer-nav">
+    <a href="0007-database-design.html">← 上一課：資料庫設計</a>
+    <a href="0009-containerization-docker.html">下一課：容器化 →</a>
+  </nav>
 
-<script>
-const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
-const FEEDBACK = {
-  q1: { correct: '✅ 正確！Cache-Aside 就是「快取在旁邊」：應用程式自己決定何時查快取、何時查 DB、何時回填。讀取流程是 快取 → DB → 回填。', wrong: '❌ Cache-Aside（旁路快取）的核心是應用程式自己管快取：先查快取，沒中才查 DB，然後把結果存回快取。寫入時直接寫 DB 並使快取失效。' },
-  q2: { correct: '✅ 正確！當熱門 key 的快取過期瞬間，大量請求同時發現快取沒中，全部湧向 DB。解法是用互斥鎖讓只有第一個請求去查 DB，其他等待。', wrong: '❌ Cache Stampede（也稱 Dog-Piling）是熱門資料快取過期時，瞬間大量請求同時穿透到 DB 的現象。用鎖讓只有一個請求去查 DB 即可解決。' },
-  q3: { correct: '✅ 正確！Redis 是純記憶體資料庫——沒有磁碟 I/O、沒有 SQL parsing、沒有 transaction overhead。就是一個 O(1) 的 hash table 查找。', wrong: '❌ Redis 快的根本原因是「純記憶體」——所有資料在 RAM 中，沒有磁碟 I/O。加上它不做 SQL parsing 和複雜的交易管理，就是純粹的 key-value 查找。' },
-  q4: { correct: '✅ 正確！Redis 預設所有資料只在記憶體中，重啟後消失。RDB（定時快照）和 AOF（每次寫入記錄）是兩種持久化策略。但開啟持久化會犧牲部分效能。', wrong: '❌ 預設 Redis 只在記憶體中儲存資料。需要設定持久化：RDB（定時 snapshot）或 AOF（append-only file，記錄每次寫入）。' }
-};
+  <script>
+    const ANSWERS = { q1: 1, q2: 1, q3: 1, q4: 1 };
+    const FEEDBACK = {
+      q1: { correct: '✅ 正確！Cache-Aside 就是「快取在旁邊」：應用程式自己決定何時查快取、何時查 DB、何時回填。讀取流程是 快取 → DB → 回填。', wrong: '❌ Cache-Aside（旁路快取）的核心是應用程式自己管快取：先查快取，沒中才查 DB，然後把結果存回快取。寫入時直接寫 DB 並使快取失效。' },
+      q2: { correct: '✅ 正確！當熱門 key 的快取過期瞬間，大量請求同時發現快取沒中，全部湧向 DB。解法是用互斥鎖讓只有第一個請求去查 DB，其他等待。', wrong: '❌ Cache Stampede（也稱 Dog-Piling）是熱門資料快取過期時，瞬間大量請求同時穿透到 DB 的現象。用鎖讓只有一個請求去查 DB 即可解決。' },
+      q3: { correct: '✅ 正確！Redis 是純記憶體資料庫——沒有磁碟 I/O、沒有 SQL parsing、沒有 transaction overhead。就是一個 O(1) 的 hash table 查找。', wrong: '❌ Redis 快的根本原因是「純記憶體」——所有資料在 RAM 中，沒有磁碟 I/O。加上它不做 SQL parsing 和複雜的交易管理，就是純粹的 key-value 查找。' },
+      q4: { correct: '✅ 正確！Redis 預設所有資料只在記憶體中，重啟後消失。RDB（定時快照）和 AOF（每次寫入記錄）是兩種持久化策略。但開啟持久化會犧牲部分效能。', wrong: '❌ 預設 Redis 只在記憶體中儲存資料。需要設定持久化：RDB（定時 snapshot）或 AOF（append-only file，記錄每次寫入）。' }
+    };
 
-document.getElementById('quiz8-submit').addEventListener('click', () => {
-  let score = 0;
-  for (const [q, correctIdx] of Object.entries(ANSWERS)) {
-    const selected = document.querySelector(`input[name="${q}"]:checked`);
-    const fb = document.getElementById(`fb-${q}`);
-    const options = document.querySelectorAll(`input[name="${q}"]`);
-    options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
-    if (!selected) {
-      fb.innerHTML = '⚠️ 請選擇一個答案。';
-      fb.className = 'quiz-feedback wrong show';
-      continue;
-    }
-    const chosen = parseInt(selected.value);
-    if (chosen === correctIdx) {
-      score++;
-      selected.parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].correct;
-      fb.className = 'quiz-feedback correct show';
-    } else {
-      selected.parentElement.classList.add('wrong');
-      options[correctIdx].parentElement.classList.add('correct');
-      fb.innerHTML = FEEDBACK[q].wrong;
-      fb.className = 'quiz-feedback wrong show';
-    }
-    options.forEach(opt => { opt.disabled = true; });
-  }
-  const total = Object.keys(ANSWERS).length;
-  const btn = document.getElementById('quiz8-submit');
-  if (score === total) {
-    btn.textContent = `🎉 全對！(${score}/${total})`;
-    btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
-  } else {
-    btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
-    btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
-  }
-  btn.disabled = true;
-});
-</script>
+    document.getElementById('quiz8-submit').addEventListener('click', () => {
+      let score = 0;
+      for (const [q, correctIdx] of Object.entries(ANSWERS)) {
+        const selected = document.querySelector(`input[name="${q}"]:checked`);
+        const fb = document.getElementById(`fb-${q}`);
+        const options = document.querySelectorAll(`input[name="${q}"]`);
+        options.forEach(opt => opt.parentElement.classList.remove('correct', 'wrong'));
+        if (!selected) {
+          fb.innerHTML = '⚠️ 請選擇一個答案。';
+          fb.className = 'quiz-feedback wrong show';
+          continue;
+        }
+        const chosen = parseInt(selected.value);
+        if (chosen === correctIdx) {
+          score++;
+          selected.parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].correct;
+          fb.className = 'quiz-feedback correct show';
+        } else {
+          selected.parentElement.classList.add('wrong');
+          options[correctIdx].parentElement.classList.add('correct');
+          fb.innerHTML = FEEDBACK[q].wrong;
+          fb.className = 'quiz-feedback wrong show';
+        }
+        options.forEach(opt => { opt.disabled = true; });
+      }
+      const total = Object.keys(ANSWERS).length;
+      const btn = document.getElementById('quiz8-submit');
+      if (score === total) {
+        btn.textContent = `🎉 全對！(${score}/${total})`;
+        btn.style.background = 'var(--success)'; btn.style.color = '#0f1117';
+      } else {
+        btn.textContent = `得分：${score}/${total} — 複習後再試一次`;
+        btn.style.background = 'var(--warning)'; btn.style.color = '#0f1117';
+      }
+      btn.disabled = true;
+    });
+  </script>
 
-<script>hljs.highlightAll();</script>
+  <script>hljs.highlightAll();</script>
+
+  <nav class="lesson-nav">
+    <a href="../../index.html">← 回到課程索引</a>
+  </nav>
 </body>
+
 </html>
