@@ -4,80 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesson 0002 — Expo 開發環境與專案結構</title>
-<style>
-  :root {
-    --bg: #161618; --text: #e4e4e4; --muted: #8b8b8b;
-    --accent: #5e9eff; --accent-dim: #1e2a3a; --border: #2e2e32;
-    --code-bg: #1e1e22; --surface: #1c1c20;
-    --success: #34d399; --danger: #f87171; --warning: #fbbf24;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: "SF Pro Text", "PingFang TC", "Noto Sans TC", -apple-system, sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.7;
-    max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 6rem; font-size: 17px;
-  }
-  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: -0.02em; }
-  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; letter-spacing: -0.01em; }
-  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
-  p { margin: 0.75rem 0; }
-  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
-  a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
-  code {
-    background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 4px;
-    font-size: 0.9em; font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-  }
-  pre {
-    background: #111113; color: #d4d4d4; padding: 1.25rem; border-radius: 8px;
-    overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0;
-  }
-  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
-  blockquote {
-    border-left: 3px solid var(--accent); padding: 0.5rem 1rem; margin: 1.25rem 0;
-    background: var(--accent-dim); border-radius: 0 6px 6px 0; font-size: 0.95rem; color: #a0a8c0;
-  }
-  .callout {
-    background: var(--accent-dim); border-left: 3px solid var(--accent);
-    padding: 1rem 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0;
-  }
-  .callout strong { color: var(--accent); }
-  .diagram {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-    padding: 1.75rem; margin: 1.5rem 0; font-family: "SF Mono", "Fira Code", monospace;
-    font-size: 0.82rem; line-height: 1.6; overflow-x: auto;
-  }
-
-  /* Quiz system */
-  .quiz-question {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-    padding: 1.5rem; margin: 1.25rem 0;
-  }
-  .quiz-option {
-    display: block; width: 100%; text-align: left; padding: 0.7rem 1rem;
-    border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
-    color: var(--text); cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: all 0.15s;
-  }
-  .quiz-option:hover { border-color: var(--accent); background: var(--accent-dim); }
-  .quiz-option.correct { border-color: var(--success); background: #064e3b; color: #6ee7b7; }
-  .quiz-option.wrong { border-color: var(--danger); background: #7f1d1d; color: #fca5a5; }
-  .quiz-feedback { margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.9rem; display: none; }
-  .quiz-feedback.show { display: block; }
-  .quiz-feedback.correct { background: #064e3b; color: #6ee7b7; }
-  .quiz-feedback.wrong { background: #7f1d1d; color: #fca5a5; }
-  .practice {
-    background: var(--surface); border: 2px solid var(--accent); border-radius: 10px;
-    padding: 1.5rem; margin: 2rem 0;
-  }
-  .fib-input:focus { outline: none; border-color: var(--accent); }
-  .match-btn.matched { cursor: default; }
-  .order-item { transition: all 0.15s; }
-  .order-item:hover { border-color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
-  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
-  th { background: var(--accent-dim); font-weight: 600; }
-  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
-  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
-</style>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+    }
+  });
+</script>
 </head>
 <body>
 
@@ -109,7 +49,7 @@
 
 <p>打開終端機，執行：</p>
 
-<pre><code># 建立新專案
+<pre><code class="language-bash"># 建立新專案
 npx create-expo-app@latest MyFirstApp
 
 # 進入專案目錄
@@ -132,9 +72,7 @@ npx expo start</code></pre>
 
 <p>這是你剛建立的目錄結構。每個檔案都有它的角色：</p>
 
-<div class="diagram">
-<pre style="background:none;color:var(--text);padding:0;margin:0;">
-MyFirstApp/
+<pre><code class="language-bash">MyFirstApp/
 ├── app.json              ← Expo 設定檔（app name、icon、splash...）
 ├── App.tsx               ← 進入點元件（你的第一個畫面）
 ├── package.json          ← npm 依賴與 scripts
@@ -142,9 +80,7 @@ MyFirstApp/
 ├── node_modules/         ← 安裝的套件（不要手動修改）
 ├── assets/               ← 靜態資源（圖片、字型）
 ├── .gitignore            ← Git 忽略規則
-└── ...
-</pre>
-</div>
+└── ...</code></pre>
 
 <h3>核心檔案逐個看</h3>
 
@@ -174,7 +110,7 @@ MyFirstApp/
 
 <h3>app.json 重點欄位</h3>
 
-<pre><code>{
+<pre><code class="language-json">{
   "expo": {
     "name": "MyFirstApp",        // app 顯示名稱
     "slug": "MyFirstApp",        // URL-safe 識別碼（EAS 用）
@@ -225,7 +161,7 @@ MyFirstApp/
 
 <p>打開 <code>App.tsx</code>，你會看到一個預設的 template。試著改成這樣：</p>
 
-<pre><code>import { StatusBar } from 'expo-status-bar';
+<pre><code class="language-typescript">import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function App() {
@@ -263,23 +199,15 @@ const styles = StyleSheet.create({
 
 <p>當你跑 <code>npx expo start</code> 時，幕後發生的事：</p>
 
-<div class="diagram">
-<pre style="background:none;color:var(--text);padding:0;margin:0;">
-你的 code (App.tsx)
-      │
-      ▼
-┌─────────────┐
-│  Metro      │  ← JS bundler（類似 webpack / Vite，
-│  Bundler    │     但是專為 RN 設計）
-└──────┬──────┘
-       │ 打包成一個 JS bundle
-       ▼
-┌─────────────┐
-│  Hermes     │  ← 在手機上執行 bundle
-│  (手機上)    │
-└─────────────┘
+<pre class="mermaid">
+flowchart TD
+    Code["你的 code (App.tsx)"]
+    Metro["Metro Bundler<br>JS bundler（類似 webpack / Vite，但是專為 RN 設計）"]
+    Hermes["Hermes<br>(在手機上執行 bundle)"]
+
+    Code --> Metro
+    Metro -->|"打包成一個 JS bundle"| Hermes
 </pre>
-</div>
 
 <p>關鍵差異：</p>
 <ul>
@@ -299,13 +227,13 @@ const styles = StyleSheet.create({
 
 <!-- ==================== QUIZ SYSTEM ==================== -->
 <div id="quiz-root">
-  <div id="score-bar" style="position: sticky; top: 0; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-    <span style="font-weight: 700;">📊 你的進度</span>
-    <span id="score-text" style="font-size: 0.9rem; color: var(--muted);">尚未開始</span>
-    <div style="flex: 1; max-width: 200px; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
-      <div id="score-fill" style="height: 100%; width: 0%; background: var(--accent); border-radius: 4px; transition: width 0.3s;"></div>
+  <div id="score-bar" class="score-bar">
+    <span class="score-bar-title">📊 你的進度</span>
+    <span id="score-text" class="score-text">尚未開始</span>
+    <div class="score-track">
+      <div id="score-fill" class="score-fill"></div>
     </div>
-    <button onclick="resetAll()" style="background: var(--border); color: var(--text); border: none; padding: 0.35rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: inherit;">🔄 全部重做</button>
+    <button onclick="resetAll()" class="quiz-btn">🔄 全部重做</button>
   </div>
 
   <h2>🧠 第一階段：選擇題</h2>
@@ -330,21 +258,21 @@ const styles = StyleSheet.create({
       <li>回到 <code>App.tsx</code>，把 <code>title</code> 文字改成你的名字，存檔確認手機自動更新</li>
     </ol>
     <p style="margin-top: 1rem;">完成後，勾選以下檢查清單：</p>
-    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+    <label class="practice-checkbox-label">
       <input type="checkbox" class="practice-check" data-pts="1"> 專案成功建立並啟動
     </label>
-    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+    <label class="practice-checkbox-label">
       <input type="checkbox" class="practice-check" data-pts="1"> Expo Go 上成功看到畫面
     </label>
-    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+    <label class="practice-checkbox-label">
       <input type="checkbox" class="practice-check" data-pts="1"> 修改文字後手機自動更新（Fast Refresh）
     </label>
-    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; cursor: pointer;">
+    <label class="practice-checkbox-label">
       <input type="checkbox" class="practice-check" data-pts="1"> 能說出 app.json 和 App.tsx 各自做什麼
     </label>
   </div>
 
-  <div id="final-score-box" style="display:none; background: var(--surface); border: 2px solid var(--success); border-radius: 12px; padding: 1.5rem; margin-top: 2rem; text-align: center;"></div>
+  <div id="final-score-box" class="final-score-box" style="display:none;"></div>
 </div>
 
 <hr>
@@ -391,10 +319,10 @@ function updateScore() {
   const box = document.getElementById('final-score-box');
   if (total >= TOTAL_POINTS) {
     box.style.display = 'block';
-    box.innerHTML = `<h3 style="margin:0 0 0.5rem;">🎉 滿分！環境已就緒</h3><p style="margin:0; color: var(--muted);">你的開發環境已經設定完成，準備好寫真正的 RN 程式碼了。</p>`;
+    box.innerHTML = `<h3>🎉 滿分！環境已就緒</h3><p>你的開發環境已經設定完成，準備好寫真正的 RN 程式碼了。</p>`;
   } else if (total >= TOTAL_POINTS * 0.7) {
     box.style.display = 'block';
-    box.innerHTML = `<h3 style="margin:0 0 0.5rem;">👍 不錯，接近完成了</h3><p style="margin:0; color: var(--muted);">回顧標示紅色的部分，確保每個概念都清楚。</p>`;
+    box.innerHTML = `<h3>👍 不錯，接近完成了</h3><p>回顧標示紅色的部分，確保每個概念都清楚。</p>`;
   }
 }
 
@@ -492,11 +420,10 @@ function buildFIB() {
     const div = document.createElement('div'); div.className = 'quiz-question';
     div.innerHTML = `
       <p>${item.q}</p>
-      <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div class="fib-input-container">
         <input type="text" class="fib-input" data-idx="${idx}" placeholder="輸入你的答案..."
-          style="flex:1; padding:0.6rem 0.8rem; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:0.95rem; font-family:inherit;"
           onkeydown="if(event.key==='Enter') checkFIB(${idx})">
-        <button onclick="checkFIB(${idx})" style="padding:0.6rem 1.2rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-family:inherit; white-space:nowrap;">檢查</button>
+        <button onclick="checkFIB(${idx})" class="quiz-btn quiz-btn-primary">檢查</button>
       </div>
       <div class="quiz-feedback" id="fib-fb-${idx}"></div>`;
     section.appendChild(div);
@@ -512,12 +439,12 @@ function checkFIB(idx) {
   const correct = FIB_QUESTIONS[idx].ans;
   input.disabled = true; input.dataset.locked = 'true';
   if (userAns === correct) {
-    input.style.borderColor = 'var(--success)'; input.style.background = '#064e3b';
+    input.classList.remove('wrong'); input.classList.add('correct');
     feedback.className = 'quiz-feedback correct show';
     feedback.textContent = `✅ 正確！答案是 "${FIB_QUESTIONS[idx].ans}"。`;
     if (!sessionStorage.getItem(qId)) { scores.fib++; sessionStorage.setItem(qId, '1'); }
   } else {
-    input.style.borderColor = 'var(--danger)'; input.style.background = '#7f1d1d';
+    input.classList.remove('correct'); input.classList.add('wrong');
     feedback.className = 'quiz-feedback wrong show';
     feedback.textContent = `❌ 你的答案 "${userAns || '(空白)'}" 不正確。提示：${FIB_QUESTIONS[idx].hint}`;
     sessionStorage.removeItem(qId);
@@ -544,12 +471,12 @@ function buildMatch() {
   const shuffledRight = [...MATCH_RIGHT].sort(() => Math.random() - 0.5);
   div.innerHTML = `
     <p>點擊左邊的檔案名稱，再點擊右邊對應的角色說明來配對。</p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.75rem;">
+    <div class="match-grid">
       <div id="match-left-col">${shuffledLeft.map((l, i) =>
-        `<button class="match-btn match-left" data-left="${l}" data-idx="${i}" onclick="selectLeft(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;"><code>${l}</code></button>`
+        `<button class="match-btn match-left" data-left="${l}" data-idx="${i}" onclick="selectLeft(this)"><code>${l}</code></button>`
       ).join('')}</div>
       <div id="match-right-col">${shuffledRight.map((r, i) =>
-        `<button class="match-btn match-right" data-right="${r}" data-idx="${i}" onclick="selectRight(this)" style="display:block; width:100%; padding:0.6rem; margin:0.3rem 0; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:0.88rem; font-family:inherit; text-align:left;">${r}</button>`
+        `<button class="match-btn match-right" data-right="${r}" data-idx="${i}" onclick="selectRight(this)">${r}</button>`
       ).join('')}</div>
     </div>
     <div class="quiz-feedback" id="match-fb" style="margin-top:0.75rem;"></div>`;
@@ -559,8 +486,8 @@ function buildMatch() {
 
 function selectLeft(btn) {
   if (btn.classList.contains('matched')) return;
-  document.querySelectorAll('.match-left').forEach(b => b.style.outline = 'none');
-  btn.style.outline = '2px solid var(--accent)';
+  document.querySelectorAll('.match-left').forEach(b => b.classList.remove('selected', 'error'));
+  btn.classList.add('selected');
   matchSelected = btn;
 }
 
@@ -569,9 +496,9 @@ function selectRight(btn) {
   if (btn.classList.contains('matched')) return;
   const correct = CORRECT_PAIRS[matchSelected.dataset.left] === btn.dataset.right;
   if (correct) {
-    matchSelected.classList.add('matched'); matchSelected.style.background = '#064e3b'; matchSelected.style.borderColor = 'var(--success)'; matchSelected.style.color = '#6ee7b7'; matchSelected.disabled = true;
-    btn.classList.add('matched'); btn.style.background = '#064e3b'; btn.style.borderColor = 'var(--success)'; btn.style.color = '#6ee7b7'; btn.disabled = true;
-    matchSelected.style.outline = 'none';
+    matchSelected.classList.remove('selected');
+    matchSelected.classList.add('matched'); matchSelected.disabled = true;
+    btn.classList.add('matched'); btn.disabled = true;
     window._matchCorrect = (window._matchCorrect || 0) + 1;
     if (window._matchCorrect >= 4) {
       document.getElementById('match-fb').className = 'quiz-feedback correct show';
@@ -580,8 +507,9 @@ function selectRight(btn) {
       updateScore();
     }
   } else {
-    matchSelected.style.outline = '2px solid var(--danger)';
-    setTimeout(() => { matchSelected.style.outline = 'none'; }, 500);
+    matchSelected.classList.remove('selected');
+    matchSelected.classList.add('error');
+    setTimeout(() => { matchSelected.classList.remove('error'); matchSelected.classList.add('selected'); }, 500);
   }
   matchSelected = null;
 }
@@ -590,5 +518,8 @@ function selectRight(btn) {
 buildMC(); buildFIB(); buildMatch(); updateScore();
 </script>
 
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
 </body>
 </html>
