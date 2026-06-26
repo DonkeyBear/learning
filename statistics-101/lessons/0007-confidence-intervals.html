@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0007 信賴區間與信心水準——最後一個謎題</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+</head>
+<body>
+
+<h1>L0007 信賴區間與信心水準：「95% 信心」到底是什麼意思？</h1>
+<div class="lesson-meta">
+  <span>📊 推論性統計</span>
+  <span>⏱️ 約 25 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0006-hypothesis-testing.html">L0006</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>1068 這個魔術數字是怎麼來的？</h2>
+
+<p>
+  我們已經在 L0005 學到了 CLT，在 L0006 學到了假設檢定。現在來解開最後一個謎題：
+</p>
+
+<div class="card" style="border: 2px solid var(--accent);">
+  <p style="margin: 0; font-size: 0.95rem;">
+    <strong>「本民調訪問 1068 位民眾，在 95% 信心水準下，抽樣誤差為 ±3%。」</strong>
+  </p>
+</div>
+
+<p>為什麼偏偏是 1068？這個數字從哪裡來？</p>
+
+<p>答案藏在<strong>信賴區間（Confidence Interval）</strong>的公式裡。這是整個推論性統計的終點——把所有學過的概念（CLT、標準誤、機率）串在一起，產出一個能對真實世界做判斷的工具。</p>
+
+<hr>
+
+<!-- ═══════════════ POINT VS INTERVAL ═══════════════ -->
+<h2>點估計 vs 區間估計：為什麼只給一個數字是不夠的</h2>
+
+<p>
+  如果民調只說「候選人 A 的支持度是 52%」，這個數字有多可靠？樣本只有 100 人和樣本有 10000 人，給出的「52%」意義完全不同。
+</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--warning);">📍 點估計</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">一個數字：\(\bar{x} = 52\%\)<br>但不知道「多可靠」——樣本數不同，可靠性天差地遠。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--success);">📏 區間估計</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">一個範圍：\(52\% \pm 3\%\) → [49%, 55%]<br>附帶信心水準，透明地表達不確定性。</p>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>🔑 核心精神</strong><br>
+  信賴區間強迫你用<strong>一個範圍</strong>來表達你的估計，同時用<strong>信心水準</strong>來表達這個範圍的可靠程度。這是科學誠實的表現——承認我們永遠無法確知真相，但我們可以量化不確定性。
+</div>
+
+<hr>
+
+<!-- ═══════════════ CI FORMULA ═══════════════ -->
+<h2>信賴區間的公式</h2>
+
+<p>由 CLT，\(\bar{x} \sim N(\mu, \sigma/\sqrt{n})\)。因此：</p>
+
+$$ \text{CI} = \bar{x} \pm z^* \times \frac{\sigma}{\sqrt{n}} $$
+
+<table style="font-size: 0.88rem; margin: 1rem 0;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 0.4rem 0.6rem;">信心水準</th>
+      <th style="padding: 0.4rem 0.6rem; text-align: right;">\(z^*\) 值</th>
+      <th style="padding: 0.4rem 0.6rem;">區間寬度</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding: 0.3rem 0.6rem;">90%</td><td style="padding: 0.3rem 0.6rem; text-align: right; font-family: 'JetBrains Mono', monospace;">1.645</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">較窄，但信心較低</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">95%</td><td style="padding: 0.3rem 0.6rem; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700;">1.96</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">標準選擇</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">99%</td><td style="padding: 0.3rem 0.6rem; text-align: right; font-family: 'JetBrains Mono', monospace;">2.576</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">較寬，但信心較高</td></tr>
+  </tbody>
+</table>
+
+<p>對於民調（比例資料），公式變成：</p>
+
+$$ \text{CI} = \hat{p} \pm z^* \times \sqrt{\frac{\hat{p}(1-\hat{p})}{n}} $$
+
+<p>當 \(\hat{p} = 0.5\)（最保守的假設），95% 信心水準（\(z^* = 1.96\)），期望誤差 \(E = 0.03\)：</p>
+
+$$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.25}{0.0009} \approx 1067.1 \rightarrow \mathbf{1068} $$
+
+<div class="summary-box">
+  <p style="margin: 0;"><strong>1068 就是這麼來的。</strong>不是慣例、不是整數偏好——它是數學公式的直接結果。而且注意：這個公式裡<strong>完全沒有母體大小的項</strong>。問 1068 人對台灣（2300 萬人）有效，對美國（3 億人）同樣有效。</p>
+</div>
+
+<hr>
+
+<!-- ═══════════════ CORRECT INTERPRETATION ═══════════════ -->
+<h2>95% 信心水準的正確解釋（大多數人都搞錯了）</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--danger);">❌ 常見誤解</h4>
+    <p style="margin: 0; font-size: 0.9rem;">「真實支持度有 95% 的機率落在這個區間內。」</p>
+    <p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-dim);">這聽起來很合理——但這是貝氏詮釋，不是頻率主義信賴區間的意思。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--success);">✅ 正確解釋</h4>
+    <p style="margin: 0; font-size: 0.9rem;">「如果我們重複這個抽樣程序無限多次，每次算出一個信賴區間，其中約 95% 的區間會捕捉到真實母體參數。」</p>
+  </div>
+</div>
+
+<p>
+  關鍵區別：<strong>真實母體參數是固定的（不是隨機變數）</strong>——它要嘛在這個區間內，要嘛不在。95% 指的是「<strong>這個區間建構程序的長期成功率</strong>」，不是「這個特定區間包含真實值的機率」。
+</p>
+
+<hr>
+
+<!-- ═══════════════ INTERACTIVE CI SIMULATOR ═══════════════ -->
+<h2>互動模擬器：親眼看到 95% 的意義</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">
+  每次抽樣會產生一個信賴區間（水平線段）。綠色線段捕捉到了真實平均值 \(\mu\)，紅色線段沒有。調整參數觀察變化。
+</p>
+
+<div class="card" style="border: 2px solid var(--accent);">
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 0.8rem;">
+    <div>
+      <label style="font-size: 0.8rem; font-weight: 600; display: block;">樣本數 \(n\)：<span id="ciValN" style="color: var(--accent);">30</span></label>
+      <input type="range" id="ciSliderN" min="5" max="200" value="30" style="width: 100%; accent-color: var(--accent);">
+    </div>
+    <div>
+      <label style="font-size: 0.8rem; font-weight: 600; display: block;">信心水準：<span id="ciValCL" style="color: var(--accent);">95%</span></label>
+      <select id="ciSelectCL" style="width: 100%; padding: 0.3em; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px;">
+        <option value="90">90%</option>
+        <option value="95" selected>95%</option>
+        <option value="99">99%</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-bottom: 0.6rem;">
+    <button id="ciBtnDraw" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🎯 重新抽樣</button>
+    <button id="ciBtnAdd" style="padding: 0.4em 1.2em; background: var(--success); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-left: 0.4rem;">➕ 追加 50 個</button>
+    <button id="ciBtnClear" style="padding: 0.4em 1.2em; background: var(--border); color: var(--text); border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-left: 0.4rem;">↺ 清除</button>
+  </div>
+
+  <canvas id="ciCanvas" style="display: block; width: 100%; max-width: 700px; margin: 0 auto; border-radius: 4px;"></canvas>
+
+  <div style="text-align: center; margin-top: 0.5rem;">
+    <span id="ciStats" style="font-size: 0.85rem; color: var(--text-dim);"></span>
+  </div>
+</div>
+
+<p style="text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 0.4rem;">
+  長期下來，綠色比例會趨近你選的信心水準。試試把 \(n\) 調到 5——區間變得超寬；調到 200——區間收窄。
+</p>
+
+<hr>
+
+<!-- ═══════════════ SAMPLE SIZE ═══════════════ -->
+<h2>為什麼多問人很貴——而且邊際效益遞減</h2>
+
+<p>信賴區間的寬度由 \(z^* \times \sigma / \sqrt{n}\) 決定。注意那個 \(\sqrt{n}\)：</p>
+
+<div class="card">
+  <table style="font-size: 0.88rem;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="padding: 0.4rem 0.6rem;">想把誤差減半</th>
+        <th style="padding: 0.4rem 0.6rem; text-align: right;">需要的樣本數</th>
+        <th style="padding: 0.4rem 0.6rem;">代價</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 0.3rem 0.6rem;">±6% → ±3%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">267 → 1068</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">4 倍</td></tr>
+      <tr><td style="padding: 0.3rem 0.6rem;">±3% → ±1.5%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1068 → 4272</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">4 倍</td></tr>
+      <tr><td style="padding: 0.3rem 0.6rem;">±1.5% → ±0.75%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">4272 → 17088</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">4 倍</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  每次想把誤差縮小一半，樣本數就要變 <strong>4 倍</strong>。這就是為什麼民調多半停留在 ±3%——要把誤差降到 ±1% 需要訪問近萬人，成本暴增但改善有限。
+</p>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p>Q1.「95% 信賴區間」的正確解釋是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">真實母體參數有 95% 的機率落在這個區間內</span>
+      <span class="quiz-option" data-q="1" data-a="1">如果重複抽樣無限多次，95% 的信賴區間會包含真實參數</span>
+      <span class="quiz-option" data-q="1" data-a="2">這個區間包含 95% 的樣本數據點</span>
+      <span class="quiz-option" data-q="1" data-a="3">樣本平均數有 95% 的機率落在這個區間內</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p>Q2. 為什麼民調的樣本數不需要隨母體大小增加？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">因為大型母體的變異性通常比小型母體小</span>
+      <span class="quiz-option" data-q="2" data-a="1">因為誤差公式中只有樣本數，沒有母體大小的項——CLT 的結果</span>
+      <span class="quiz-option" data-q="2" data-a="2">因為母體越大，隨機抽樣的代表性自然就越好</span>
+      <span class="quiz-option" data-q="2" data-a="3">這是一個長久以來的誤解——其實母體越大確實需要越多樣本</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p>Q3. 把信賴區間的誤差從 ±3% 縮小到 ±1.5%，樣本數需要變成幾倍？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">2 倍（誤差減半，樣本加倍就夠了）</span>
+      <span class="quiz-option" data-q="3" data-a="1">3 倍（跟信心水準的 z 值增加幅度有關）</span>
+      <span class="quiz-option" data-q="3" data-a="2">4 倍（誤差 ∝ 1/√n，誤差減半需要 n 變成 4 倍）</span>
+      <span class="quiz-option" data-q="3" data-a="3">10 倍（民調精確度需要大幅增加樣本才有意義）</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ COURSE WRAP-UP ═══════════════ -->
+<h2>🎓 課程總結：你學到了什麼</h2>
+
+<div class="summary-box">
+  <p style="margin-bottom: 0.5rem;">從零開始，我們一起走完了統計學的三大支柱：</p>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem;">
+    <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+      <h4 style="margin: 0 0 0.2rem; color: var(--accent);">📊 描述性統計</h4>
+      <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">平均數、中位數、標準差、常態分布、高爾頓釘板——如何描述數據的形狀。</p>
+      <p style="margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted);">L0001 – L0002</p>
+    </div>
+    <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+      <h4 style="margin: 0 0 0.2rem; color: var(--warning);">🎲 機率論基礎</h4>
+      <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">古典/頻率機率、條件機率、貝氏定理、蒙提霍爾、無限猴子——隨機性的數學。</p>
+      <p style="margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted);">L0003 – L0004</p>
+    </div>
+    <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+      <h4 style="margin: 0 0 0.2rem; color: var(--success);">🔬 推論性統計</h4>
+      <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">CLT、假設檢定、P 值、信賴區間——如何用樣本推論母體。</p>
+      <p style="margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted);">L0005 – L0007</p>
+    </div>
+  </div>
+</div>
+
+<p>現在當你看到：</p>
+<ul>
+  <li>一則民調說「支持度 52%，誤差 ±3%」→ 你知道 ±3% 來自 \(1.96 \times \sqrt{0.25/n}\)，\(n \approx 1068\)</li>
+  <li>一篇論文說「P < 0.05，統計顯著」→ 你知道這代表在 H₀ 下，觀察到這結果的機率小於 5%</li>
+  <li>一個「平均」數字 → 你會追問標準差、中位數、分布形狀</li>
+  <li>一個「機率」陳述 → 你會追問事前機率、條件、是否忽略了基本比率</li>
+</ul>
+
+<div class="callout tip">
+  <strong>🚀 下一步去哪裡？</strong><br>
+  統計學的旅程才剛開始。如果你想繼續深入，以下是自然的延伸方向：<br><br>
+  <strong>📈 迴歸分析</strong>：不只是描述關係，而是建立預測模型。<br>
+  <strong>🧪 實驗設計</strong>：如何設計一個「好的」實驗——隨機化、對照組、雙盲。<br>
+  <strong>📊 貝氏統計學</strong>：用事前分布 + 資料 → 事後分布的另一套推論框架。<br>
+  <strong>💻 實作應用</strong>：用 Python（scipy.stats）或 R 做真正的數據分析。<br><br>
+  需要任何方向的第一課，隨時跟我說。
+</div>
+
+<hr>
+
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📖 <a href="https://www.goodreads.com/book/show/17986361-naked-statistics" target="_blank" rel="noopener"><em>Naked Statistics</em> — Charles Wheelan</a>：第 11–12 章對信賴區間與民調統計有完整的解說。</li>
+  <li>🌐 <a href="https://seeing-theory.brown.edu/" target="_blank" rel="noopener">Seeing Theory — Brown University</a>：第四章「Frequentist Inference」的互動式信賴區間模組。</li>
+  <li>📄 <a href="https://en.wikipedia.org/wiki/Confidence_interval" target="_blank" rel="noopener">Confidence Interval — Wikipedia</a>：完整的數學定義與常見誤解。</li>
+</ul>
+
+<hr>
+
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  信賴區間的詮釋是整門入門統計學最容易被誤解的概念——比 P 值還難搞。隨時可以問：<br>
+  <em>「信賴區間和貝氏的可信區間（Credible Interval）有什麼不一樣？」</em><br>
+  <em>「如果母體標準差 σ 未知，信賴區間公式會變成怎樣？」</em><br>
+  <em>「可以再解釋一次為什麼母體大小不影響樣本數嗎？我還是不太能接受。」</em>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── CI Simulator (Canvas) ──
+  (function() {
+    var canvas = document.getElementById('ciCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    // Canvas dimensions
+    var W = 700, H = 410, PAD_L = 55, PAD_R = 25, PAD_T = 30, PAD_B = 30;
+    canvas.width = W;
+    canvas.height = H;
+
+    var trueMean = 50;
+    var popSD    = 15;
+    var n        = 30;
+    var confLevel = 0.95;
+
+    var zTable = { 0.90: 1.645, 0.95: 1.96, 0.99: 2.576 };
+    var intervals = []; // {lower, upper, mean}
+
+    function getZ() { return zTable[confLevel] || 1.96; }
+
+    function normalRand(mu, sd) {
+      var u1 = Math.random(), u2 = Math.random();
+      return mu + sd * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    }
+
+    function generateCI() {
+      var sum = 0;
+      for (var i = 0; i < n; i++) sum += normalRand(trueMean, popSD);
+      var xbar = sum / n;
+      var z = getZ();
+      var se = popSD / Math.sqrt(n);
+      return { lower: xbar - z * se, upper: xbar + z * se, mean: xbar };
+    }
+
+    function plotX(val) {
+      // Map value to canvas x coordinate
+      // Default range: trueMean ± 4 * popSD/sqrt(n) — but dynamic
+      var z = getZ();
+      var se = popSD / Math.sqrt(n);
+      var expand = Math.max(4 * se, 8); // at least ±8
+      var lo = trueMean - z * se - expand;
+      var hi = trueMean + z * se + expand;
+      return PAD_L + (val - lo) / (hi - lo) * (W - PAD_L - PAD_R);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      var z = getZ();
+      var se = popSD / Math.sqrt(n);
+      var expand = Math.max(4 * se, 8);
+      var lo = trueMean - z * se - expand;
+      var hi = trueMean + z * se + expand;
+
+      // True mean line
+      var mx = plotX(trueMean);
+      ctx.strokeStyle = 'rgba(45,212,191,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(mx, PAD_T);
+      ctx.lineTo(mx, H - PAD_B);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.fillStyle = '#2dd4bf';
+      ctx.font = '11px "Inter","Noto Sans TC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('μ = ' + trueMean, mx, PAD_T - 8);
+
+      // Draw each CI
+      var lineH = (H - PAD_T - PAD_B) / Math.max(intervals.length, 1);
+      if (lineH > 22) lineH = 22;
+      if (lineH < 3) lineH = 3;
+
+      var capCount = 0;
+      for (var i = 0; i < intervals.length; i++) {
+        var ci = intervals[i];
+        var y = PAD_T + i * lineH + lineH / 2;
+        if (y > H - PAD_B) break;
+
+        var x1 = plotX(ci.lower);
+        var x2 = plotX(ci.upper);
+        var xm = plotX(ci.mean);
+        var contains = ci.lower <= trueMean && trueMean <= ci.upper;
+        if (contains) capCount++;
+
+        var color = contains ? 'rgba(74,222,128,0.75)' : 'rgba(248,113,113,0.65)';
+
+        // Line
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y);
+        ctx.lineTo(x2, y);
+        ctx.stroke();
+
+        // End caps
+        ctx.beginPath();
+        ctx.moveTo(x1, y - 4); ctx.lineTo(x1, y + 4);
+        ctx.moveTo(x2, y - 4); ctx.lineTo(x2, y + 4);
+        ctx.stroke();
+
+        // Mean dot
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(xm, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Stats
+      var pct = intervals.length > 0 ? (capCount / intervals.length * 100).toFixed(1) : '—';
+      document.getElementById('ciStats').innerHTML =
+        '<span style="color: var(--success);">' + capCount + '</span> / ' + intervals.length +
+        ' 個區間捕捉到 μ（<span style="color: var(--accent);">' + pct + '%</span>）' +
+        '&nbsp;&nbsp;|&nbsp;&nbsp;理論值：<span style="color: var(--accent);">' + (confLevel*100).toFixed(0) + '%</span>';
+    }
+
+    function addIntervals(count) {
+      for (var i = 0; i < count; i++) {
+        intervals.push(generateCI());
+        // Keep max ~200 for performance
+        if (intervals.length > 200) intervals.shift();
+      }
+      draw();
+    }
+
+    function clearAll() {
+      intervals = [];
+      draw();
+    }
+
+    // Resize canvas for display
+    function resizeCanvas() {
+      var rect = canvas.parentElement.getBoundingClientRect();
+      var displayW = Math.min(rect.width - 4, 700);
+      var scale = displayW / W;
+      canvas.style.width = displayW + 'px';
+      canvas.style.height = (H * scale) + 'px';
+    }
+
+    document.getElementById('ciSliderN').addEventListener('input', function() {
+      n = parseInt(this.value);
+      document.getElementById('ciValN').textContent = n;
+    });
+
+    document.getElementById('ciSelectCL').addEventListener('change', function() {
+      confLevel = parseInt(this.value) / 100;
+      document.getElementById('ciValCL').textContent = parseInt(this.value) + '%';
+    });
+
+    document.getElementById('ciBtnDraw').addEventListener('click', function() {
+      clearAll();
+      addIntervals(50);
+    });
+
+    document.getElementById('ciBtnAdd').addEventListener('click', function() {
+      addIntervals(50);
+    });
+
+    document.getElementById('ciBtnClear').addEventListener('click', clearAll);
+
+    // Initial
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    addIntervals(50);
+  })();
+
+  // ── Quiz Logic ──
+  var answers = { 1: 1, 2: 1, 3: 2 };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！95% 指的是「建構程序的長期成功率」——如果重複抽樣，95% 的區間會捕捉到真實參數。真實參數是固定的，不是隨機的——它要嘛在區間內，要嘛不在。',
+      wrong: '❌ 這是信賴區間最常見的誤解。95% 不是「真實值有 95% 機率在區間內」——因為在頻率主義框架下，真實值是固定常數，不是隨機變數。95% 指的是：如果重複這個抽樣程序，95% 的區間會包含真實值。',
+    },
+    2: {
+      correct: '✅ 正確！這是 CLT 的直接推論：標準誤 = σ/√n，公式中完全沒有母體大小 N 的項。1068 人的樣本對台灣和對美國的精確度是一樣的。這違反直覺，但在數學上無懈可擊。',
+      wrong: '❌ 這是 CLT 最違反直覺的結果之一。標準誤公式 σ/√n 中沒有母體大小的項——誤差只取決於樣本數 n，跟母體大小無關。這就是為什麼美國 3 億人和台灣 2300 萬人用同樣的樣本數就能得到同樣的精確度。',
+    },
+    3: {
+      correct: '✅ 正確！信賴區間寬度 ∝ 1/√n。要把誤差減半（除以 2），需要 √n 加倍，也就是 n 變成 4 倍。從 1068 人變成 4272 人，誤差才從 ±3% 降到 ±1.5%——邊際效益遞減。',
+      wrong: '❌ 信賴區間寬度中的關鍵項是 1/√n。誤差減半 → 1/√n 減半 → √n 加倍 → n 需要變 4 倍。這就是信賴區間的平方根法則：精確度每提升一倍，成本就增加四倍。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>

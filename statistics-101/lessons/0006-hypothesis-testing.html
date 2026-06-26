@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0006 假設檢定與女士品茶——P 值的邏輯與陷阱</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<h1>L0006 假設檢定與女士品茶：P 值的邏輯與陷阱</h1>
+<div class="lesson-meta">
+  <span>📊 推論性統計</span>
+  <span>⏱️ 約 25 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0005-central-limit-theorem.html">L0005</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>劍橋大學的下午茶，改變了科學史</h2>
+
+<div class="card" style="border: 2px solid var(--accent);">
+  <p style="margin: 0;">
+    <strong>1935 年，英國劍橋。</strong>統計學家羅納德·費雪（R.A. Fisher）和一群同事在喝下午茶。一位女士——生物學家穆麗爾·布里斯托（Muriel Bristol）——拒絕了同事遞過來的一杯茶，說：<strong>「你把茶倒進牛奶裡了。我喜歡先加奶、再加茶。而且——我能喝出差別。」</strong>
+  </p>
+</div>
+
+<p>
+  在場的科學家都笑了。先加奶還是先加茶，化學成分完全一樣，怎麼可能喝得出來？但費雪沒有笑。他說：<strong>「我們來做個實驗。」</strong>
+</p>
+
+<p>
+  這個在茶桌上設計的小實驗，最終建立了現代科學的整套假設檢定框架——從疫苗臨床試驗到 A/B 測試，從藥物審查到社群媒體的推薦演算法，全都遵循著費雪那天下午建立的邏輯。
+</p>
+
+<hr>
+
+<!-- ═══════════════ EXPERIMENT DESIGN ═══════════════ -->
+<h2>實驗設計：8 杯茶，一個問題</h2>
+
+<p>費雪的實驗設計極其簡潔，卻處處都是深思熟慮：</p>
+
+<div class="card">
+  <ol style="margin-bottom: 0;">
+    <li>準備 <strong>8 杯茶</strong>：4 杯「先加奶」、4 杯「先加茶」，<strong>隨機排列</strong>。</li>
+    <li><strong>告訴女士這個結構</strong>（她知道有 4 杯奶先、4 杯茶先）。</li>
+    <li>女士逐一品嚐，把 8 杯分成兩組：「這 4 杯是奶先」、「這 4 杯是茶先」。</li>
+    <li>計算她<strong>正確分類了幾杯</strong>。</li>
+  </ol>
+</div>
+
+<div class="callout">
+  <strong>🔬 為什麼要告訴她「有 4 杯奶先、4 杯茶先」？</strong><br>
+  這是實驗設計的關鍵巧思。如果女士知道比例，她不會只挑 7 杯「奶先」——她必須恰好挑 4 杯。這意味著「全靠瞎猜」的機率可以精確計算。費雪把一個主觀的宣稱，轉化成了一個<strong>有精確機率模型的統計問題</strong>。
+</div>
+
+<hr>
+
+<!-- ═══════════════ NULL HYPOTHESIS ═══════════════ -->
+<h2>虛無假設：先假設「她只是瞎猜的」</h2>
+
+<p>費雪的核心洞見是：<strong>我們不直接證明「她有超能力」，我們先假設「她什麼都不會」——然後看數據是否足以推翻這個假設。</strong></p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">H₀：虛無假設</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「她是瞎猜的。」<br>她選對任何一杯的機率 = 1/2</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">H₁：對立假設</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「她真的喝得出來。」<br>她選對的機率 > 1/2</p>
+  </div>
+</div>
+
+<p>
+  我們的策略是<strong>歸謬法</strong>：先接受 H₀ 為真，然後計算「在 H₀ 下，觀察到這個結果（或更極端）的機率」。如果這個機率<strong>非常小</strong>，我們就說：H₀ 不太可能是真的，我們<strong>拒絕 H₀</strong>。
+</p>
+
+<hr>
+
+<!-- ═══════════════ COMBINATORIAL MATH ═══════════════ -->
+<h2>組合數學：精確計算「瞎猜猜對」的機率</h2>
+
+<p>
+  因為女士被要求<strong>恰好選 4 杯「奶先」</strong>，所以每個結果的機率可以用超幾何分布精確計算：
+</p>
+
+<div class="card">
+  <p style="margin: 0 0 0.5rem; font-size: 0.9rem;">
+    從 8 杯中選 4 杯稱為「奶先」→ 總共有 \(C(8,4) = 70\) 種選法。<br>
+    如果女士能正確分類 \(k\) 杯真正的「奶先」，數學式為：
+  </p>
+  $$ P(\text{正確分類 } k \text{ 杯}) = \frac{C(4, k) \times C(4, 4-k)}{C(8, 4)} $$
+</div>
+
+<p>把所有可能的結果列出來：</p>
+
+<div style="overflow-x: auto;">
+<table style="font-size: 0.85rem;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 0.4rem 0.6rem;">正確分類的杯數</th>
+      <th style="padding: 0.4rem 0.6rem; text-align: right;">組合數</th>
+      <th style="padding: 0.4rem 0.6rem; text-align: right;">機率</th>
+      <th style="padding: 0.4rem 0.6rem; text-align: right;">累積 P 值（≥此結果）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding: 0.3rem 0.6rem;">8 杯全對（k=4）</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1/70 ≈ 1.4%</td><td style="padding: 0.3rem 0.6rem; text-align: right; color: var(--success); font-weight: 700;">1/70 ≈ 1.4%</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">6 杯對（k=3）</td><td style="padding: 0.3rem 0.6rem; text-align: right;">16</td><td style="padding: 0.3rem 0.6rem; text-align: right;">16/70 ≈ 22.9%</td><td style="padding: 0.3rem 0.6rem; text-align: right; color: var(--warning);">17/70 ≈ 24.3%</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">4 杯對（k=2）</td><td style="padding: 0.3rem 0.6rem; text-align: right;">36</td><td style="padding: 0.3rem 0.6rem; text-align: right;">36/70 ≈ 51.4%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">53/70 ≈ 75.7%</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">2 杯對（k=1）</td><td style="padding: 0.3rem 0.6rem; text-align: right;">16</td><td style="padding: 0.3rem 0.6rem; text-align: right;">16/70 ≈ 22.9%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">69/70 ≈ 98.6%</td></tr>
+    <tr><td style="padding: 0.3rem 0.6rem;">0 杯對（k=0）</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1/70 ≈ 1.4%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">70/70 = 100%</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <strong>🔑 P 值的定義</strong><br>
+  <strong>P 值 = 在 H₀ 為真的前提下，觀察到「當前結果或更極端的結果」的機率。</strong><br>
+  如果 P 值 < 0.05（費雪選的門檻），我們就說結果「統計顯著」——拒絕 H₀。<br>
+  在這個實驗中，只有 <strong>8 杯全對（P = 1/70 ≈ 1.4%）</strong>能達到顯著水準。
+</div>
+
+<hr>
+
+<!-- ═══════════════ INTERACTIVE SIMULATOR ═══════════════ -->
+<h2>互動模擬器：如果她真的是瞎猜的……</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">
+  拖動拉桿選擇女士答對的杯數，觀察 P 值的變化。或點擊自動模擬，看 200 個「瞎猜者」的表現分布。
+</p>
+
+<div class="card" style="border: 2px solid var(--accent);">
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: end;">
+    <div>
+      <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">
+        🍵 女士正確分類的杯數：<span id="valCorrect" style="color: var(--accent); font-size: 1.1rem;">4</span>
+      </label>
+      <input type="range" id="sliderCorrect" min="0" max="8" value="4" step="1" style="width: 100%; accent-color: var(--accent);">
+      <div style="margin-top: 0.5rem; text-align: center;">
+        <p style="margin: 0; font-size: 0.85rem;">P 值（≥ 此結果）＝ <strong id="pValueDisplay" style="color: var(--success); font-size: 1.2rem;">0.014</strong></p>
+        <p style="margin: 0.2rem 0 0; font-size: 0.9rem; font-weight: 700;" id="conclusion">✅ 拒絕 H₀ —— 她不是瞎猜的！</p>
+      </div>
+    </div>
+    <div style="text-align: center;">
+      <button id="btnSimNull" style="padding: 0.4em 1.2em; background: var(--warning); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🎲 模擬 200 個瞎猜者</button>
+      <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0.3rem 0 0;" id="simNullMsg"></p>
+    </div>
+  </div>
+
+  <div style="position: relative; height: 250px; margin-top: 0.8rem;">
+    <canvas id="chartNull"></canvas>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════ P-VALUE PITFALLS ═══════════════ -->
+<h2>P 值的三大常見誤解</h2>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--danger);">❌ 誤解一</h4>
+    <p style="margin: 0; font-size: 0.85rem;"><strong>「P 值是 H₀ 為真的機率。」</strong><br>錯！P 值是 P(資料 | H₀)，不是 P(H₀ | 資料)。這是貝氏定理那課講的基本比率謬誤的另一種形式。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--danger);">❌ 誤解二</h4>
+    <p style="margin: 0; font-size: 0.85rem;"><strong>「P > 0.05 代表 H₀ 為真。」</strong><br>錯！只能說「沒有足夠證據拒絕 H₀」——這不等於「H₀ 是對的」。沒找到證據 ≠ 證據不存在。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--danger);">❌ 誤解三</h4>
+    <p style="margin: 0; font-size: 0.85rem;"><strong>「P < 0.05 代表效果很大。」</strong><br>錯！統計顯著 ≠ 實務重要。大樣本可以讓微小的差異達到「顯著」，即使毫無實際意義。</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════ TYPE I / II ERRORS ═══════════════ -->
+<h2>兩種錯誤：取捨的藝術</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">🚨 型一錯誤 (Type I Error)</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">H₀ 其實是對的，但我們拒絕了它。<br><strong>→ 偽陽性：沒有效果卻宣稱有效果</strong><br>機率 = α（通常設為 0.05）</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">🔇 型二錯誤 (Type II Error)</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">H₀ 其實是錯的，但我們沒有拒絕它。<br><strong>→ 偽陰性：有效果卻沒偵測到</strong><br>機率 = β（取決於樣本數和效應量）</p>
+  </div>
+</div>
+
+<div class="callout tip">
+  <strong>🎯 科學中的務實取捨</strong><br>
+  費雪設下 α = 0.05（容許 5% 的型一錯誤率），這是一種<strong>保守主義</strong>——我們寧可錯過真實效應（型二錯誤），也不願把雜訊當成訊號（型一錯誤）。這就是為什麼科學家說「非凡的宣稱需要非凡的證據」。
+</div>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p>Q1. 費雪的女士品茶實驗中，虛無假設（H₀）是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">女士真的具有分辨奶茶製作順序的能力</span>
+      <span class="quiz-option" data-q="1" data-a="1">女士只是在隨機瞎猜，答對率等於 1/2</span>
+      <span class="quiz-option" data-q="1" data-a="2">先加奶和先加茶的奶茶在化學成分上沒有差異</span>
+      <span class="quiz-option" data-q="1" data-a="3">8 杯茶中有 4 杯奶先和 4 杯茶先</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p>Q2. P 值的正確定義是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">虛無假設為真的機率</span>
+      <span class="quiz-option" data-q="2" data-a="1">研究結果可以被重複驗證的機率</span>
+      <span class="quiz-option" data-q="2" data-a="2">在 H₀ 為真的前提下，觀察到當前或更極端結果的機率</span>
+      <span class="quiz-option" data-q="2" data-a="3">對立假設（H₁）為真的機率</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p>Q3. 型一錯誤（Type I Error）在現實中對應哪種情況？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">一種明明有效的新藥，臨床試驗卻說它沒效</span>
+      <span class="quiz-option" data-q="3" data-a="1">一種根本無效的疗法，卻被研究宣稱「統計顯著有效」</span>
+      <span class="quiz-option" data-q="3" data-a="2">樣本數太小導致無法偵測到真實存在的效應</span>
+      <span class="quiz-option" data-q="3" data-a="3">使用了錯誤的統計檢定方法所導致的結論錯誤</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ SUMMARY ═══════════════ -->
+<h2>本課重點回顧</h2>
+
+<div class="summary-box">
+  <ol style="margin-bottom: 0;">
+    <li><strong>假設檢定的邏輯</strong>：先假設 H₀ 為真（歸謬法），若資料在 H₀ 下極度不可能，則拒絕 H₀。</li>
+    <li><strong>P 值</strong> = P(觀察到這結果或更極端 | H₀ 為真)。P 值 ≠ H₀ 為真的機率。</li>
+    <li><strong>α = 0.05</strong> 是費雪建立的慣例：容許 5% 機率犯型一錯誤（偽陽性）。</li>
+    <li><strong>型一錯誤</strong>＝沒效卻說有效（偽陽性）；<strong>型二錯誤</strong>＝有效卻沒偵測到（偽陰性）。</li>
+    <li>女士品茶實驗以 8 杯茶的簡單設計，建立了從臨床試驗到 A/B 測試的整套科學推論框架。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  假設檢定告訴我們「有效果嗎？」，但沒有告訴我們「效果有多大？」。下一課，我們學習<strong>信賴區間（Confidence Interval）</strong>——如何用一個區間來表達「我們對估計值有多不確定」。我們還會解開那個經典的統計標題：<strong>「95% 信心水準」到底是什麼意思？</strong>（提示：不是你以為的那個意思。）
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0007-confidence-intervals.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0007：信賴區間與信心水準
+  </a>
+</div>
+
+<hr>
+
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📄 <a href="https://en.wikipedia.org/wiki/Lady_tasting_tea" target="_blank" rel="noopener">Lady Tasting Tea — Wikipedia</a>：費雪原始實驗的完整歷史與數學細節。</li>
+  <li>📖 <a href="https://www.goodreads.com/book/show/17986361-naked-statistics" target="_blank" rel="noopener"><em>Naked Statistics</em> — Charles Wheelan</a>：第 9–10 章對假設檢定與 P 值有最清晰的入門解釋。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=0Rnq1NpHdmw" target="_blank" rel="noopener">P-hacking — Veritasium (YouTube)</a>：P 值為何在科學界引發再現性危機。</li>
+  <li>📄 <a href="https://www.amstat.org/asa/files/pdfs/P-ValueStatement.pdf" target="_blank" rel="noopener">ASA Statement on P-Values</a>：美國統計學會對 P 值的官方聲明與使用指引。</li>
+</ul>
+
+<hr>
+
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  P 值是統計學中最常被誤解的概念。隨時可以問：<br>
+  <em>「如果 P = 0.06，我可以說『有趨勢』嗎？」</em><br>
+  <em>「為什麼科學界那麼多人呼籲廢除 P < 0.05 這個標準？」</em><br>
+  <em>「型一錯誤和型二錯誤之間要怎麼取捨？」</em>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── Lady Tasting Tea: Null Distribution Chart + Interactive ──
+  (function() {
+    var canvas = document.getElementById('chartNull');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var chart = null;
+
+    // Hypergeometric probabilities for each k (0 to 8)
+    // P(k) = C(4, k/2-or-equivalent) — actually this is number correct out of 8
+    // The lady selects 4 as milk-first. If k of those 4 are actually milk-first,
+    // then she correctly identified k milk-first AND 4-k tea-first.
+    // But the "number correct" is k (milk-first correct) + k (tea-first correct) = 2k? No wait.
+    //
+    // Actually: lady picks 4 cups as "milk-first". The remaining 4 are "tea-first".
+    // True: 4 milk-first, 4 tea-first.
+    // If she correctly identifies k of the milk-first cups, she ALSO correctly
+    // identifies k of the tea-first cups (because she picked 4 milk-first,
+    // of which k are correct, meaning 4-k of her milk-first picks are actually tea-first.
+    // Among the 4 she labeled tea-first: 4 - (4-k) = k are actually tea-first (correct).
+    // So total correct = k (milk-first correct) + k (tea-first correct) = 2k? No...
+    //
+    // Actually simpler: she makes 8 judgments (4 "milk-first", 4 "tea-first").
+    // If k milk-first cups are correctly identified, then among the 4 cups she labeled
+    // milk-first: k are truly milk-first, 4-k are truly tea-first.
+    // Among the 4 cups she labeled tea-first: 4-(4-k)=k are truly tea-first (correct),
+    // and 4-k are truly milk-first (wrong).
+    // So total correct = k (milk-first correct) + k (tea-first correct) = 2k
+    // Total wrong = (4-k) + (4-k) = 8-2k
+    //
+    // Wait, but what's the range of k? She picks exactly 4 as milk-first. The number
+    // of truly milk-first cups among her 4 picks = k (where 0 ≤ k ≤ 4).
+    // So total correct = 2k, where k ranges from 0 to 4.
+    // Possible total correct values: 0, 2, 4, 6, 8.
+    //
+    // P(k truly milk-first in her 4 picks) = C(4,k) * C(4,4-k) / C(8,4)
+    // So the probabilities shown in the table are for k (milk-first correctly identified)
+    // The slider goes 0-8 (total correct).
+    // total correct = 2k → k = total/2
+
+    var probs = [];
+    for (var total = 0; total <= 8; total++) {
+      if (total % 2 === 1) { probs.push(0); continue; }
+      var k = total / 2;
+      // C(4,k) * C(4,4-k) / C(8,4)
+      var C = function(n, r) {
+        if (r < 0 || r > n) return 0;
+        var num = 1, den = 1;
+        for (var i = 1; i <= r; i++) { num *= (n - i + 1); den *= i; }
+        return num / den;
+      };
+      probs.push(C(4, k) * C(4, 4 - k) / C(8, 4));
+    }
+
+    var nullCounts = new Array(9).fill(0); // for simulating random guessers
+
+    var slider = document.getElementById('sliderCorrect');
+    var valEl  = document.getElementById('valCorrect');
+    var pValEl = document.getElementById('pValueDisplay');
+    var concEl = document.getElementById('conclusion');
+
+    function getPValue(totalCorrect) {
+      var sum = 0;
+      for (var t = totalCorrect; t <= 8; t++) {
+        sum += probs[t];
+      }
+      return sum;
+    }
+
+    function drawChart(highlight) {
+      if (chart) chart.destroy();
+
+      var labels = ['0','1','2','3','4','5','6','7','8'];
+      var barColors = labels.map(function(_, i) {
+        if (highlight !== undefined && i === highlight) return 'rgba(45,212,191,0.9)';
+        if (highlight !== undefined && i > highlight) return 'rgba(45,212,191,0.35)';
+        return 'rgba(45,212,191,0.45)';
+      });
+
+      // If we have simulation data, show that instead
+      var useSim = nullCounts.reduce(function(a,b){return a+b;}, 0) > 0;
+      var data, yLabel;
+      if (useSim) {
+        data = nullCounts;
+        yLabel = '頻率（200 個瞎猜者）';
+      } else {
+        data = probs.map(function(p) { return p * 70; }); // scale to count out of 70
+        yLabel = '組合數（共 70 種）';
+      }
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: barColors,
+            borderColor: barColors.map(function(c) { return c.replace('0.45','0.8').replace('0.35','0.7').replace('0.9','1'); }),
+            borderWidth: 0.5,
+            borderRadius: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '正確分類的杯數', color: '#8b8ba0' },
+              ticks: { color: '#8b8ba0', font: { size: 10 } },
+              grid: { color: 'rgba(39,42,58,0.4)' },
+            },
+            y: {
+              title: { display: true, text: yLabel, color: '#8b8ba0' },
+              ticks: { color: '#8b8ba0', font: { size: 10 } },
+              grid: { color: 'rgba(39,42,58,0.4)' },
+            },
+          },
+        },
+      });
+    }
+
+    function update() {
+      var totalCorrect = parseInt(slider.value);
+      valEl.textContent = totalCorrect;
+      var pv = getPValue(totalCorrect);
+      pValEl.textContent = pv.toFixed(3);
+      pValEl.style.color = pv < 0.05 ? 'var(--success)' : 'var(--warning)';
+
+      if (pv < 0.05) {
+        concEl.textContent = '✅ 拒絕 H₀（P < 0.05）—— 有足夠證據認為她不是瞎猜的';
+        concEl.style.color = 'var(--success)';
+      } else {
+        concEl.textContent = '❌ 無法拒絕 H₀（P ≥ 0.05）—— 資料不足以推翻「瞎猜」的假設';
+        concEl.style.color = 'var(--warning)';
+      }
+
+      drawChart(totalCorrect);
+    }
+
+    slider.addEventListener('input', update);
+
+    document.getElementById('btnSimNull').addEventListener('click', function() {
+      nullCounts = new Array(9).fill(0);
+      for (var sim = 0; sim < 200; sim++) {
+        // Simulate a random guesser: pick 4 random cups as "milk-first"
+        var cups = [0,0,0,0,1,1,1,1]; // 0=milk-first, 1=tea-first (or vice versa, doesn't matter)
+        // Shuffle
+        for (var i = cups.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = cups[i]; cups[i] = cups[j]; cups[j] = tmp;
+        }
+        // Guesser picks first 4 as "milk-first"
+        var correct = 0;
+        for (var c = 0; c < 4; c++) { if (cups[c] === 0) correct++; }
+        // correct = number of truly milk-first among her 4 picks
+        nullCounts[correct * 2]++;
+      }
+      document.getElementById('simNullMsg').textContent = '模擬完成！200 個瞎猜者中，只有 ' +
+        (nullCounts[8] || 0) + ' 人全對（恰好 ' + ((nullCounts[8]||0)/200*100).toFixed(1) + '% ≈ 理論值 1.4%）';
+      drawChart(parseInt(slider.value));
+    });
+
+    // Initial draw
+    drawChart(8);
+    update();
+  })();
+
+  // ── Quiz Logic ──
+  var answers = { 1: 1, 2: 2, 3: 1 };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！虛無假設 H₀ 永遠是「保守的預設值」——在這個案例中就是「女士只是在瞎猜，沒有任何特殊能力」。實驗的目的是設法推翻這個假設。',
+      wrong: '❌ 虛無假設（H₀）是「待推翻的稻草人」。費雪的核心創見就是：與其直接證明她有超能力，不如先假設她什麼都不會（H₀），然後用數據去推翻這個假設。',
+    },
+    2: {
+      correct: '✅ 正確！P 值 = P(資料或更極端 | H₀)。它是「在虛無假設下，看到這種結果的機率」——不是「H₀ 為真的機率」。這兩個命題的方向完全相反。',
+      wrong: '❌ P 值不是 H₀ 為真的機率——那是貝氏統計學的「事後機率」，需要用到貝氏定理來計算。P 值是頻率主義的指標：P(觀察到這結果或更極端 | H₀ 為真)。兩者容易混淆，但方向截然不同。',
+    },
+    3: {
+      correct: '✅ 正確！型一錯誤就是「偽陽性」：H₀ 其實是對的（療法真的無效），但我們錯誤地拒絕了 H₀，宣稱它有效。α = 0.05 的設計就是把這種錯誤的機率控制在 5% 以下。',
+      wrong: '❌ 型一錯誤是「偽陽性」——沒有效果卻說有效果。這對應於：一種無效的療法被錯誤地宣稱為有效。型二錯誤才是反過來：有效果卻沒偵測到（偽陰性）。α 控制在 0.05 意味著我們寧可放過真實效應，也不願被雜訊欺騙。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>

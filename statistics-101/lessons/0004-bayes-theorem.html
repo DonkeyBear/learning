@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0004 貝氏定理與「幾乎不可能」——從信念更新到無限猴子</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+</head>
+<body>
+
+<h1>L0004 貝氏定理與「幾乎不可能」：從信念更新到無限猴子</h1>
+<div class="lesson-meta">
+  <span>🎲 機率論基礎</span>
+  <span>⏱️ 約 25 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0003-probability-basics.html">L0003</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>你收到了一份陽性檢驗報告……</h2>
+
+<p>
+  想像以下場景：你做了一項罕見疾病的篩檢。
+</p>
+
+<div class="card" style="border: 2px solid var(--warning);">
+  <ul style="margin-bottom: 0;">
+    <li>這種疾病在<strong>一般人口中的盛行率是 0.1%</strong>（每 1000 人中只有 1 人患病）。</li>
+    <li>篩檢工具的<strong>準確率是 99%</strong>：患病者中有 99% 會測出陽性，健康者中有 99% 會測出陰性。</li>
+  </ul>
+</div>
+
+<p>你拿到報告——<strong style="color: var(--danger);">結果是陽性</strong>。</p>
+
+<div class="callout warn">
+  <strong>🤔 直覺題：</strong>在陽性結果的條件下，你真的罹患這種疾病的機率大約是多少？<br>
+  A) 約 99% &nbsp;&nbsp; B) 約 90% &nbsp;&nbsp; C) 約 50% &nbsp;&nbsp; D) 約 9%
+</div>
+
+<p>
+  大多數人（甚至許多醫生）會回答 <strong>A 或 B</strong>。直覺告訴我們：一個 99% 準確的檢驗說你陽性，那你大概真的得病了。
+</p>
+
+<p>
+  <strong>正確答案是 D：大約只有 9%。</strong>為什麼？因為疾病本身極其罕見——即使檢驗非常準確，<strong>偽陽性的絕對數量仍然遠多於真陽性</strong>。要理解這個反直覺的結果，我們需要貝氏定理。
+</p>
+
+<hr>
+
+<!-- ═══════════════ BAYES THEOREM ═══════════════ -->
+<h2>貝氏定理：把條件機率「倒過來」</h2>
+
+<p>
+  上一課我們學了條件機率 \(P(A \mid B)\)。貝氏定理做的事很簡單：它讓我們從 \(P(B \mid A)\) 計算出 \(P(A \mid B)\)——把條件機率<strong>反轉</strong>過來。
+</p>
+
+<div class="summary-box">
+  <h3>🧮 貝氏定理</h3>
+  $$ P(H \mid E) = \frac{P(E \mid H) \cdot P(H)}{P(E)} $$
+  <p style="margin-bottom: 0; font-size: 0.9rem;">
+    其中分母 \(P(E) = P(E \mid H) \cdot P(H) + P(E \mid \neg H) \cdot P(\neg H)\)
+  </p>
+</div>
+
+<p>每個符號都有名字，理解這些名字比背公式更重要：</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--accent);">📌 \(P(H)\) 事前機率</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">在看到任何證據之前，你對假說的相信程度。<br>→ 例如：疾病的盛行率</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--warning);">🔬 \(P(E \mid H)\) 概似度</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">如果假說為真，觀察到這個證據的機率。<br>→ 例如：患病者驗出陽性的機率</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--success);">✅ \(P(H \mid E)\) 事後機率</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">看到證據之後，你更新過的相信程度。<br>→ 這就是我們想知道的東西</p>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>🧠 貝氏定理的核心精神</strong><br>
+  你的信念不是固定不變的——<strong>每次看到新證據，你都應該更新你的信念</strong>。貝氏定理就是這個更新過程的數學公式：<br>
+  <strong>事後機率 ∝ 概似度 × 事前機率</strong>
+</div>
+
+<hr>
+
+<!-- ═══════════════ WORKED EXAMPLE ═══════════════ -->
+<h2>回到檢驗報告：一步一步算</h2>
+
+<p>讓我們把貝氏定理套用到開場的罕見疾病問題：</p>
+
+<div class="card">
+  <table style="font-size: 0.88rem;">
+    <tr><td style="padding: 0.25rem 0.5rem;">\(H\) = 真的患病</td><td style="padding: 0.25rem 0.5rem;">\(P(H) = 0.001\)（盛行率 0.1%）</td></tr>
+    <tr><td style="padding: 0.25rem 0.5rem;">\(E\) = 檢驗陽性</td><td style="padding: 0.25rem 0.5rem;">\(P(E \mid H) = 0.99\)（敏感度 99%）</td></tr>
+    <tr><td style="padding: 0.25rem 0.5rem;">偽陽性率</td><td style="padding: 0.25rem 0.5rem;">\(P(E \mid \neg H) = 0.01\)（健康者中 1% 會驗出陽性）</td></tr>
+  </table>
+</div>
+
+$$ \begin{aligned}
+P(E) &= P(E \mid H) \cdot P(H) + P(E \mid \neg H) \cdot P(\neg H) \\
+     &= 0.99 \times 0.001 + 0.01 \times 0.999 \\
+     &= 0.00099 + 0.00999 = 0.01098 \\[8pt]
+P(H \mid E) &= \frac{0.99 \times 0.001}{0.01098} \approx 0.0902 \approx \mathbf{9\%}
+\end{aligned} $$
+
+<p>
+  即使檢驗是陽性，你真正患病的機率只有約 <strong>9%</strong>。原因是：在 1000 個健康的人當中，會有約 10 人被偽陽性誤判——而真正患病的人只有 1 個。所以<strong>陽性結果中，大部分其實是偽陽性</strong>。
+</p>
+
+<div class="callout tip">
+  <strong>🔑 關鍵教訓：基本比率謬誤（Base Rate Fallacy）</strong><br>
+  人類的大腦天生會忽略「事前機率」（疾病有多罕見），而過度關注「概似度」（檢驗有多準）。貝氏定理強制你把兩者都納入計算——這就是為什麼它是理性思考最重要的數學工具之一。
+</div>
+
+<hr>
+
+<!-- ═══════════════ INTERACTIVE CALCULATOR ═══════════════ -->
+<h2>互動計算機：自己拉拉看</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">拖動滑桿改變參數，觀察「陽性結果真正代表患病的機率」如何變化。</p>
+
+<div class="card" style="border: 2px solid var(--accent);" id="bayesCalc">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div>
+      <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem;">
+        疾病盛行率（事前機率）：<span id="valPrior" style="color: var(--accent);">0.1%</span>
+      </label>
+      <input type="range" id="sliderPrior" min="0.01" max="50" value="0.1" step="0.01" style="width: 100%; accent-color: var(--accent);">
+    </div>
+    <div>
+      <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem;">
+        檢驗敏感度（真陽性率）：<span id="valSens" style="color: var(--warning);">99%</span>
+      </label>
+      <input type="range" id="sliderSens" min="70" max="99.9" value="99" step="0.1" style="width: 100%; accent-color: var(--warning);">
+    </div>
+    <div>
+      <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem;">
+        檢驗特異度（真陰性率）：<span id="valSpec" style="color: var(--success);">99%</span>
+      </label>
+      <input type="range" id="sliderSpec" min="70" max="99.9" value="99" step="0.1" style="width: 100%; accent-color: var(--success);">
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(45,212,191,0.08); border-radius: 8px; padding: 0.8rem;">
+      <p style="font-size: 0.8rem; color: var(--muted); margin: 0 0 0.3rem;">陽性結果 → 真正患病的機率</p>
+      <p style="font-size: 2.2rem; font-weight: 700; color: var(--accent); margin: 0;" id="resultBayes">9.0%</p>
+      <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0.2rem 0 0;" id="resultOdds">大約每 11 個陽性中只有 1 人真正患病</p>
+    </div>
+  </div>
+</div>
+
+<p style="text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem;">
+  試試看：把盛行率調到 50%，或把特異度降到 90%——結果會劇烈變化
+</p>
+
+<hr>
+
+<!-- ═══════════════ ALMOST SURELY ═══════════════ -->
+<h2>「幾乎必然」：機率為 0 的事件也可能發生</h2>
+
+<p>
+  到目前為止，我們都假設「機率 0 = 不可能」、「機率 1 = 必然」。但在處理<strong>無限</strong>的時候，這兩組等式會瓦解。
+</p>
+
+<h3>🎯 飛鏢盤的思想實驗</h3>
+
+<p>
+  想像一個完美的圓形飛鏢盤。你隨機射出一支飛鏢（均勻分布，每點機率相等）。飛鏢擊中<strong>恰好座標 (0.5, 0.5)</strong> 的機率是多少？
+</p>
+
+$$ P(\text{恰好擊中 } (0.5, 0.5)) = \frac{1}{\infty} = 0 $$
+
+<p>
+  機率是精確的 0——因為圓盤上有無限多個點，每個特定點的機率都是 0。但是，<strong>飛鏢確實擊中了某個點</strong>！一個機率為 0 的事件<strong>確實發生了</strong>。
+</p>
+
+<div class="summary-box">
+  <h3>📐 兩個關鍵術語</h3>
+  <table style="font-size: 0.9rem;">
+    <tr>
+      <td style="padding: 0.3rem 0.5rem; font-weight: 700; color: var(--accent); white-space: nowrap;">幾乎必然 (Almost Surely)</td>
+      <td style="padding: 0.3rem 0.5rem;">機率等於 1，但不保證一定發生。例如：從 [0,1] 隨機選一個數，「選到無理數」的機率是 1，但選到有理數仍有可能。</td>
+    </tr>
+    <tr>
+      <td style="padding: 0.3rem 0.5rem; font-weight: 700; color: var(--warning); white-space: nowrap;">幾乎不可能 (Almost Never)</td>
+      <td style="padding: 0.3rem 0.5rem;">機率等於 0，但仍有可能發生。例如：「從 [0,1] 隨機選到恰好 0.5」的機率是 0，但它確實可能發生。</td>
+    </tr>
+  </table>
+</div>
+
+<p>
+  這不只是數學的哲學遊戲——它直接影響我們如何理解「機率不為零」的事件在現實世界中的意義。
+</p>
+
+<hr>
+
+<!-- ═══════════════ INFINITE MONKEY ═══════════════ -->
+<h2>無限猴子定理：當「可能」不等於「會發生」</h2>
+
+<div class="summary-box">
+  <p style="margin: 0;">
+    <strong>無限猴子定理：</strong>一隻猴子在打字機上隨機敲擊按鍵，<strong>若時間無限</strong>，牠「幾乎必然」會打出任何給定的文本——包括莎士比亞全集。
+  </p>
+</div>
+
+<p>
+  數學上，這個定理是正確的。給定無限時間，任何機率大於 0 的事件最終都會發生。但問題在於：<strong>我們沒有無限的時間</strong>。
+</p>
+
+<h3>⏳ 來算算「期望時間」</h3>
+
+<p>
+  假設打字機有 50 個按鍵（英文字母 + 空格 + 標點）。猴子每秒隨機敲一個鍵。打出一個特定字元的機率是 \(1/50\)。打出一個長度為 \(n\) 的特定字串的機率是 \((1/50)^n\)，期望時間（平均要等多久）是 \(50^n\) 秒。
+</p>
+
+<div class="card">
+  <table style="font-size: 0.85rem;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border);">
+        <th style="padding: 0.4rem 0.5rem; text-align: left;">目標文本</th>
+        <th style="padding: 0.4rem 0.5rem; text-align: right;">長度</th>
+        <th style="padding: 0.4rem 0.5rem; text-align: right;">期望時間</th>
+        <th style="padding: 0.4rem 0.5rem; text-align: left;">比較</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding: 0.3rem 0.5rem;">"hi"</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">2</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 42 分鐘</td>
+        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">一頓午餐的時間</td>
+      </tr>
+      <tr>
+        <td style="padding: 0.3rem 0.5rem;">"hello"</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">5</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 9.9 萬年</td>
+        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">比人類文明史還長</td>
+      </tr>
+      <tr>
+        <td style="padding: 0.3rem 0.5rem;">"To be or not to be"</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">18</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 \(3.8 \times 10^{30}\) 年</td>
+        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">宇宙年齡的 \(10^{20}\) 倍</td>
+      </tr>
+      <tr>
+        <td style="padding: 0.3rem 0.5rem;">一首 14 行短詩（~500 字元）</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">500</td>
+        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 \(50^{500}\) 年</td>
+        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">一個難以想像的數字</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <strong>⚠️ 「機率不為零」≠「值得考慮」</strong><br>
+  無限猴子定理給我們的教訓是雙重的：<strong>數學上，只要有無限時間，任何非零機率的事件終將發生。</strong>但在物理上，我們只有有限的宇宙和有限的時間。當一個事件的期望時間遠超宇宙年齡（138 億年），統計學家就有底氣說：<strong>「在實務上，這就是不可能。」</strong><br><br>
+  這也是為什麼科學家可以在不放棄數學嚴謹性的前提下，做出「這不是巧合，這是真正的效應」的判斷——因為「純隨機剛好產生這個結果」在實務時間尺度上是不可行的。下一課我們就會學到：這就是 <strong>P 值與假設檢定</strong>的核心邏輯。
+</div>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p>Q1. 一個罕見疾病（盛行率 0.01%）的篩檢工具準確率為 99.9%。若某人驗出陽性，他最可能的情況是？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">他幾乎確定罹患此疾病（機率超過 95%）</span>
+      <span class="quiz-option" data-q="1" data-a="1">他罹病的機率大約是 50%（一半一半的機會）</span>
+      <span class="quiz-option" data-q="1" data-a="2">他很可能是偽陽性——真正罹病的機率不到 10%</span>
+      <span class="quiz-option" data-q="1" data-a="3">檢驗準確率跟盛行率無關，陽性就是陽性</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p>Q2.「幾乎必然」(Almost Surely) 這個術語在機率論中的意思是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">事件的機率等於 1，因此無論如何都一定會發生</span>
+      <span class="quiz-option" data-q="2" data-a="1">機率等於 1，但理論上仍然存在不發生的可能性</span>
+      <span class="quiz-option" data-q="2" data-a="2">事件的機率非常高，大約在 99.9% 以上</span>
+      <span class="quiz-option" data-q="2" data-a="3">這是一個模糊的日常用語，沒有嚴格的數學定義</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p>Q3. 無限猴子定理最重要的「現實世界教訓」是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">只要有耐心，任何低機率事件最終都會發生</span>
+      <span class="quiz-option" data-q="3" data-a="1">機率不為零的事件在現實中永遠不該被忽略</span>
+      <span class="quiz-option" data-q="3" data-a="2">數學上的可能性不等於實務上的可行性——當期望時間遠超物理限制時，可以視為不可能</span>
+      <span class="quiz-option" data-q="3" data-a="3">打字機的按鍵數量決定了猴子是否能成功產出文字</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ SUMMARY ═══════════════ -->
+<h2>本課重點回顧</h2>
+
+<div class="summary-box">
+  <ol style="margin-bottom: 0;">
+    <li><strong>貝氏定理</strong>把條件機率反轉：\(P(H \mid E) = \frac{P(E \mid H) \cdot P(H)}{P(E)}\)——事前機率 × 概似度 → 事後機率。</li>
+    <li><strong>基本比率謬誤</strong>：人們天生忽略事前機率，過度重視新證據。貝氏定理強制修正這個偏誤。</li>
+    <li><strong>幾乎必然</strong>：在無限樣本空間中，機率 = 1 不等於「一定發生」，機率 = 0 不等於「不可能」。</li>
+    <li><strong>無限猴子定理</strong>：數學上的可能性 ≠ 實務上的可行性。期望時間是理解這個區別的關鍵。</li>
+    <li>這些概念共同構成了<strong>科學推論的哲學基礎</strong>——為下一課的假設檢定與 P 值鋪路。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  我們已經完成了描述性統計（如何描述數據）和機率論（隨機性的數學）。現在到了統計學最核心的應用——<strong>推論性統計</strong>。
+</p>
+
+<p>
+  下一課我們進入 ROADMAP <a href="../../statistics-101/ROADMAP.md">第三站</a>：<strong>中央極限定理</strong>——為什麼不管母體長得多奇怪，樣本平均數總是常態分布？這是「信心水準能算出來」的數學魔法。我們還會重現費雪的<strong>女士品茶實驗</strong>——現代假設檢定的起源故事。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0005-central-limit-theorem.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0005：中央極限定理與假設檢定
+  </a>
+</div>
+
+<hr>
+
+<!-- ═══════════════ FURTHER READING ═══════════════ -->
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📖 <a href="https://www.goodreads.com/book/show/3228275-the-drunkard-s-walk" target="_blank" rel="noopener"><em>The Drunkard's Walk</em> — Leonard Mlodinow</a>：第 5 章對貝氏定理與基本比率謬誤有精采的生活案例。</li>
+  <li>📖 <a href="https://www.goodreads.com/book/show/17986361-naked-statistics" target="_blank" rel="noopener"><em>Naked Statistics</em> — Charles Wheelan</a>：第 6 章從貝氏定理過渡到假設檢定。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=HZGCoVF3YvM" target="_blank" rel="noopener">Bayes' Theorem — 3Blue1Brown (YouTube)</a>：最優雅的貝氏定理視覺化解說。</li>
+  <li>📄 <a href="https://en.wikipedia.org/wiki/Infinite_monkey_theorem" target="_blank" rel="noopener">Infinite Monkey Theorem — Wikipedia</a>：完整的數學推導與機率論背景。</li>
+</ul>
+
+<hr>
+
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  貝氏定理是整門統計學最需要「內化」的概念之一。隨時可以問：<br>
+  <em>「可以再給我一個貝氏定理的實際應用案例嗎？」</em><br>
+  <em>「事前機率如果我不知道怎麼辦？貝氏統計學怎麼處理這種狀況？」</em><br>
+  <em>「『幾乎必然』跟『幾乎收斂』有什麼關係？」</em>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── Bayesian Calculator ──
+  (function() {
+    var slPrior = document.getElementById('sliderPrior');
+    var slSens  = document.getElementById('sliderSens');
+    var slSpec  = document.getElementById('sliderSpec');
+    var vlPrior = document.getElementById('valPrior');
+    var vlSens  = document.getElementById('valSens');
+    var vlSpec  = document.getElementById('valSpec');
+    var resPct  = document.getElementById('resultBayes');
+    var resOdds = document.getElementById('resultOdds');
+
+    function calc() {
+      var prior  = parseFloat(slPrior.value) / 100;   // prevalence
+      var sens   = parseFloat(slSens.value)  / 100;   // P(+|sick)
+      var spec   = parseFloat(slSpec.value)  / 100;   // P(-|healthy)
+      var fpr    = 1 - spec;                          // false positive rate
+
+      var pPosGivenSick  = sens;
+      var pPosGivenHealthy = fpr;
+      var pPos = pPosGivenSick * prior + pPosGivenHealthy * (1 - prior);
+
+      var posterior = (pPosGivenSick * prior) / pPos;
+      var pct = (posterior * 100);
+
+      vlPrior.textContent = parseFloat(slPrior.value).toFixed(2) + '%';
+      vlSens.textContent  = parseFloat(slSens.value).toFixed(1) + '%';
+      vlSpec.textContent  = parseFloat(slSpec.value).toFixed(1) + '%';
+      resPct.textContent  = pct.toFixed(1) + '%';
+
+      if (posterior < 0.0001) {
+        resOdds.textContent = '機率極低——幾乎可以放心';
+      } else {
+        var oneIn = Math.round(1 / posterior);
+        resOdds.textContent = '大約每 ' + oneIn.toLocaleString() + ' 個陽性中只有 1 人真正患病';
+      }
+    }
+
+    slPrior.addEventListener('input', calc);
+    slSens.addEventListener('input', calc);
+    slSpec.addEventListener('input', calc);
+    calc();
+  })();
+
+  // ── Quiz Logic ──
+  var answers = { 1: 2, 2: 1, 3: 2 };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！即使檢驗準確率高達 99.9%，當疾病極其罕見（0.01%）時，偽陽性的絕對數量仍遠超過真陽性。貝氏定理計算出來的事後機率非常低。',
+      wrong: '❌ 關鍵是基本比率謬誤：即使檢驗很準，疾病極度罕見時，陽性結果中大多數仍是偽陽性。用貝氏定理算一下：\(P(H \mid E) = \frac{0.999 \times 0.0001}{0.999 \times 0.0001 + 0.001 \times 0.9999} \approx 9\%\)——不到 10%。',
+    },
+    2: {
+      correct: '✅ 正確！「幾乎必然」有嚴格的數學定義：機率等於 1，但樣本空間中仍存在使事件不發生的結果（只是那些結果的總機率為 0）。',
+      wrong: '❌「幾乎必然」是機率論的正式術語，有嚴格定義：\(P(A) = 1\) 但 \(A \neq \Omega\)（即事件 A 的機率為 1，但並非所有可能結果都屬於 A）。經典例子：從 [0,1] 均勻分布中「選到無理數」的機率為 1，但「選到有理數」仍有可能。',
+    },
+    3: {
+      correct: '✅ 正確！無限猴子定理的核心教訓就是區分「數學上的可能性」與「實務上的可行性」。當期望時間遠超宇宙年齡（138 億年），統計學家就有底氣說「這在實務上就是不可能」。',
+      wrong: '❌ 無限猴子定理最重要的教訓不是「只要有耐心什麼都會發生」——因為我們根本沒有無限的時間。真正的教訓是：數學上的可能性不等於現實中的可行性，科學家可以合理地在有限世界中排除某些「理論上可能」的事件。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>

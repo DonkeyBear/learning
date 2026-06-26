@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0005 中央極限定理——為什麼「平均」總是常態？</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<h1>L0005 中央極限定理：為什麼「平均」總是常態？</h1>
+<div class="lesson-meta">
+  <span>📊 推論性統計</span>
+  <span>⏱️ 約 20 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0004-bayes-theorem.html">L0004</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>為什麼問 1068 個人就能代表全台灣？</h2>
+
+<p>
+  每當選舉前夕，你會看到這樣的新聞標題：<strong>「最新民調：本調查訪問 1068 位民眾，在 95% 信心水準下，抽樣誤差為 ±3%。」</strong>
+</p>
+
+<p>
+  你可能有過這個疑惑：台灣有 2300 萬人，憑什麼只問 1068 個人就敢說代表全台灣？這個問題的答案，藏在統計學最神奇的定理裡——<strong>中央極限定理（Central Limit Theorem，簡稱 CLT）</strong>。
+</p>
+
+<div class="summary-box">
+  <h3>🌟 中央極限定理（白話版）</h3>
+  <p style="margin-bottom: 0;">
+    <strong>不管你原來的數據長什麼形狀</strong>（偏態的、扁平的、雙峰的……），只要樣本數夠大，<strong>樣本平均數</strong>的分布一定會趨近<strong>常態分布</strong>。
+  </p>
+</div>
+
+<hr>
+
+<!-- ═══════════════ POPULATION VS SAMPLE ═══════════════ -->
+<h2>母體 vs 樣本：一個基本區分</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🌍 母體（Population）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你想研究的「全部對象」。<br>→ 全台灣 2300 萬人的投票意向</p>
+    <p style="margin: 0.5rem 0 0; font-size: 0.85rem;"><strong>母體平均數 = \(\mu\)</strong></p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">🔬 樣本（Sample）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">從母體中抽取的一小部分。<br>→ 民調訪問的那 1068 個人</p>
+    <p style="margin: 0.5rem 0 0; font-size: 0.85rem;"><strong>樣本平均數 = \(\bar{x}\)</strong></p>
+  </div>
+</div>
+
+<p>
+  核心問題：<strong>我們永遠看不到母體的真實平均 \(\mu\)</strong>（不可能問遍 2300 萬人）。我們只有一個樣本的 \(\bar{x}\)。那要怎麼知道 \(\bar{x}\) 離真實的 \(\mu\) 有多遠？
+</p>
+
+<p>答案：不要只抽一個樣本——想像你<strong>重複抽無限多次</strong>，每次抽 \(n\) 個人，算出一個 \(\bar{x}\)。這些 \(\bar{x}\) 會形成一個分布——叫做<strong>抽樣分布（Sampling Distribution）</strong>。CLT 告訴我們這個分布的形狀。</p>
+
+<hr>
+
+<!-- ═══════════════ CLT STATEMENT ═══════════════ -->
+<h2>CLT 的精確陳述</h2>
+
+<div class="summary-box">
+  <p style="margin-bottom: 0.5rem;">給定一個母體（<strong>任何分布</strong>），其平均數為 \(\mu\)，標準差為 \(\sigma\)。從中抽取大小為 \(n\) 的隨機樣本，計算樣本平均數 \(\bar{x}\)。當 \(n\) 夠大時：</p>
+  $$ \bar{x} \sim N\left(\mu, \frac{\sigma}{\sqrt{n}}\right) $$
+  <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">換句話說：樣本平均數的分布會趨近<strong>常態分布</strong>，中心在真實母體平均 \(\mu\)，標準差為 \(\frac{\sigma}{\sqrt{n}}\)（稱為<strong>標準誤</strong>）。</p>
+</div>
+
+<div class="callout">
+  <strong>🔑 三個關鍵要點</strong><br>
+  <ol style="margin-bottom: 0;">
+    <li><strong>母體可以是任何形狀</strong>——這是 CLT 最神奇的地方。</li>
+    <li>\(n\) 越大，\(\bar{x}\) 的分布越接近常態。經驗法則：<strong>\(n \ge 30\) 通常就足夠了</strong>。</li>
+    <li>樣本平均數的波動（標準誤 \(\sigma/\sqrt{n}\)）<strong>隨 \(\sqrt{n}\) 縮小</strong>——樣本數變 4 倍，誤差才減半。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ INTERACTIVE CLT DEMO ═══════════════ -->
+<h2>親眼見證 CLT：互動抽樣模擬器</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">
+  選擇一個母體分布，點擊「抽樣」按鈕，觀察樣本平均數的分布如何慢慢變成鐘形曲線。
+</p>
+
+<div class="card" style="border: 2px solid var(--accent);" id="cltDemo">
+
+  <!-- Distribution selector -->
+  <div style="margin-bottom: 0.8rem;">
+    <p style="font-size: 0.85rem; font-weight: 600; margin: 0 0 0.4rem;">母體分布：</p>
+    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="distBtns">
+      <button data-dist="uniform" class="dist-btn active" style="padding: 0.35em 0.8em; border-radius: 5px; font-size: 0.82rem; cursor: pointer; background: var(--accent); color: #0f1119; border: none; font-weight: 600;">⬛ 均勻分布</button>
+      <button data-dist="exponential" class="dist-btn" style="padding: 0.35em 0.8em; border-radius: 5px; font-size: 0.82rem; cursor: pointer; background: var(--card-bg); color: var(--text-dim); border: 1px solid var(--border); font-weight: 600;">📉 指數分布（右偏）</button>
+      <button data-dist="bimodal" class="dist-btn" style="padding: 0.35em 0.8em; border-radius: 5px; font-size: 0.82rem; cursor: pointer; background: var(--card-bg); color: var(--text-dim); border: 1px solid var(--border); font-weight: 600;">🐫 雙峰分布</button>
+      <button data-dist="chi" class="dist-btn" style="padding: 0.35em 0.8em; border-radius: 5px; font-size: 0.82rem; cursor: pointer; background: var(--card-bg); color: var(--text-dim); border: 1px solid var(--border); font-weight: 600;">📐 卡方分布（極度偏態）</button>
+    </div>
+  </div>
+
+  <!-- Sample size slider -->
+  <div style="margin-bottom: 0.8rem;">
+    <label style="font-size: 0.85rem; font-weight: 600;">每次抽樣的樣本數 \(n\)：<span id="valN" style="color: var(--accent);">30</span></label>
+    <input type="range" id="sliderN" min="2" max="100" value="30" style="width: 100%; accent-color: var(--accent); margin-top: 0.2rem;">
+  </div>
+
+  <!-- Buttons -->
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem;">
+    <button id="btnOnce" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🎯 抽 1 次</button>
+    <button id="btnMany" style="padding: 0.4em 1.2em; background: var(--success); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">⚡ 抽 200 次</button>
+    <button id="btnReset" style="padding: 0.4em 1.2em; background: var(--border); color: var(--text); border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">↺ 重置</button>
+  </div>
+
+  <!-- Chart -->
+  <div style="position: relative; height: 280px; margin-bottom: 0.6rem;">
+    <canvas id="chartCLT"></canvas>
+  </div>
+
+  <!-- Stats -->
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+    <div class="card" style="margin: 0; text-align: center; padding: 0.6rem;">
+      <p style="font-size: 0.75rem; color: var(--muted); margin: 0;">總抽樣次數</p>
+      <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0;" id="statCount">0</p>
+    </div>
+    <div class="card" style="margin: 0; text-align: center; padding: 0.6rem;">
+      <p style="font-size: 0.75rem; color: var(--muted); margin: 0;">樣本平均數的平均</p>
+      <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0;" id="statMean">—</p>
+    </div>
+    <div class="card" style="margin: 0; text-align: center; padding: 0.6rem;">
+      <p style="font-size: 0.75rem; color: var(--muted); margin: 0;">標準誤 SE = σ/√n</p>
+      <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0;" id="statSE">—</p>
+    </div>
+  </div>
+</div>
+
+<p style="text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 0.4rem;">
+  試試看：切換到「指數分布」，點幾次「抽 200 次」——你會看到一個高度偏態的母體，產生出完美對稱的樣本平均數分布
+</p>
+
+<hr>
+
+<!-- ═══════════════ WHY IT MATTERS ═══════════════ -->
+<h2>CLT 為什麼重要？它是整門推論統計的基石</h2>
+
+<p>CLT 是連接「描述」和「推論」的橋樑。沒有 CLT，以下這些全都做不到：</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.2rem;">📊 信賴區間</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">CLT 告訴我們 \(\bar{x}\) 的分布形狀 → 所以我們能算出「真實 \(\mu\) 有 95% 機率落在哪個範圍」。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.2rem;">🧪 假設檢定</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">CLT 讓我們知道「如果虛無假設為真，觀察到這個結果的機率是多少」→ 這就是 P 值。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.2rem;">📋 民調與品管</h4>
+    <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">從 1068 人推論全台灣、從 30 個樣品判斷一批貨的好壞——全都是 CLT 的應用。</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p>Q1. 中央極限定理（CLT）最重要的主張是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">所有數據在自然界中都是常態分布</span>
+      <span class="quiz-option" data-q="1" data-a="1">母體數據本身會隨著樣本數增加而變成常態</span>
+      <span class="quiz-option" data-q="1" data-a="2">不管母體長什麼形狀，樣本平均數的分布會趨近常態</span>
+      <span class="quiz-option" data-q="1" data-a="3">只要樣本數超過 30，任何統計推論都是準確的</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p>Q2. 樣本平均數的標準誤（Standard Error）公式是 \(\sigma / \sqrt{n}\)。這表示什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">樣本越大，樣本平均數的波動越大</span>
+      <span class="quiz-option" data-q="2" data-a="1">樣本數加倍，精確度也加倍</span>
+      <span class="quiz-option" data-q="2" data-a="2">樣本數增加會縮小誤差，但邊際效益遞減（需 4 倍才減半）</span>
+      <span class="quiz-option" data-q="2" data-a="3">標準誤跟母體的標準差沒有關係</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p>Q3. 為什麼民調只訪問約 1000 人就能代表全台灣？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">因為台灣人口結構非常均勻，1000 人足以涵蓋所有類型</span>
+      <span class="quiz-option" data-q="3" data-a="1">因為 CLT 保證樣本平均數的誤差只取決於樣本數，與母體大小幾乎無關</span>
+      <span class="quiz-option" data-q="3" data-a="2">因為 1000 人是統計學家經過協商約定的國際標準</span>
+      <span class="quiz-option" data-q="3" data-a="3">因為問卷設計的技術已經進步到不需要更多樣本</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ SUMMARY ═══════════════ -->
+<h2>本課重點回顧</h2>
+
+<div class="summary-box">
+  <ol style="margin-bottom: 0;">
+    <li><strong>母體 vs 樣本</strong>：我們永遠看不到母體的真實參數，只能透過樣本去推論。</li>
+    <li><strong>中央極限定理</strong>：不論母體分布形狀為何，樣本平均數 \(\bar{x}\) 的抽樣分布會趨近常態 \(N(\mu, \sigma/\sqrt{n})\)。</li>
+    <li><strong>標準誤 \(\sigma/\sqrt{n}\)</strong>：樣本平均數的「典型波動幅度」。\(n\) 越大，誤差越小——遵循平方根法則。</li>
+    <li>CLT 是<strong>信賴區間、假設檢定、民調統計</strong>等所有推論性統計的數學基礎。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  有了 CLT 這個武器，我們終於可以做統計學最核心的動作了：<strong>假設檢定</strong>。下一課，我們會重現現代統計學的起源故事——1935 年，費雪（R.A. Fisher）在劍橋大學的下午茶会上，設計了一個實驗來測試一位女士的驚人宣稱：「我能喝出奶茶是先加奶還是先加茶。」這個看似微不足道的實驗，建立了<strong>虛無假設、P 值、統計顯著性</strong>的整套思維框架。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0006-hypothesis-testing.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0006：假設檢定與女士品茶
+  </a>
+</div>
+
+<hr>
+
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📖 <a href="https://www.goodreads.com/book/show/17986361-naked-statistics" target="_blank" rel="noopener"><em>Naked Statistics</em> — Charles Wheelan</a>：第 7–8 章對 CLT 與抽樣分布有生活化的精彩解釋。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=YAlJCEDH2uY" target="_blank" rel="noopener">StatQuest: The Central Limit Theorem</a>：最清晰的 CLT 視覺化解說。</li>
+  <li>🌐 <a href="https://seeing-theory.brown.edu/" target="_blank" rel="noopener">Seeing Theory — Brown University</a>：第三章「Frequentist Inference」有互動式 CLT 模組。</li>
+</ul>
+
+<hr>
+
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  CLT 是統計學最需要「親眼看到才能相信」的定理。隨時可以問：<br>
+  <em>「如果母體分布超級畸形（例如只有 0 和 1），CLT 還成立嗎？」</em><br>
+  <em>「\(n \ge 30\) 這個數字是從哪裡來的？如果母體非常偏態呢？」</em><br>
+  <em>「標準誤跟標準差有什麼不一樣？」</em>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── CLT Interactive Demo ──
+  (function() {
+    var canvas = document.getElementById('chartCLT');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var chart = null;
+
+    var sampleMeans = [];
+    var N = 30;
+    var distName = 'uniform';
+    var trueMean = 5;      // for uniform(0,10)
+    var trueSD   = 2.8868; // for uniform(0,10) = 10/sqrt(12)
+
+    // Parent distribution samplers
+    function normalRand(mu, sd) {
+      var u1 = Math.random(), u2 = Math.random();
+      return mu + sd * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    }
+
+    var samplers = {
+      uniform: {
+        fn: function() { return Math.random() * 10; },
+        mean: 5,
+        sd: Math.sqrt(100/12), // ~2.8868
+      },
+      exponential: {
+        fn: function() { return -Math.log(Math.random()); },
+        mean: 1,
+        sd: 1,
+      },
+      bimodal: {
+        fn: function() { return Math.random() < 0.5 ? normalRand(3, 0.6) : normalRand(7, 0.6); },
+        mean: 5,
+        sd: 2.03,
+      },
+      chi: {
+        fn: function() {
+          // Chi-square(3) approx: sum of 3 squared normals
+          var s = 0;
+          for (var i = 0; i < 3; i++) { var z = normalRand(0,1); s += z*z; }
+          return s;
+        },
+        mean: 3,
+        sd: Math.sqrt(6), // ~2.449
+      },
+    };
+
+    function setDistribution(name) {
+      distName = name;
+      trueMean = samplers[name].mean;
+      trueSD   = samplers[name].sd;
+      sampleMeans = [];
+      drawChart();
+
+      // Update button styles
+      document.querySelectorAll('.dist-btn').forEach(function(b) {
+        var isActive = b.dataset.dist === name;
+        b.style.background = isActive ? 'var(--accent)' : 'var(--card-bg)';
+        b.style.color = isActive ? '#0f1119' : 'var(--text-dim)';
+        b.style.border = isActive ? 'none' : '1px solid var(--border)';
+      });
+      updateStats();
+    }
+
+    function doSamples(count) {
+      var s = samplers[distName];
+      for (var i = 0; i < count; i++) {
+        var sum = 0;
+        for (var j = 0; j < N; j++) { sum += s.fn(); }
+        sampleMeans.push(sum / N);
+      }
+      drawChart();
+      updateStats();
+    }
+
+    function updateStats() {
+      document.getElementById('statCount').textContent = sampleMeans.length;
+      if (sampleMeans.length > 0) {
+        var sm = sampleMeans.reduce(function(a,b){return a+b;},0) / sampleMeans.length;
+        var sv = sampleMeans.reduce(function(a,b){return a + (b-sm)*(b-sm);},0) / sampleMeans.length;
+        document.getElementById('statMean').textContent = sm.toFixed(3);
+        document.getElementById('statSE').textContent = Math.sqrt(sv).toFixed(3);
+      } else {
+        document.getElementById('statMean').textContent = '—';
+        document.getElementById('statSE').textContent = '—';
+      }
+    }
+
+    function drawChart() {
+      if (chart) chart.destroy();
+
+      if (sampleMeans.length === 0) {
+        // Draw empty chart with reference line
+        chart = new Chart(ctx, {
+          type: 'bar',
+          data: { labels: [], datasets: [] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              title: { display: true, text: '還沒有抽樣——點擊上方按鈕開始', color: '#8b8ba0', font: { size: 14 } },
+              legend: { display: false },
+            },
+            scales: {
+              x: { ticks: { color: '#8b8ba0' }, grid: { color: 'rgba(39,42,58,0.4)' } },
+              y: { ticks: { color: '#8b8ba0' }, grid: { color: 'rgba(39,42,58,0.4)' } },
+            },
+          },
+        });
+        return;
+      }
+
+      // Compute histogram bins
+      var minV = Math.min.apply(null, sampleMeans);
+      var maxV = Math.max.apply(null, sampleMeans);
+      var range = maxV - minV || 0.1;
+      var pad = range * 0.1;
+      minV -= pad; maxV += pad;
+      var nBins = 30;
+      var binW = (maxV - minV) / nBins;
+
+      var bins = new Array(nBins).fill(0);
+      var binLabels = [];
+      for (var i = 0; i < nBins; i++) {
+        binLabels.push((minV + i * binW + binW/2).toFixed(2));
+      }
+      for (var k = 0; k < sampleMeans.length; k++) {
+        var idx = Math.floor((sampleMeans[k] - minV) / binW);
+        if (idx >= 0 && idx < nBins) bins[idx]++;
+      }
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: binLabels,
+          datasets: [{
+            data: bins,
+            backgroundColor: 'rgba(45,212,191,0.6)',
+            borderColor: 'rgba(45,212,191,0.9)',
+            borderWidth: 0.5,
+            borderRadius: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '樣本平均數', color: '#8b8ba0' },
+              ticks: { color: '#8b8ba0', font: { size: 9 }, maxTicksLimit: 12,
+                callback: function(v) { return (+this.getLabelForValue(v)).toFixed(1); }
+              },
+              grid: { color: 'rgba(39,42,58,0.4)' },
+            },
+            y: {
+              title: { display: true, text: '頻率', color: '#8b8ba0' },
+              ticks: { color: '#8b8ba0', font: { size: 9 } },
+              grid: { color: 'rgba(39,42,58,0.4)' },
+            },
+          },
+        },
+      });
+    }
+
+    // Event bindings
+    document.querySelectorAll('.dist-btn').forEach(function(b) {
+      b.addEventListener('click', function() { setDistribution(this.dataset.dist); });
+    });
+
+    document.getElementById('sliderN').addEventListener('input', function() {
+      N = parseInt(this.value);
+      document.getElementById('valN').textContent = N;
+    });
+
+    document.getElementById('btnOnce').addEventListener('click', function() { doSamples(1); });
+    document.getElementById('btnMany').addEventListener('click', function() { doSamples(200); });
+    document.getElementById('btnReset').addEventListener('click', function() {
+      sampleMeans = [];
+      drawChart();
+      updateStats();
+    });
+
+    // Initial draw
+    drawChart();
+    updateStats();
+  })();
+
+  // ── Quiz Logic ──
+  var answers = { 1: 2, 2: 2, 3: 1 };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！CLT 的精髓就是：不管母體分布多奇怪，樣本平均數的抽樣分布會趨近常態。這是統計推論的基石。',
+      wrong: '❌ CLT 說的是「樣本平均數的分布」趨近常態，不是「母體本身」變成常態。母體的形狀永遠不變——是我們對母體平均數的「估計」在大量重複抽樣後形成常態分布。',
+    },
+    2: {
+      correct: '✅ 正確！標準誤 \(= \sigma / \sqrt{n}\)。要把誤差減半，需要讓 \(\sqrt{n}\) 加倍，也就是 \(n\) 要變 4 倍。這就是民調很難從 ±3% 縮小到 ±1% 的原因。',
+      wrong: '❌ 標準誤公式中的 \(\sqrt{n}\) 告訴我們：誤差跟樣本數的平方根成反比。要讓誤差減半，樣本數需要變 4 倍（因為 \(\sqrt{4n} = 2\sqrt{n}\)）。這是邊際效益遞減——從 100 人增加到 400 人，誤差才減半。',
+    },
+    3: {
+      correct: '✅ 正確！CLT 的關鍵洞察：標準誤 \(= \sigma / \sqrt{n}\)，只取決於樣本數 \(n\)，<strong>與母體總數幾乎無關</strong>。問 1068 人對 2300 萬人的台灣有效，對 3 億人的美國同樣有效。',
+      wrong: '❌ 這正是 CLT 最違反直覺的結果：抽樣誤差取決於樣本數 \(n\)，不取決於母體大小。1068 人的樣本對台灣（2300 萬人）和對美國（3 億人）的精確度是一樣的。這是因為標準誤公式 \(\sigma/\sqrt{n}\) 中根本沒有母體大小的項。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>
