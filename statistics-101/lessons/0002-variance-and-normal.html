@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0002 標準差、常態分布與高爾頓釘板</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<h1>L0002 數據的「情緒」：標準差、常態分布與高爾頓釘板</h1>
+<div class="lesson-meta">
+  <span>📊 描述性統計</span>
+  <span>⏱️ 約 20 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0001-shape-of-data.html">L0001</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>兩個班級，同一個平均分數</h2>
+
+<p>
+  你是校長。兩個數學班級剛考完期末考：
+</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0;">
+    <h4 style="margin: 0 0 0.4rem; color: var(--accent);">📘 A 班（平均 70 分）</h4>
+    <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.6; margin: 0;">
+      68 &nbsp; 71 &nbsp; 69 &nbsp; 72 &nbsp; 70<br>
+      70 &nbsp; 69 &nbsp; 71 &nbsp; 70 &nbsp; 70
+    </p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0.5rem 0 0;">→ 每個人都在 68–72 之間</p>
+  </div>
+  <div class="card" style="margin: 0;">
+    <h4 style="margin: 0 0 0.4rem; color: var(--warning);">📙 B 班（平均 70 分）</h4>
+    <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.6; margin: 0;">
+      100 &nbsp; 40 &nbsp; 55 &nbsp; 95 &nbsp; 60<br>
+      85 &nbsp; 45 &nbsp; 90 &nbsp; 50 &nbsp; 80
+    </p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0.5rem 0 0;">→ 從 40 分到 100 分都有</p>
+  </div>
+</div>
+
+<p>
+  <strong>這兩個班級的平均都是 70 分，但「故事」截然不同。</strong>上一課我們學會了用平均數和中位數找數據的「中心」。但光有中心是不夠的——我們還需要一個數字來描述：<strong>數據有多「散」？</strong>
+</p>
+
+<hr>
+
+<!-- ═══════════════ VARIANCE ═══════════════ -->
+<h2>變異數（Variance）：量測「離家多遠」</h2>
+
+<p>
+  直覺上，我們想知道每個數據點離平均數「多遠」，然後取一個平均值。
+</p>
+
+<div class="card">
+  <h4 style="margin-top:0;">🔢 變異數的計算步驟</h4>
+  <ol style="margin-bottom: 0;">
+    <li>計算平均數 \(\bar{x}\)</li>
+    <li>每個數據點 \(x_i\) 減去平均數，得到「偏差」\(x_i - \bar{x}\)</li>
+    <li>把偏差<strong>平方</strong>（消掉正負號）\((x_i - \bar{x})^2\)</li>
+    <li>所有平方偏差加起來，除以 \(n\)（或 \(n-1\)）</li>
+  </ol>
+</div>
+
+$$ \sigma^2 = \frac{\sum_{i=1}^{n} (x_i - \bar{x})^2}{n} $$
+
+<div class="callout">
+  <strong>🤔 為什麼要平方？</strong><br>
+  因為有些偏差是正的、有些是負的——直接加總會互相抵消，得到「零散度」的假象。平方之後全部變正數，大的偏差會被「放大」，小的偏差會被「縮小」。
+</div>
+
+<p>來算算看兩個班級的變異數：</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; text-align: center;">
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">A 班變異數</p>
+    <p style="font-size: 1.3rem; font-weight: 700; color: var(--accent); margin: 0.3rem 0;">\(\sigma^2 \approx 1.4\)</p>
+    <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0;">大家都擠在平均數附近</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center;">
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">B 班變異數</p>
+    <p style="font-size: 1.3rem; font-weight: 700; color: var(--warning); margin: 0.3rem 0;">\(\sigma^2 \approx 456\)</p>
+    <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0;">學生程度天差地遠</p>
+  </div>
+</div>
+
+<p>
+  B 班的變異數是 A 班的 300 多倍——這完全反映了兩個班級的真實差異。但變異數有一個討厭的問題：<strong>單位是「平方」</strong>。分數的變異數單位是「分²」，這在現實中很難直覺理解。
+</p>
+
+<hr>
+
+<!-- ═══════════════ STANDARD DEVIATION ═══════════════ -->
+<h2>標準差（Standard Deviation）：回到現實世界</h2>
+
+<p>
+  解決方法很簡單：<strong>把變異數開根號</strong>。這樣單位就回到原本的尺度了。
+</p>
+
+$$ \sigma = \sqrt{\frac{\sum_{i=1}^{n} (x_i - \bar{x})^2}{n}} $$
+
+<div class="card" style="border: 2px solid var(--accent);">
+  <h4 style="margin-top:0; color: var(--accent);">📏 標準差的直覺詮釋</h4>
+  <p style="margin-bottom: 0;">
+    標準差就是<strong>「數據點離平均數的典型距離」</strong>。<br>
+    標準差小 → 數據集中在平均數周圍 → 可預測<br>
+    標準差大 → 數據四散各處 → 變化劇烈
+  </p>
+</div>
+
+<p>回到我們的班級：</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; text-align: center; border-left: 4px solid var(--accent);">
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">A 班標準差</p>
+    <p style="font-size: 1.5rem; font-weight: 700; color: var(--accent); margin: 0.3rem 0;">\(\sigma \approx 1.2\) 分</p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">大部人離平均 ±1.2 分</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center; border-left: 4px solid var(--warning);">
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">B 班標準差</p>
+    <p style="font-size: 1.5rem; font-weight: 700; color: var(--warning); margin: 0.3rem 0;">\(\sigma \approx 21.4\) 分</p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">大部人離平均 ±21.4 分</p>
+  </div>
+</div>
+
+<p>
+  一目瞭然：A 班的「1.2 分」代表學生程度非常整齊；B 班的「21.4 分」代表學力落差極大。標準差用<strong>原本的單位</strong>講話，這就是它比變異數更實用的原因。
+</p>
+
+<hr>
+
+<!-- ═══════════════ NORMAL DISTRIBUTION ═══════════════ -->
+<h2>常態分布：自然界最神奇的形狀</h2>
+
+<p>
+  現在我們有了兩個核心工具：<strong>平均數</strong>（中心在哪）和<strong>標準差</strong>（散多開）。把它們結合起來，就能畫出統計學最著名的曲線——<strong>常態分布（Normal Distribution）</strong>，又稱鐘形曲線（Bell Curve）。
+</p>
+
+<p>下面這張圖是三條常態分布曲線——平均數都是 0，但標準差不同：</p>
+
+<div style="position: relative; height: 260px; margin: 1.2rem 0;">
+  <canvas id="chartNormal"></canvas>
+</div>
+
+<p style="text-align: center; font-size: 0.82rem; color: var(--muted);">
+  σ 越小 → 曲線越尖瘦（數據集中）&nbsp;&nbsp;|&nbsp;&nbsp;σ 越大 → 曲線越扁平（數據分散）
+</p>
+
+<div class="callout">
+  <strong>🌍 為什麼常態分布無所不在？</strong><br>
+  身高、血壓、考試分數、製造誤差、樹葉長度……自然界中，任何由<strong>大量微小、獨立的隨機因素疊加</strong>而成的量，最終都會趨近常態分布。這是中央極限定理的結果（我們後面的課程會深入）。
+</div>
+
+<hr>
+
+<!-- ═══════════════ 68-95-99.7 RULE ═══════════════ -->
+<h2>68–95–99.7 法則：標準差就是一把尺</h2>
+
+<p>
+  常態分布有一個極其好用的規律。當數據呈常態分布時：
+</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; margin: 1.2rem 0;">
+  <div class="card" style="margin: 0; text-align: center; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">±1σ</h4>
+    <p style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 0.3rem 0;">68%</p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">數據落在 ±1 個標準差內</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">±2σ</h4>
+    <p style="font-size: 1.8rem; font-weight: 700; color: var(--warning); margin: 0.3rem 0;">95%</p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">數據落在 ±2 個標準差內</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">±3σ</h4>
+    <p style="font-size: 1.8rem; font-weight: 700; color: var(--danger); margin: 0.3rem 0;">99.7%</p>
+    <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">幾乎所有數據都在 ±3σ 內</p>
+  </div>
+</div>
+
+<p>舉個具體例子——台灣成年男性身高：</p>
+
+<div class="card">
+  <p style="margin: 0; font-size: 0.92rem; line-height: 1.8;">
+    平均身高 \(\mu = 172\) cm，標準差 \(\sigma = 6\) cm<br>
+    <strong style="color: var(--accent);">±1σ（166–178 cm）</strong> → 約 68% 的男性<br>
+    <strong style="color: var(--warning);">±2σ（160–184 cm）</strong> → 約 95% 的男性<br>
+    <strong style="color: var(--danger);">±3σ（154–190 cm）</strong> → 約 99.7% 的男性<br>
+    <span style="color: var(--text-dim);">低於 154 cm 或高於 190 cm → 非常罕見，大約 1000 人中只有 3 人</span>
+  </p>
+</div>
+
+<p>
+  這就是標準差的威力：<strong>只需要兩個數字（平均數和標準差），你就能對整組數據的分布有極其精確的掌握。</strong>
+</p>
+
+<hr>
+
+<!-- ═══════════════ GALTON BOARD ═══════════════ -->
+<h2>高爾頓釘板：親眼見證「隨機產生秩序」</h2>
+
+<p>
+  英國統計學家法蘭西斯·高爾頓（Francis Galton）在 19 世紀發明了一個巧妙的裝置，用來展示一個近乎神奇的現象：
+</p>
+
+<div class="summary-box">
+  <p style="margin: 0;">
+    <strong>每一顆鋼珠的路徑完全隨機、不可預測——但當成千上萬顆鋼珠落下後，它們總是完美堆疊出常態分布的鐘形曲線。</strong>
+  </p>
+</div>
+
+<div class="card" style="padding: 0.8rem;">
+  <canvas id="galtonCanvas" style="display: block; width: 100%; max-width: 560px; margin: 0 auto;"></canvas>
+  <div style="text-align: center; margin-top: 0.6rem;">
+    <button id="btnRestart" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🔄 重新演示</button>
+    <span id="ballCount" style="margin-left: 0.8rem; font-size: 0.85rem; color: var(--muted);">已落下：0 顆</span>
+  </div>
+</div>
+
+<p>
+  每顆鋼珠經過 9 層釘子，每層隨機決定彈向左邊還是右邊——這等於是做了 9 次獨立的硬幣拋擲。注意看：<strong>大多數鋼珠最後會落在中間的槽位</strong>（因為有更多路徑通往中間），極端槽位的鋼珠非常少——這正是常態分布的幾何根源。
+</p>
+
+<div class="callout tip">
+  <strong>🔑 核心洞見</strong><br>
+  高爾頓釘板是整門統計學最深刻的隱喻：<strong>個體的隨機性，匯聚成集體的秩序</strong>。你無法預測任何一顆鋼珠的落點，但你可以極其精準地預測所有鋼珠的最終分布形狀。這正是統計學的核心精神。
+</div>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <!-- Q1 -->
+  <div class="quiz-question" id="q1">
+    <p>Q1. 兩組數據有相同的平均數，但 A 組的標準差遠大於 B 組。這表示什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">A 組的數據都集中在平均數附近</span>
+      <span class="quiz-option" data-q="1" data-a="1">A 組的數據比 B 組分散得多</span>
+      <span class="quiz-option" data-q="1" data-a="2">A 組的數據數量比 B 組多</span>
+      <span class="quiz-option" data-q="1" data-a="3">A 組的平均數計算方式不同於 B 組</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="quiz-question" id="q2">
+    <p>Q2. 常態分布中，約有多少比例的數據落在「平均數 ± 2 個標準差」的範圍內？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">大約 50%（剛好超過一半的數據）</span>
+      <span class="quiz-option" data-q="2" data-a="1">大約 68%（三分之二左右的數據）</span>
+      <span class="quiz-option" data-q="2" data-a="2">大約 95%（絕大多數的數據）</span>
+      <span class="quiz-option" data-q="2" data-a="3">大約 99.7%（幾乎全部的數據）</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="quiz-question" id="q3">
+    <p>Q3. 高爾頓釘板實驗中，大多數鋼珠落在中間槽位的原因是？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">中間槽位的體積比其他槽位更大</span>
+      <span class="quiz-option" data-q="3" data-a="1">鋼珠之間會互相推擠，自然往中間集中</span>
+      <span class="quiz-option" data-q="3" data-a="2">通往中間的路徑組合數量遠多於通往兩端</span>
+      <span class="quiz-option" data-q="3" data-a="3">釘板中間的釘子排列密度比兩端更高</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ SUMMARY ═══════════════ -->
+<h2>本課重點回顧</h2>
+
+<div class="summary-box">
+  <ol style="margin-bottom: 0;">
+    <li><strong>變異數</strong>量測數據離平均數的「平方距離」，單位是平方，不直覺。</li>
+    <li><strong>標準差</strong>就是變異數的平方根，回到原始單位，可以直接解讀為「典型偏差距離」。</li>
+    <li><strong>常態分布</strong>由平均數（中心）和標準差（寬度）完全決定，是自然界最普遍的分布形狀。</li>
+    <li><strong>68–95–99.7 法則</strong>：在常態分布中，±1σ 覆蓋 68%、±2σ 覆蓋 95%、±3σ 覆蓋 99.7% 的數據。</li>
+    <li><strong>高爾頓釘板</strong>展示了隨機性如何自發產生秩序——個體不可預測，群體卻極其規律。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  我們已經學會了描述數據的形狀。但數據是從哪裡來的？如果我們只有一小撮樣本，能推論整個母體嗎？
+</p>
+
+<p>
+  下一課我們進入 ROADMAP 的<a href="../../statistics-101/ROADMAP.md">第二站</a>——<strong>機率論基礎</strong>。我們會從古典機率（硬幣、骰子）開始，一路走到貝氏定理，還會解開那個違反全人類直覺的<strong>蒙提霍爾三門問題</strong>。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0003-probability-basics.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0003：機率論基礎
+  </a>
+</div>
+
+<hr>
+
+<!-- ═══════════════ FURTHER READING ═══════════════ -->
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📖 <a href="https://www.goodreads.com/book/show/17986361-naked-statistics" target="_blank" rel="noopener"><em>Naked Statistics</em> — Charles Wheelan</a>：第 3–4 章對標準差與常態分布有絕佳的生活化解釋。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=YAlJCEDH2uY" target="_blank" rel="noopener">StatQuest: The Central Limit Theorem</a>：視覺化理解常態分布如何從隨機抽樣中誕生。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=UCmPmkHqHXk" target="_blank" rel="noopener">Galton Board demonstration (YouTube)</a>：觀看真實的高爾頓釘板實體裝置運作。</li>
+  <li>🌐 <a href="https://seeing-theory.brown.edu/" target="_blank" rel="noopener">Seeing Theory — Brown University</a>：第二章「Probability Distributions」有互動式常態分布模組。</li>
+</ul>
+
+<hr>
+
+<!-- ═══════════════ ASK FOLLOWUP ═══════════════ -->
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  如果你的老師（Claude）在旁邊，隨時可以問：<br>
+  <em>「為什麼變異數用 \(n-1\) 而不是 \(n\) 除？」</em><br>
+  <em>「如果數據不是常態分布，68–95–99.7 法則還適用嗎？」</em><br>
+  <em>「高爾頓釘板的數學原理是什麼？為什麼會趨近常態分布？」</em>
+</div>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── Chart.js: Normal Distribution Comparison ──
+  (function() {
+    var canvas = document.getElementById('chartNormal');
+    if (!canvas) return;
+
+    var pts = [];
+    var step = 0.3;
+    for (var x = -10; x <= 10; x += step) pts.push(x);
+
+    function normalPDF(x, mu, sigma) {
+      var coeff = 1 / (sigma * Math.sqrt(2 * Math.PI));
+      var exp = -((x - mu) * (x - mu)) / (2 * sigma * sigma);
+      return coeff * Math.exp(exp);
+    }
+
+    var ds1 = pts.map(function(x) { return normalPDF(x, 0, 1.5); });
+    var ds2 = pts.map(function(x) { return normalPDF(x, 0, 3); });
+    var ds3 = pts.map(function(x) { return normalPDF(x, 0, 5); });
+
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: pts.map(function(x) { return x.toFixed(1); }),
+        datasets: [
+          {
+            label: 'σ = 1.5',
+            data: ds1,
+            borderColor: '#2dd4bf',
+            backgroundColor: 'rgba(45,212,191,0.08)',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: 'σ = 3',
+            data: ds2,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.05)',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: 'σ = 5',
+            data: ds3,
+            borderColor: '#f87171',
+            backgroundColor: 'rgba(248,113,113,0.04)',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#a0a0b8', font: { size: 12 }, usePointStyle: true, pointStyleWidth: 14 },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '標準差單位 (σ)', color: '#8b8ba0' },
+            ticks: {
+              color: '#8b8ba0', font: { size: 10 },
+              callback: function(v) { return (+this.getLabelForValue(v)).toFixed(0); },
+              maxTicksLimit: 11,
+            },
+            grid: { color: 'rgba(39,42,58,0.5)' },
+          },
+          y: {
+            display: false,
+          },
+        },
+      },
+    });
+  })();
+
+  // ── Galton Board Simulation ──
+  (function() {
+    var canvas = document.getElementById('galtonCanvas');
+    if (!canvas) return;
+
+    var ctx = canvas.getContext('2d');
+
+    var ROWS      = 9;
+    var PEG_R     = 2.5;
+    var PEG_GAP_X = 36;
+    var PEG_GAP_Y = 26;
+    var TOP_MGN   = 22;
+    var BIN_H     = 80;
+    var PAD_X     = 24;
+
+    var maxCols  = ROWS;
+    var boardW   = (maxCols - 1) * PEG_GAP_X + PAD_X * 2;
+    var boardH   = TOP_MGN + (ROWS - 1) * PEG_GAP_Y + BIN_H;
+
+    canvas.width  = boardW;
+    canvas.height = boardH;
+
+    var BIN_W   = boardW / (ROWS + 1);
+    var BIN_TOP = TOP_MGN + (ROWS - 1) * PEG_GAP_Y + 16;
+
+    var bins = new Array(ROWS + 1).fill(0);
+    var totalDropped = 0;
+    var MAX_BALLS = 220;
+    var dropQueue  = [];
+    var timer      = null;
+
+    function pegX(row, col) {
+      var cnt = row + 1;
+      var w   = (cnt - 1) * PEG_GAP_X;
+      return boardW / 2 - w / 2 + col * PEG_GAP_X;
+    }
+    function pegY(row) {
+      return TOP_MGN + row * PEG_GAP_Y;
+    }
+
+    function drawAll() {
+      ctx.clearRect(0, 0, boardW, boardH);
+
+      // ── pegs ──
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c <= r; c++) {
+          ctx.beginPath();
+          ctx.arc(pegX(r, c), pegY(r), PEG_R, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(45,212,191,0.5)';
+          ctx.fill();
+        }
+      }
+
+      // ── bin dividers ──
+      ctx.strokeStyle = 'rgba(39,42,58,0.7)';
+      ctx.lineWidth = 1;
+      for (var i = 0; i <= ROWS + 1; i++) {
+        var x = i * BIN_W;
+        ctx.beginPath();
+        ctx.moveTo(x, BIN_TOP);
+        ctx.lineTo(x, boardH);
+        ctx.stroke();
+      }
+
+      // ── bin bars ──
+      var peak = Math.max(1, Math.max.apply(null, bins));
+      for (var i = 0; i <= ROWS; i++) {
+        var barH = (bins[i] / peak) * (BIN_H - 6);
+        if (barH > 0) {
+          var grad = ctx.createLinearGradient(0, boardH - barH, 0, boardH);
+          grad.addColorStop(0, 'rgba(45,212,191,0.85)');
+          grad.addColorStop(1, 'rgba(45,212,191,0.15)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(i * BIN_W + 1, boardH - barH, BIN_W - 2, barH);
+        }
+      }
+
+      // ── in-flight balls ──
+      ctx.fillStyle = '#f59e0b';
+      for (var d = 0; d < dropQueue.length; d++) {
+        var b = dropQueue[d];
+        if (b.phase > ROWS) continue;
+        var p = b.phase;
+        var t = b.progress;
+        var fx, fy, tx, ty;
+
+        if (p === 0) {
+          // From top center → peg at row 0
+          fx = boardW / 2;
+          fy = TOP_MGN - 10;
+          tx = pegX(0, 0);
+          ty = pegY(0);
+        } else if (p < ROWS) {
+          // From peg at row p-1 → peg at row p
+          fx = pegX(p - 1, b.cols[p - 1]);
+          fy = pegY(p - 1);
+          tx = pegX(p, b.cols[p]);
+          ty = pegY(p);
+        } else {
+          // Phase === ROWS: from last peg row → bin
+          fx = pegX(ROWS - 1, b.cols[ROWS - 1]);
+          fy = pegY(ROWS - 1);
+          tx = b.cols[ROWS] * BIN_W + BIN_W / 2;
+          ty = BIN_TOP + 20;
+        }
+
+        var cx = fx + (tx - fx) * t;
+        var cy = fy + (ty - fy) * t;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function dropOne() {
+      // Build path + pre-compute column positions at each row
+      var cols = [0];
+      var rights = 0;
+      for (var i = 0; i < ROWS; i++) {
+        if (Math.random() < 0.5) rights++;
+        cols.push(rights);
+      }
+      // cols[0]=0, cols[1]=col at row 1, ..., cols[ROWS]=bin index
+
+      var ball = { cols: cols, phase: 0, progress: 0 };
+      dropQueue.push(ball);
+
+      function advance() {
+        ball.progress += 0.1;
+        if (ball.progress >= 1) {
+          ball.progress = 0;
+          ball.phase++;
+          if (ball.phase > ROWS) {
+            bins[ball.cols[ROWS]]++;
+            totalDropped++;
+            document.getElementById('ballCount').textContent = '已落下：' + totalDropped + ' 顆';
+            drawAll();
+            return;
+          }
+        }
+        drawAll();
+        requestAnimationFrame(advance);
+      }
+      advance();
+    }
+
+    function startDrop() {
+      bins.fill(0);
+      totalDropped = 0;
+      dropQueue = [];
+      document.getElementById('ballCount').textContent = '已落下：0 顆';
+      drawAll();
+      if (timer) clearInterval(timer);
+      timer = setInterval(function() {
+        if (totalDropped + dropQueue.filter(function(b){return b.phase <= ROWS;}).length < MAX_BALLS) {
+          dropOne();
+        } else {
+          clearInterval(timer);
+          timer = null;
+        }
+      }, 60);
+    }
+
+    document.getElementById('btnRestart').addEventListener('click', function() {
+      if (timer) clearInterval(timer);
+      dropQueue = [];
+      startDrop();
+    });
+
+    startDrop();
+  })();
+
+  // ── Quiz Logic ──
+  var answers = {
+    1: 1, 2: 2, 3: 2,
+  };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！標準差越大，數據就越分散。A 組的標準差大，表示數據點遠離平均數，散布範圍廣。',
+      wrong: '❌ 標準差衡量的是數據的「離散程度」。標準差越大，數據點離開平均數的「典型距離」就越大，也就是越分散。',
+    },
+    2: {
+      correct: '✅ 正確！68–95–99.7 法則：±1σ → 68%、±2σ → 95%、±3σ → 99.7%。',
+      wrong: '❌ 68–95–99.7 法則中，±2σ（兩個標準差）對應的是約 95% 的數據。±1σ 是 68%，±3σ 是 99.7%。',
+    },
+    3: {
+      correct: '✅ 正確！雖然每條路徑的機率相同，但「通往中間」的路徑組合數遠多於通往兩端。這就是組合數學中的二項式係數——也是常態分布的數學根源。',
+      wrong: '❌ 關鍵在於組合數學：通往中間槽位的左右轉彎組合數，遠比通往兩端多。就像擲 9 次硬幣，得到 4–5 次正面的組合數，比得到 0 次或 9 次多得多。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+/* === Shared Course Stylesheet === */
+/* Design principles: Tufte-inspired — clean, readable, content-first */
+/* Color scheme: dark mode */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+:root {
+  --bg: #0f1119;
+  --bg-elevated: #151725;
+  --text: #e0e0e8;
+  --text-dim: #9e9eb2;
+  --muted: #8888a0;
+  --accent: #2dd4bf;
+  --accent-dim: #0d6b63;
+  --accent-glow: rgba(45, 212, 191, 0.10);
+  --border: #272a3a;
+  --code-bg: #181b2a;
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.10);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.10);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.10);
+  --card-bg: #151725;
+  --card-border: #232638;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
+}
+
+h1 { font-size: 2rem; font-weight: 700; margin: 2rem 0 0.5rem; line-height: 1.25; color: #f0f0f5; }
+h2 { font-size: 1.4rem; font-weight: 600; margin: 2rem 0 0.5rem; color: var(--accent); }
+h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.4rem; color: #d8d8e0; }
+
+p { margin: 0.75rem 0; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+strong { color: #ececf0; }
+
+code {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 0.85rem;
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: #e0e0e8;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  line-height: 1.5;
+}
+
+pre code { background: none; padding: 0; font-size: 0.8rem; }
+
+blockquote {
+  border-left: 3px solid var(--accent-dim);
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+ul, ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+li { margin: 0.3rem 0; }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+/* === Utility === */
+.lesson-meta {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  font-size: 0.85rem; color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #0f1117;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* === Card === */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  margin: 1rem 0;
+}
+
+.card h3 { margin-top: 0; }
+
+/* === Quiz === */
+.quiz { margin: 1.5rem 0; }
+
+.quiz-question {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  margin: 1rem 0;
+}
+
+.quiz-question p { margin: 0 0 0.8rem; font-weight: 600; }
+
+.quiz-options { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.quiz-option {
+  display: block;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+}
+
+.quiz-option:hover { background: var(--accent-glow); border-color: var(--accent-dim); }
+
+.quiz-option.selected { background: var(--accent-glow); border-color: var(--accent); }
+
+.quiz-option.correct {
+  background: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.quiz-option.wrong {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.quiz-feedback {
+  margin-top: 0.6rem; padding: 0.5rem 0.8rem;
+  border-radius: 5px; font-size: 0.9rem; display: none;
+}
+.quiz-feedback.show { display: block; }
+.quiz-feedback.correct { background: var(--success-bg); color: var(--success); }
+.quiz-feedback.wrong { background: var(--danger-bg); color: var(--danger); }
+
+/* === Diagram === */
+.diagram {
+  background: #12151f;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  margin: 1.2rem 0;
+  overflow-x: auto;
+}
+
+.diagram pre {
+  background: none; border: none; padding: 0; margin: 0;
+  font-size: 0.78rem; line-height: 1.5;
+}
+
+/* === Callout === */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-glow);
+  padding: 0.8rem 1rem;
+  margin: 1.2rem 0;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.95rem;
+}
+
+.callout.warn {
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.callout.tip {
+  border-left-color: var(--success);
+  background: var(--success-bg);
+}
+
+/* === Summary-box === */
+.summary-box {
+  background: var(--card-bg);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 1.4rem;
+  margin: 2rem 0;
+}
+
+.summary-box h3 { margin-top: 0; color: var(--accent); }
+
+/* === Footer nav === */
+.footer-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 3rem; padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+/* === Interactive trace === */
+.trace-step {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.trace-num {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  background: var(--accent); color: #0f1117;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+}
+
+.trace-content { flex: 1; }
+.trace-content > strong { display: block; font-size: 0.95rem; }
+.trace-content span { font-size: 0.85rem; color: var(--muted); }
+
+/* === Scrollbar (Webkit) === */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3d4055; }
+
+/* === Selection === */
+::selection {
+  background: rgba(108, 140, 255, 0.30);
+  color: #fff;
+}
+
+/* === Highlight.js Integration === */
+pre code.hljs {
+  background: none;
+  padding: 0;
+}
+
+code.hljs code {
+  background: none;
+  padding: 0;
+}
+
+.hljs {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* === Tables === */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* === Lesson Navigation === */
+.lesson-nav {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.lesson-nav a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.lesson-nav a:hover {
+  text-decoration: underline;
+}

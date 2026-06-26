@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L0003 機率的兩種面貌——古典機率、大數法則與蒙提霍爾</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<h1>L0003 機率的兩種面貌：古典機率、大數法則與蒙提霍爾</h1>
+<div class="lesson-meta">
+  <span>🎲 機率論基礎</span>
+  <span>⏱️ 約 25 分鐘</span>
+  <span>📅 2026-06-26</span>
+  <span>← <a href="0002-variance-and-normal.html">L0002</a></span>
+</div>
+
+<!-- ═══════════════ OPENING ═══════════════ -->
+<h2>「降雨機率 50%」到底是什麼意思？</h2>
+
+<p>
+  每天早上你打開氣象 App，看到「今日降雨機率 50%」。這句話到底在說什麼？
+</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0;">
+    <p style="margin: 0; font-size: 0.9rem;"><strong style="color: var(--accent);">解讀 A：</strong>今天有一半的時間會下雨。</p>
+  </div>
+  <div class="card" style="margin: 0;">
+    <p style="margin: 0; font-size: 0.9rem;"><strong style="color: var(--warning);">解讀 B：</strong>在歷史上氣象條件跟今天相同的日子裡，有 50% 的日子下了雨。</p>
+  </div>
+</div>
+
+<p>
+  答案是 <strong>B</strong>。機率不是對「單一事件」的預言，而是對<strong>「大量相似情境」的統計摘要</strong>。這個看似簡單的區別，正是整門機率論的起點。
+</p>
+
+<hr>
+
+<!-- ═══════════════ CLASSICAL PROBABILITY ═══════════════ -->
+<h2>古典機率：對稱性給出的答案</h2>
+
+<p>
+  古典機率（Classical Probability）是最古老、最直覺的機率理解方式。它建立在一個假設上：<strong>所有基本結果的發生機會均等</strong>。
+</p>
+
+$$ P(\text{事件}) = \frac{\text{有利結果的數量}}{\text{所有可能結果的數量}} $$
+
+<div class="card">
+  <h4 style="margin-top:0;">🎯 古典機率三要件</h4>
+  <ol style="margin-bottom: 0;">
+    <li><strong>有限性</strong>：所有可能的結果是有限的（骰子只有 6 面）</li>
+    <li><strong>對稱性</strong>：每個結果的發生機會相等（公平的骰子）</li>
+    <li><strong>先驗性</strong>：不需要做實驗，純靠邏輯就能計算</li>
+  </ol>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; text-align: center;">
+    <p style="font-size: 2rem; margin: 0;">🪙</p>
+    <p style="margin: 0.3rem 0;">公平硬幣正面</p>
+    <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0;">\(P = \frac{1}{2}\)</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center;">
+    <p style="font-size: 2rem; margin: 0;">🎲</p>
+    <p style="margin: 0.3rem 0;">擲出 6 點</p>
+    <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0;">\(P = \frac{1}{6}\)</p>
+  </div>
+  <div class="card" style="margin: 0; text-align: center;">
+    <p style="font-size: 2rem; margin: 0;">🃏</p>
+    <p style="margin: 0.3rem 0;">抽到黑桃 A</p>
+    <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0;">\(P = \frac{1}{52}\)</p>
+  </div>
+</div>
+
+<p>
+  但古典機率有一個致命的前提：<strong>你必須確定每個結果真的「機會均等」</strong>。現實世界中，大部分的機率問題都沒有這種完美的對稱性。
+</p>
+
+<hr>
+
+<!-- ═══════════════ FREQUENCY PROBABILITY ═══════════════ -->
+<h2>頻率機率：讓數據說話</h2>
+
+<p>
+  當對稱性不存在時，我們只能靠<strong>大量實驗</strong>來逼近真實機率。這就是頻率機率（Frequentist Probability）：
+</p>
+
+$$ P(\text{事件}) = \lim_{n \to \infty} \frac{\text{事件發生的次數}}{n} $$
+
+<p>
+  例如：一個棒球投手「三振對手的機率」是多少？沒有對稱性可以依靠。我們只能看他過去面對 1000 個打者時，三振了多少次。
+</p>
+
+<div class="callout">
+  <strong>🔗 古典 vs 頻率</strong><br>
+  古典機率問的是「<strong>邏輯上應該是多少</strong>」（先驗的、演繹的）；頻率機率問的是「<strong>實際上觀察到多少</strong>」（後驗的、歸納的）。兩者互補，構成機率論的兩大支柱。
+</div>
+
+<hr>
+
+<!-- ═══════════════ LAW OF LARGE NUMBERS ═══════════════ -->
+<h2>大數法則：為什麼「次數夠多」就可靠</h2>
+
+<p>
+  頻率機率的哲學基礎是大數法則（Law of Large Numbers）：
+</p>
+
+<div class="summary-box">
+  <p style="margin: 0;">當實驗次數趨近無限大時，事件發生的<strong>相對頻率</strong>會<strong>收斂</strong>到它的真實機率。</p>
+</div>
+
+<p>下面這張圖模擬了擲公平硬幣的過程。注意看正面頻率如何隨著擲幣次數增加而收斂到 0.5：</p>
+
+<div style="position: relative; height: 240px; margin: 1rem 0;">
+  <canvas id="chartLLN"></canvas>
+</div>
+
+<p style="text-align: center; font-size: 0.82rem; color: var(--muted);">
+  剛開始波動很大，但隨著次數增加，頻率穩定逼近 0.5
+</p>
+
+<div class="callout warn">
+  <strong>⚠️ 常見誤解</strong><br>
+  大數法則不是說「如果連續擲出 5 次正面，下次出現反面的機率就會變高」（這是賭徒謬誤）。它說的是：<strong>長期下來，整體比例會趨近 50%</strong>——靠的是大量未來實驗「稀釋」掉過去的偏差，而不是短期「補償」。
+</div>
+
+<hr>
+
+<!-- ═══════════════ CONDITIONAL PROBABILITY ═══════════════ -->
+<h2>條件機率：當你已經知道一些事</h2>
+
+<p>
+  機率不是固定的——<strong>當你獲得新資訊時，機率會改變</strong>。這是整門貝氏統計學的基石。
+</p>
+
+$$ P(A \mid B) = \frac{P(A \cap B)}{P(B)} $$
+
+<p>白話翻譯：<strong>在已知 B 發生的條件下，A 發生的機率</strong>。</p>
+
+<div class="card">
+  <h4 style="margin-top:0;">🃏 簡單例子</h4>
+  <p style="margin-bottom: 0.5rem;">從一副 52 張撲克牌中抽一張：</p>
+  <ul style="margin-bottom: 0;">
+    <li>抽到「紅心」的機率：\(P(\text{紅心}) = \frac{13}{52} = \frac{1}{4}\)</li>
+    <li>已知抽到的是「人頭牌」的條件下，它是紅心的機率：<br>
+      \(P(\text{紅心} \mid \text{人頭}) = \frac{3}{12} = \frac{1}{4}\)（12 張人頭中有 3 張紅心）</li>
+    <li>已知是紅心的條件下，它是人頭的機率：<br>
+      \(P(\text{人頭} \mid \text{紅心}) = \frac{3}{13}\)（13 張紅心中只有 3 張人頭）</li>
+  </ul>
+</div>
+
+<p>
+  注意到沒？\(P(\text{紅心} \mid \text{人頭}) \neq P(\text{人頭} \mid \text{紅心})\)。條件機率<strong>不可互換</strong>——這是另一個常見的思考陷阱。而這個簡單的公式，正是解開蒙提霍爾之謎的鑰匙。
+</p>
+
+<hr>
+
+<!-- ═══════════════ MONTY HALL ═══════════════ -->
+<h2>蒙提霍爾問題：違反全人類直覺的機率悖論</h2>
+
+<h3>📺 場景重現</h3>
+
+<div class="card" style="border: 2px solid var(--accent);">
+  <ol style="margin-bottom: 0;">
+    <li>你面前有 <strong>3 扇門</strong>。其中一扇後面有一輛汽車🚗，另外兩扇後面是山羊🐐。</li>
+    <li>你<strong>選定一扇門</strong>（但先不打開）。</li>
+    <li>主持人蒙提·霍爾（<strong>知道汽車在哪</strong>）<strong>打開另一扇有山羊的門</strong>。</li>
+    <li>現在剩下兩扇門：你原本選的，和另一扇沒被打開的。</li>
+    <li>主持人問你：<strong>你要換門嗎？</strong></li>
+  </ol>
+</div>
+
+<h3>🤔 直覺 vs 數學</h3>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">❌ 直覺答案：50/50</h4>
+    <p style="margin: 0; font-size: 0.9rem;">剩下兩扇門，汽車在任一扇的機率各一半。換不換沒差。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">✅ 正確答案：換門勝率 2/3</h4>
+    <p style="margin: 0; font-size: 0.9rem;">換門的獲勝機率是 2/3，不換只有 1/3。換門讓勝率翻倍。</p>
+  </div>
+</div>
+
+<h3>🔍 為什麼？三種初始情境的完整推理</h3>
+
+<p>關鍵在於：<strong>主持人的行為帶有資訊</strong>。他不是隨機開門——他永遠會避開汽車、避開你選的門。</p>
+
+<div style="overflow-x: auto;">
+<table style="font-size: 0.85rem;">
+  <thead>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <th style="padding: 0.4rem 0.6rem;">情境</th>
+      <th style="padding: 0.4rem 0.6rem;">你最初選的門</th>
+      <th style="padding: 0.4rem 0.6rem;">汽車位置</th>
+      <th style="padding: 0.4rem 0.6rem;">主持人開了</th>
+      <th style="padding: 0.4rem 0.6rem; color: var(--success);">換門結果</th>
+      <th style="padding: 0.4rem 0.6rem; color: var(--danger);">不換結果</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 0.35rem 0.6rem;">1</td>
+      <td>🐐</td><td>🐐</td><td>🐐</td>
+      <td style="color: var(--success);">🚗 贏</td>
+      <td style="color: var(--danger);">🐐 輸</td>
+    </tr>
+    <tr>
+      <td style="padding: 0.35rem 0.6rem;">2</td>
+      <td>🐐</td><td>🐐</td><td>🐐</td>
+      <td style="color: var(--success);">🚗 贏</td>
+      <td style="color: var(--danger);">🐐 輸</td>
+    </tr>
+    <tr style="border-bottom: 2px solid var(--border);">
+      <td style="padding: 0.35rem 0.6rem;">3</td>
+      <td>🐐</td><td>🚗</td><td>🐐</td>
+      <td style="color: var(--danger);">🐐 輸</td>
+      <td style="color: var(--success);">🚗 贏</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  三種情境中，有<strong>兩種</strong>情況下換門會贏。因為你最初選到汽車的機率只有 1/3，而主持人幫你排除了另一個錯誤選項——所以剩下的那扇門有 2/3 的機率是汽車。
+</p>
+
+<div class="callout tip">
+  <strong>🔑 極端版思考實驗</strong><br>
+  想像有 <strong>1000 扇門</strong>，只有一扇後面有汽車。你選了一扇（1/1000 的機率）。主持人（知道汽車在哪）打開了其他 998 扇有山羊的門。現在剩兩扇——<strong>你要換嗎？</strong><br><br>
+  當然要換！你最初選對的機率只有 1/1000。主持人的行為把「汽車在另外 999 扇門中某一扇」這個 999/1000 的機率，濃縮到了最後那扇他刻意留下的門。三門版就是同樣的邏輯，只是規模小到你感覺不出來。
+</div>
+
+<hr>
+
+<!-- ═══════════════ MONTY HALL SIMULATOR ═══════════════ -->
+<h2>親手試試：蒙提霍爾模擬器</h2>
+
+<div id="monty-hall-sim">
+  <!-- Doors -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0;"
+       id="doorRow">
+    <div class="monty-door" data-door="0" style="background: var(--card-bg); border: 2px solid var(--border); border-radius: 10px; padding: 1.5rem 0.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;">
+      <div style="font-size: 2.5rem;">🚪</div>
+      <div style="font-weight: 600; margin-top: 0.3rem;">1 號門</div>
+    </div>
+    <div class="monty-door" data-door="1" style="background: var(--card-bg); border: 2px solid var(--border); border-radius: 10px; padding: 1.5rem 0.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;">
+      <div style="font-size: 2.5rem;">🚪</div>
+      <div style="font-weight: 600; margin-top: 0.3rem;">2 號門</div>
+    </div>
+    <div class="monty-door" data-door="2" style="background: var(--card-bg); border: 2px solid var(--border); border-radius: 10px; padding: 1.5rem 0.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;">
+      <div style="font-size: 2.5rem;">🚪</div>
+      <div style="font-weight: 600; margin-top: 0.3rem;">3 號門</div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div id="montyMsg" style="text-align: center; color: var(--text-dim); margin: 0.6rem 0; min-height: 1.5em;"></div>
+
+  <!-- Switch/Stay buttons (hidden initially) -->
+  <div id="switchBtns" style="display: none; text-align: center; gap: 1rem; justify-content: center; margin: 0.6rem 0;">
+    <button id="btnStay" style="padding: 0.5em 1.4em; background: var(--danger); color: #fff; border: none; border-radius: 5px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">🏠 堅持不換</button>
+    <button id="btnSwitch" style="padding: 0.5em 1.4em; background: var(--success); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">🔄 換另一扇</button>
+  </div>
+
+  <!-- Stats -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1rem 0;">
+    <div class="card" style="margin: 0; text-align: center;">
+      <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">🏠 不換策略</p>
+      <p style="margin: 0.2rem 0;"><span id="stayWins" style="font-size: 1.3rem; font-weight: 700; color: var(--danger);">0</span><span style="color: var(--muted);"> 勝</span></p>
+      <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0;" id="stayTotal">0 局</p>
+    </div>
+    <div class="card" style="margin: 0; text-align: center;">
+      <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">🔄 換門策略</p>
+      <p style="margin: 0.2rem 0;"><span id="switchWins" style="font-size: 1.3rem; font-weight: 700; color: var(--success);">0</span><span style="color: var(--muted);"> 勝</span></p>
+      <p style="font-size: 0.75rem; color: var(--text-dim); margin: 0;" id="switchTotal">0 局</p>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin: 0.8rem 0;">
+    <button id="btnAuto" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">⚡ 自動模擬 300 局</button>
+    <button id="btnReset" style="padding: 0.4em 1.2em; background: var(--border); color: var(--text); border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-left: 0.5rem;">↺ 重置統計</button>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<h2>隨堂測驗</h2>
+<p style="color: var(--muted); font-size: 0.9rem;">選出你認為正確的答案，點擊即可看到回饋。</p>
+
+<div class="quiz" id="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p>Q1. 大數法則告訴我們，當擲硬幣的次數趨近無限時，會發生什麼事？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="1" data-a="0">正面和反面的「絕對次數差距」會趨近於零</span>
+      <span class="quiz-option" data-q="1" data-a="1">正面出現的「相對頻率」會趨近於 1/2</span>
+      <span class="quiz-option" data-q="1" data-a="2">連續出現正面的機率會逐漸變小</span>
+      <span class="quiz-option" data-q="1" data-a="3">每次擲出正面的機率會隨著次數增加而改變</span>
+    </div>
+    <div class="quiz-feedback" id="fb1"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p>Q2. 蒙提霍爾問題中，為什麼「換門」的勝率高於「不換」？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="2" data-a="0">因為主持人給了心理暗示，讓人傾向換門</span>
+      <span class="quiz-option" data-q="2" data-a="1">因為兩扇門的數量比一扇門多，機率自然較高</span>
+      <span class="quiz-option" data-q="2" data-a="2">主持人的開門行為帶有資訊——他刻意避開汽車</span>
+      <span class="quiz-option" data-q="2" data-a="3">因為最初選到山羊的機率本來就比較高</span>
+    </div>
+    <div class="quiz-feedback" id="fb2"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p>Q3. 已知抽到的牌是紅心，則它是人頭牌的機率是多少？（一副 52 張）</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-q="3" data-a="0">3/52（所有人頭在整副牌中的比例）</span>
+      <span class="quiz-option" data-q="3" data-a="1">3/13（13 張紅心當中有 3 張人頭）</span>
+      <span class="quiz-option" data-q="3" data-a="2">3/12（12 張人頭當中有 3 張紅心）</span>
+      <span class="quiz-option" data-q="3" data-a="3">1/4（四種花色中紅心佔其中一種）</span>
+    </div>
+    <div class="quiz-feedback" id="fb3"></div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ═══════════════ SUMMARY ═══════════════ -->
+<h2>本課重點回顧</h2>
+
+<div class="summary-box">
+  <ol style="margin-bottom: 0;">
+    <li><strong>古典機率</strong>基於對稱性，靠邏輯就能計算（骰子、硬幣、撲克牌）。</li>
+    <li><strong>頻率機率</strong>靠大量實驗逼近真實機率，是數據驅動的思維。</li>
+    <li><strong>大數法則</strong>保證長期頻率會收斂到真實機率——但這不等於短期「補償」。</li>
+    <li><strong>條件機率 \(P(A \mid B)\)</strong> 量化了「獲得新資訊後，機率如何更新」。</li>
+    <li><strong>蒙提霍爾問題</strong>證明了直覺在條件機率面前有多脆弱——主持人的行為帶有資訊，會改變勝率。</li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  條件機率只是起點。下一課我們會把條件機率「倒過來」——從 <strong>貝氏定理（Bayes' Theorem）</strong>出發，學習如何用新證據更新我們對世界的信念。我們還會討論那個讓機率論學者又愛又恨的問題：<strong>無限猴子定理</strong>——為什麼數學上「機率不為零」的事件，在現實世界中可以被視為「不可能」？
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0004-bayes-theorem.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0004：貝氏定理與無限猴子
+  </a>
+</div>
+
+<hr>
+
+<!-- ═══════════════ FURTHER READING ═══════════════ -->
+<h2>延伸閱讀與資源</h2>
+
+<ul>
+  <li>📖 <a href="https://www.goodreads.com/book/show/3228275-the-drunkard-s-walk" target="_blank" rel="noopener"><em>The Drunkard's Walk</em> — Leonard Mlodinow</a>：第 2–3 章對古典機率與條件機率有精采的歷史故事。</li>
+  <li>🎥 <a href="https://www.youtube.com/watch?v=4Lb-6rxZxx0" target="_blank" rel="noopener">Monty Hall Problem — Numberphile (YouTube)</a>：經典的蒙提霍爾解說影片。</li>
+  <li>🎮 <a href="https://seeing-theory.brown.edu/" target="_blank" rel="noopener">Seeing Theory — Brown University</a>：第一章「Basic Probability」的互動模組，包括條件機率的視覺化。</li>
+</ul>
+
+<hr>
+
+<div class="callout tip">
+  <strong>💬 有問題嗎？</strong><br>
+  如果對蒙提霍爾問題還是有「不太對勁」的感覺——這完全正常。隨時可以問：<br>
+  <em>「可以再用另一種方式解釋蒙提霍爾嗎？」</em><br>
+  <em>「主持人的行為為什麼會改變機率？他不是只是打開一扇門而已嗎？」</em>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  hljs.highlightAll();
+
+  // ── Chart.js: Law of Large Numbers ──
+  (function() {
+    var canvas = document.getElementById('chartLLN');
+    if (!canvas) return;
+    var N = 500;
+    var heads = 0;
+    var freqs = [];
+    var labels = [];
+    for (var i = 1; i <= N; i++) {
+      if (Math.random() < 0.5) heads++;
+      freqs.push(heads / i);
+      labels.push(i);
+    }
+    // Thin out labels
+    var step = Math.floor(N / 20);
+    var displayLabels = labels.map(function(l, idx) {
+      return (idx === 0 || idx === N - 1 || idx % step === 0) ? l : '';
+    });
+
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: displayLabels,
+        datasets: [{
+          data: freqs,
+          borderColor: '#2dd4bf',
+          backgroundColor: 'rgba(45,212,191,0.06)',
+          borderWidth: 1.8,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          annotation: undefined,
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '擲幣次數', color: '#8b8ba0' },
+            ticks: { color: '#8b8ba0', font: { size: 10 }, maxTicksLimit: 20 },
+            grid: { color: 'rgba(39,42,58,0.4)' },
+          },
+          y: {
+            title: { display: true, text: '正面頻率', color: '#8b8ba0' },
+            min: 0.3, max: 0.7,
+            ticks: {
+              color: '#8b8ba0', font: { size: 10 },
+              callback: function(v) { return (+v).toFixed(2); },
+            },
+            grid: { color: 'rgba(39,42,58,0.4)' },
+          },
+        },
+      },
+    });
+  })();
+
+  // ── Monty Hall Simulator ──
+  (function() {
+    var doors = document.querySelectorAll('.monty-door');
+    var msgEl = document.getElementById('montyMsg');
+    var switchBtns = document.getElementById('switchBtns');
+    var stayWinsEl = document.getElementById('stayWins');
+    var stayTotEl  = document.getElementById('stayTotal');
+    var switchWinsEl = document.getElementById('switchWins');
+    var switchTotEl  = document.getElementById('switchTotal');
+    var btnAuto  = document.getElementById('btnAuto');
+    var btnReset = document.getElementById('btnReset');
+    var btnStay = document.getElementById('btnStay');
+    var btnSwitch = document.getElementById('btnSwitch');
+
+    var carDoor     = -1;
+    var pickedDoor  = -1;
+    var revealedDoor = -1;
+    var gamePhase   = 'pick'; // 'pick' | 'decide' | 'result'
+
+    var stayWins = 0, stayTotal = 0;
+    var switchWins = 0, switchTotal = 0;
+
+    function updateStats() {
+      stayWinsEl.textContent   = stayWins;
+      stayTotEl.textContent    = stayTotal + ' 局';
+      switchWinsEl.textContent = switchWins;
+      switchTotEl.textContent  = switchTotal + ' 局';
+    }
+
+    function resetDoors() {
+      doors.forEach(function(d) {
+        d.style.borderColor = 'var(--border)';
+        d.style.background  = 'var(--card-bg)';
+        d.querySelector('div').textContent = '🚪';
+        d.style.cursor = 'pointer';
+      });
+      switchBtns.style.display = 'none';
+      msgEl.textContent = '請選一扇門';
+      carDoor     = Math.floor(Math.random() * 3);
+      pickedDoor  = -1;
+      revealedDoor = -1;
+      gamePhase   = 'pick';
+    }
+
+    function revealDoorContent(doorIdx, content) {
+      var d = doors[doorIdx];
+      d.querySelector('div').textContent = content;
+    }
+
+    function pickDoor(idx) {
+      if (gamePhase !== 'pick') return;
+      pickedDoor = idx;
+      gamePhase = 'decide';
+
+      // Highlight pick
+      doors.forEach(function(d) { d.style.cursor = 'default'; });
+      doors[idx].style.borderColor = 'var(--accent)';
+      doors[idx].style.background  = 'rgba(45,212,191,0.1)';
+
+      // Host reveals a goat (not car, not picked)
+      var goats = [];
+      for (var i = 0; i < 3; i++) {
+        if (i !== carDoor && i !== pickedDoor) goats.push(i);
+      }
+      revealedDoor = goats[Math.floor(Math.random() * goats.length)];
+      revealDoorContent(revealedDoor, '🐐');
+      doors[revealedDoor].style.borderColor = 'var(--border)';
+      doors[revealedDoor].style.background  = 'var(--card-bg)';
+      doors[revealedDoor].style.cursor      = 'default';
+
+      msgEl.textContent = '主持人打開了 ' + (revealedDoor + 1) + ' 號門（山羊🐐）。你要換門嗎？';
+      switchBtns.style.display = 'flex';
+    }
+
+    function finalize(shouldSwitch) {
+      if (gamePhase !== 'decide') return;
+      gamePhase = 'result';
+      switchBtns.style.display = 'none';
+
+      var finalDoor = shouldSwitch
+        ? (function() { for (var i = 0; i < 3; i++) { if (i !== pickedDoor && i !== revealedDoor) return i; } })()
+        : pickedDoor;
+
+      var won = finalDoor === carDoor;
+
+      // Reveal all
+      for (var i = 0; i < 3; i++) {
+        revealDoorContent(i, i === carDoor ? '🚗' : '🐐');
+        doors[i].style.cursor = 'default';
+        if (i === carDoor) {
+          doors[i].style.background = won ? 'rgba(74,222,128,0.15)' : 'rgba(74,222,128,0.15)';
+          doors[i].style.borderColor = 'var(--success)';
+        }
+      }
+      doors[pickedDoor].style.borderColor = 'var(--warning)';
+      doors[finalDoor].style.borderColor = won ? 'var(--success)' : 'var(--danger)';
+
+      if (shouldSwitch) {
+        switchTotal++;
+        if (won) switchWins++;
+      } else {
+        stayTotal++;
+        if (won) stayWins++;
+      }
+      updateStats();
+
+      var strategy = shouldSwitch ? '換門' : '不換';
+      msgEl.textContent = (won ? '🎉 ' : '💔 ') + strategy + '——' + (won ? '贏了！汽車在 ' + (carDoor + 1) + ' 號門' : '輸了……汽車在 ' + (carDoor + 1) + ' 號門') + '。點擊任一扇門開始新的一局。';
+
+      // Allow restart
+      setTimeout(function() {
+        resetDoors();
+      }, 1800);
+    }
+
+    // Door click
+    doors.forEach(function(d) {
+      d.addEventListener('click', function() {
+        if (gamePhase === 'pick') {
+          pickDoor(parseInt(this.dataset.door));
+        } else if (gamePhase === 'result') {
+          resetDoors();
+        }
+      });
+    });
+
+    btnStay.addEventListener('click', function() { finalize(false); });
+    btnSwitch.addEventListener('click', function() { finalize(true); });
+
+    // Auto-simulate
+    btnAuto.addEventListener('click', function() {
+      var rounds = 300;
+      for (var r = 0; r < rounds; r++) {
+        var car = Math.floor(Math.random() * 3);
+        var pick = Math.floor(Math.random() * 3);
+        // Reveal a goat (not car, not pick)
+        var goats = [];
+        for (var i = 0; i < 3; i++) { if (i !== car && i !== pick) goats.push(i); }
+        var reveal = goats[Math.floor(Math.random() * goats.length)];
+        // Find the other door
+        var other;
+        for (var i = 0; i < 3; i++) { if (i !== pick && i !== reveal) other = i; }
+        // Stay
+        stayTotal++;
+        if (pick === car) stayWins++;
+        // Switch
+        switchTotal++;
+        if (other === car) switchWins++;
+      }
+      updateStats();
+      msgEl.textContent = '✅ 自動模擬 300 局完成！換門勝率約 ' + (switchWins / switchTotal * 100).toFixed(1) + '%，不換約 ' + (stayWins / stayTotal * 100).toFixed(1) + '%。';
+    });
+
+    btnReset.addEventListener('click', function() {
+      stayWins = 0; stayTotal = 0;
+      switchWins = 0; switchTotal = 0;
+      updateStats();
+      msgEl.textContent = '已重置。請選一扇門開始。';
+    });
+
+    resetDoors();
+  })();
+
+  // ── Quiz Logic ──
+  var answers = { 1: 1, 2: 2, 3: 1 };
+  var explanations = {
+    1: {
+      correct: '✅ 正確！大數法則說的是「相對頻率」收斂到真實機率。絕對次數差距不一定會縮小——例如擲 100 萬次可能正面多 500 次，但 500/1,000,000 的比例微乎其微。',
+      wrong: '❌ 大數法則關乎「比例」而非「絕對次數」。正面和反面的絕對差距可能很大（例如正面多 500 次），但 500/1,000,000 的比例已經非常接近 1/2。關鍵詞是「相對頻率」。',
+    },
+    2: {
+      correct: '✅ 正確！主持人的行為不是隨機的——他知道汽車在哪，而且刻意不開那扇門。這個「刻意」本身就帶有資訊，改變了機率。',
+      wrong: '❌ 關鍵在於主持人的行為帶有資訊。他「知道汽車在哪」且「刻意避開汽車」，這個資訊會改變剩下那扇門的機率。最初選到汽車的機率只有 1/3，而主持人的排除行為讓「汽車在另一扇門」的機率變成 2/3。',
+    },
+    3: {
+      correct: '✅ 正確！已知是紅心（13 張），其中 J、Q、K 三張是人頭，機率為 3/13。這是條件機率 \(P(\text{人頭} \mid \text{紅心})\)。',
+      wrong: '❌ 本題問的是條件機率 \(P(\text{人頭} \mid \text{紅心})\)，也就是「在已知是紅心的條件下」。紅心有 13 張，其中人頭（J、Q、K）有 3 張，所以答案是 3/13。注意這跟 \(P(\text{紅心} \mid \text{人頭}) = 3/12\) 不同。',
+    },
+  };
+
+  document.querySelectorAll('.quiz-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      var q = parseInt(this.dataset.q);
+      var a = parseInt(this.dataset.a);
+      var correct = answers[q];
+      var fb = document.getElementById('fb' + q);
+      var siblings = this.parentElement.querySelectorAll('.quiz-option');
+      siblings.forEach(function(s) {
+        s.classList.remove('correct', 'wrong', 'selected');
+        s.style.pointerEvents = 'none';
+      });
+      if (a === correct) {
+        this.classList.add('correct');
+        fb.className = 'quiz-feedback show correct';
+        fb.textContent = explanations[q].correct;
+      } else {
+        this.classList.add('wrong');
+        siblings[correct].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong';
+        fb.textContent = explanations[q].wrong;
+      }
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>
