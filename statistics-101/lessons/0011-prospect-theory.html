@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 11 課：展望理論 — Kahneman & Tversky 的行為經濟學革命</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 11 課：展望理論</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0010-expected-value-lottery.html">第 10 課</a></span>
+</div>
+
+<h2>🧪 兩個問題，揭露人類的「不理性」</h2>
+
+<p>
+在繼續之前，請你先回答以下兩個問題——<strong>不要計算，憑直覺選：</strong>
+</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border: 2px solid var(--accent);">
+    <h4 style="margin: 0 0 0.8rem; color: var(--accent);">問題 A</h4>
+    <p style="margin: 0 0 0.6rem;">以下兩個選項，你選哪個？</p>
+    <p style="margin: 0.2rem 0;"><strong>A1：</strong>100% 穩拿 <strong>$3,000</strong></p>
+    <p style="margin: 0.2rem 0;"><strong>A2：</strong>80% 機率贏 <strong>$4,000</strong>，20% 機率什麼都沒有</p>
+    <p style="margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted);">（A2 的期望值 = $3,200，比 A1 高 $200）</p>
+  </div>
+  <div class="card" style="margin: 0; border: 2px solid var(--warning);">
+    <h4 style="margin: 0 0 0.8rem; color: var(--warning);">問題 B</h4>
+    <p style="margin: 0 0 0.6rem;">以下兩個選項，你選哪個？</p>
+    <p style="margin: 0.2rem 0;"><strong>B1：</strong>100% 穩賠 <strong>$3,000</strong></p>
+    <p style="margin: 0.2rem 0;"><strong>B2：</strong>80% 機率賠 <strong>$4,000</strong>，20% 機率不賠</p>
+    <p style="margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted);">（B2 的期望值 = −$3,200，比 B1 多賠 $200）</p>
+  </div>
+</div>
+
+<p>
+Kahneman 和 Tversky 在 1979 年對大量受試者做了這個實驗。結果：
+</p>
+
+<ul>
+  <li><strong>問題 A：80% 的人選 A1</strong>（穩拿 $3,000），儘管 A2 的期望值更高。人類在<strong>獲利區</strong>偏好確定性——我們是<strong>風險趨避</strong>的。</li>
+  <li><strong>問題 B：92% 的人選 B2</strong>（賭一把），儘管 B2 的期望損失更大。人類在<strong>損失區</strong>厭惡確定性——我們變成<strong>風險追求</strong>的。</li>
+</ul>
+
+<div class="callout">
+<strong>🔑 傳統經濟學無法解釋這個結果。</strong>期望效用理論說：一個人如果是風險趨避的（選 A1），那他在損失區也應該風險趨避（選 B1）。但數據顯示恰恰相反——同一個人在獲利時保守、在損失時賭博。這徹底打破了「人是理性的」這個經濟學基本假設。
+</div>
+
+<h2>📈 價值函數：人類真正的「效用曲線」</h2>
+
+<p>
+Kahneman 和 Tversky 提出：人類判斷得失的依據，不是財富的<strong>絕對水準</strong>，而是相對於某個<strong>參考點</strong>的變化。而這個「主觀價值」的形狀，長得完全不像經濟學課本裡的平滑曲線。
+</p>
+
+<p>
+這條曲線有三個關鍵特徵：
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>特徵</th><th>說明</th><th>後果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>① 參考點依賴</strong></td><td>價值取決於相對於現狀的「變化」，而非絕對終點</td><td>同樣的 $100，是「賺到」還是「本來有但失去了」，感受完全不同</td></tr>
+    <tr><td><strong>② 邊際敏感度遞減</strong></td><td>從 $0 → $100 的快樂，遠大於從 $1,000 → $1,100</td><td>曲線在兩端趨於平坦——你對特大額的得失反而沒那麼敏感</td></tr>
+    <tr><td><strong>③ 損失厭惡</strong></td><td>失去 $100 的痛苦 ≈ 得到 $200–$250 的快樂</td><td>損失區的曲線比獲利區陡約 2.25 倍</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>🎮 互動沙盒：拖曳 λ，親眼看到損失有多痛</h2>
+
+<p>
+下方是展望理論的價值函數圖。橘色曲線代表獲利、紅色曲線代表損失。<strong>拖曳損失厭惡係數 λ 的滑桿</strong>，觀察損失區的曲線如何變化：
+</p>
+
+<div class="card" id="valueFnCard">
+
+  <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end; justify-content: center; margin-bottom: 1rem;">
+    <div style="flex: 1; min-width: 200px;">
+      <label for="lambdaSlider" style="display: block; font-weight: 600; margin-bottom: 0.3rem;">
+        損失厭惡係數 λ = <strong style="color: var(--warning);" id="lambdaVal">2.25</strong>
+      </label>
+      <input type="range" id="lambdaSlider" min="1.0" max="3.0" value="2.25" step="0.05"
+        style="width: 100%; accent-color: var(--warning);">
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+        <span>1.0（無損失厭惡）</span><span>2.25（典型值）</span><span>3.0（極度厭惡）</span>
+      </div>
+    </div>
+    <div style="flex: 0 0 auto; text-align: center; background: var(--code-bg); border-radius: 8px; padding: 0.8rem 1.2rem; border: 1px solid var(--border);">
+      <div style="font-size: 0.8rem; color: var(--muted);">失去 $100 的痛 ≈ 賺到</div>
+      <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="painEquivalent">$225</div>
+      <div style="font-size: 0.8rem; color: var(--muted);">的快樂</div>
+    </div>
+  </div>
+
+  <div style="position: relative; height: 350px;">
+    <canvas id="valueFnChart"></canvas>
+  </div>
+
+  <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; text-align: center;">
+    灰色虛線：理性基準（y = x）&nbsp;|&nbsp; 橘線：獲利區 \( v(x) = x^{0.88} \) &nbsp;|&nbsp; 紅線：損失區 \( v(x) = -\lambda \cdot (-x)^{0.88} \)
+  </p>
+
+</div>
+
+<p>
+<strong>關鍵洞察：</strong>當 λ = 2.25 時，失去 $100 的痛苦等同於賺 $225 的快樂。這就是為什麼人們會在損失區做出看似瘋狂的選擇——為了「不賠」，寧可冒著賠更多的風險（賭 B2）。
+</p>
+
+<h2>🪞 框架效應：同一件事，換個說法就逆轉選擇</h2>
+
+<p>
+Kahneman 和 Tversky 的另一個經典實驗——<strong>亞洲疾病問題</strong>：
+</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1rem 0;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.5rem; color: var(--success);">正面框架</h4>
+    <p style="margin: 0 0 0.4rem; font-size: 0.9rem;">600 人感染致命疾病，有兩個方案：</p>
+    <p style="margin: 0 0 0.2rem; font-size: 0.9rem;"><strong>A.</strong> 確定救活 200 人</p>
+    <p style="margin: 0; font-size: 0.9rem;"><strong>B.</strong> 1/3 機率救活全部 600 人，2/3 機率沒救到任何人</p>
+    <p style="margin-top: 0.6rem; font-size: 0.85rem; color: var(--accent);"><strong>結果：72% 選 A</strong>（風險趨避——救人時保守）</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.5rem; color: var(--danger);">負面框架</h4>
+    <p style="margin: 0 0 0.4rem; font-size: 0.9rem;">600 人感染致命疾病，有兩個方案：</p>
+    <p style="margin: 0 0 0.2rem; font-size: 0.9rem;"><strong>C.</strong> 確定死 400 人</p>
+    <p style="margin: 0; font-size: 0.9rem;"><strong>D.</strong> 1/3 機率沒人死亡，2/3 機率全數死亡</p>
+    <p style="margin-top: 0.6rem; font-size: 0.85rem; color: var(--danger);"><strong>結果：78% 選 D</strong>（風險追求——面對死亡時賭一把）</p>
+  </div>
+</div>
+
+<div class="callout warn">
+<strong>⚠️ A 和 C 是數學上完全等價的方案。</strong>「救活 200 人」=「死 400 人」。只是換了「獲利框架」或「損失框架」的說法，72% 的人就逆轉了決定。這不是邏輯問題——是<strong>參考點</strong>的問題。
+</div>
+
+<h2>🔗 一次解釋：樂透、保險、套牢</h2>
+
+<p>
+現在回頭看前三課的所有現象——它們全是同一條價值函數的產物：
+</p>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🎰 買樂透（第 10 課）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">獲利區的<strong>可能性效應</strong>：我們高估了 1/1400 萬的微小機率。價值函數在獲利區是 concave——我們對定額獲利的敏感度遞減，因此「$100 的確定損失」感覺像沒事，而「$5 億的可能獲利」在腦中佔據巨大空間。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">🛡️ 買保險</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">損失區的<strong>確定性效應</strong>：我們極度厭惡「確定的損失」（保費），但更恐懼「機率雖小但災難性的損失」（房子燒了）。λ = 2.25 意味著我們願意付出超過期望值的代價來消除損失的可能性。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">📉 股票套牢不賣</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">參考點鎖定在「買入價」。當股價跌到買入價之下，你就進入了損失區——在損失區你是<strong>風險追求</strong>的。你寧可死抱（賭它反彈），也不願確定地認賠。這就是<strong>處置效應</strong>——下一課的主題。</p>
+  </div>
+</div>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 展望理論中，價值函數在「獲利區」和「損失區」的形狀有何不同？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="兩個區域都是 concave？那就意味著人類在損失時也風險趨避。但數據顯示：在損失區我們是風險追求的（賭 B2 不選 B1）。">A. 兩個區域都是 concave（邊際敏感度遞減），形狀對稱</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！獲利區 concave（風險趨避——落袋為安），損失區 convex（風險追求——賭一把翻身）。加上損失區比獲利區陡約 2.25 倍（損失厭惡），形成經典的 S 形。">B. 獲利區 concave，損失區 convex，且損失區的斜率更陡</span>
+      <span class="quiz-option" data-correct="false" data-feedback="損失區更陡，但陡的方向不對——損失厭惡意味著損失區的曲線在相同金額變化下產生更大的主觀價值變動。">C. 獲利區和損失區形狀相同，但獲利區的斜率更陡</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 「框架效應」的核心機制是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="問題資訊完全相同，不是資訊不對稱——連邏輯上等價的選項（救 200 vs. 死 400）都能逆轉選擇。">A. 提供不同資訊導致不同結論</span>
+      <span class="quiz-option" data-correct="false" data-feedback="框架效應不是情緒操弄——同樣的數學事實換句話說就能逆轉選擇。重點在「參考點從哪裡開始算」而非情緒渲染。">B. 用情緒化的語言操弄受試者</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！同一個數學事實，從「獲利」（救活 200 人）還是「損失」（死 400 人）的角度描述，會把參考點放在不同位置，從而啟動完全不同的風險偏好。這是展望理論最深的洞見：我們決策的依據不是絕對結果，而是相對於參考點的變化。">C. 改變描述方式（獲利 vs 損失）來移動參考點，進而逆轉風險偏好</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 以下哪個情境<strong>不是</strong>損失厭惡的表現？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="這就是損失厭惡。「漲 5% 賺到的快樂」vs「跌 5% 虧損的痛苦」——痛苦大得多。">A. 投資組合跌 5% 的恐慌程度，遠大於漲 5% 的開心程度</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！這是在獲利區表現出風險趨避（落袋為安）——屬於邊際敏感度遞減，不是損失厭惡。損失厭惡的表現會是「跌 10% 死抱不賣」。兩者都是展望理論的一部分，但機制不同。">B. 股票漲 10% 就急著賣出，怕跌回來</span>
+      <span class="quiz-option" data-correct="false" data-feedback="這就是損失厭惡——因為進入損失區，所以寧可死抱賭反彈，也不願確定地認賠。">C. 股票跌了 30% 卻堅決不賣，因為「沒賣就沒賠」</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>價值是相對於參考點的變化，不是絕對財富水準</strong>——同樣的 $100，是「賺到」還是「損失」，感受天差地遠。</li>
+  <li><strong>損失的痛苦約是獲利快樂的 2.25 倍</strong>——這個不對稱驅動了人類在面對風險時的幾乎所有「不理性」行為。</li>
+  <li><strong>框架決定選擇</strong>——把同一個事實說成「獲利」或「損失」，可以逆轉 70% 以上的人的決定。理解框架效應，等於獲得一面抵禦操弄的盾牌。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Kahneman &amp; Tversky (1979) — "Prospect Theory: An Analysis of Decision under Risk"</strong>（Econometrica）：諾貝爾獎級的原始論文。技術性較強，但第 1–3 節非常可讀。</li>
+  <li><strong>Daniel Kahneman —《Thinking, Fast and Slow》第 25–29 章</strong>：展望理論與框架效應的大眾科普版。</li>
+  <li><strong>Richard Thaler —《Misbehaving》第 3–5 章</strong>：價值函數在真實市場中的表現。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你現在手中握有展望理論這把萬用鑰匙——它可以解開樂透、保險、和幾乎所有人類面對不確定性的奇怪行為。下一課，我們把這把鑰匙插進金融市場的鎖孔。
+</p>
+<p>
+  為什麼 80% 的散戶長期跑輸大盤？為什麼賺 10% 急著賣、賠 50% 反而死抱？為什麼交易次數越多，報酬反而越低？——<strong>行為財務學</strong>會用展望理論，一次解釋所有散戶的自毀行為。我們還會用一個互動交易模擬器，讓你親身體驗自己的行為偏誤。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0012-behavioral-finance-individual.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0012：行為財務學——為什麼散戶總是賠錢？
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>展望理論是行為經濟學的基石，但一次理解三個特徵（參考點依賴、敏感度遞減、損失厭惡）可能有點吃力。如果你對價值函數的形狀、框架效應的機制、或任何應用場景有疑問——現在就問。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 價值函數互動圖表 ==========
+(function() {
+  var ctx = document.getElementById('valueFnChart').getContext('2d');
+  var lambda = 2.25;
+  var alpha = 0.88;
+
+  function generateCurve(lambdaVal) {
+    var gains = [];
+    var losses = [];
+    var diagonal = [];
+    var n = 100;
+
+    // Range: -500 to +500
+    for (var i = 0; i <= 2 * n; i++) {
+      var x = (i - n) / n * 500;
+
+      // Diagonal (rational benchmark)
+      diagonal.push({ x: x, y: x });
+
+      if (x >= 0) {
+        gains.push({ x: x, y: Math.pow(x, alpha) });
+      }
+      if (x <= 0) {
+        losses.push({ x: x, y: -lambdaVal * Math.pow(-x, alpha) });
+      }
+    }
+
+    return { gains: gains, losses: losses, diagonal: diagonal };
+  }
+
+  function makeChartData(curves) {
+    return [
+      {
+        label: '理性基準 (y = x)',
+        data: curves.diagonal,
+        type: 'line',
+        borderColor: 'rgba(158, 158, 178, 0.35)',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+        order: 3,
+      },
+      {
+        label: '獲利區 v(x) = x^0.88',
+        data: curves.gains,
+        type: 'line',
+        borderColor: '#f59e0b',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: false,
+        order: 1,
+      },
+      {
+        label: '損失區 v(x) = −λ·(−x)^0.88',
+        data: curves.losses,
+        type: 'line',
+        borderColor: '#f87171',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: false,
+        order: 1,
+      },
+    ];
+  }
+
+  var chart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: makeChartData(generateCurve(lambda)) },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#9e9eb2',
+            usePointStyle: true,
+            boxWidth: 8,
+            padding: 16,
+            font: { size: 12 },
+            filter: function(item) { return item.text !== '理性基準 (y = x)'; },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return 'x = ' + ctx.raw.x.toFixed(0) + ', v(x) = ' + ctx.raw.y.toFixed(1);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: { display: true, text: '客觀損益 ($)', color: '#9e9eb2' },
+          min: -500, max: 500,
+          ticks: { color: '#9e9eb2' },
+          grid: { color: 'rgba(39, 42, 58, 0.5)', lineWidth: function(ctx) { return ctx.tick.value === 0 ? 2 : 0.5; } },
+        },
+        y: {
+          type: 'linear',
+          title: { display: true, text: '主觀價值 v(x)', color: '#9e9eb2' },
+          ticks: { color: '#9e9eb2' },
+          grid: { color: 'rgba(39, 42, 58, 0.5)', lineWidth: function(ctx) { return ctx.tick.value === 0 ? 2 : 0.5; } },
+        },
+      },
+    },
+  });
+
+  var slider = document.getElementById('lambdaSlider');
+  var lambdaVal = document.getElementById('lambdaVal');
+  var painEquivalent = document.getElementById('painEquivalent');
+
+  slider.addEventListener('input', function() {
+    lambda = parseFloat(this.value);
+    lambdaVal.textContent = lambda.toFixed(2);
+    painEquivalent.textContent = '$' + (100 * lambda).toFixed(0);
+
+    var curves = generateCurve(lambda);
+    chart.data.datasets = makeChartData(curves);
+    chart.update();
+  });
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+
+        feedback.textContent = isCorrect
+          ? '✅ ' + this.dataset.feedback
+          : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

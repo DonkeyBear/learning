@@ -39,6 +39,9 @@ display: grid;
 grid-template-columns: 1fr 1fr;
 ```
 
+> [!WARNING]
+> **卡片與 Callout 的橫向並排限制**：如果卡片（`.card`）或 Callout 內的文字內容較長，或數量過多（3 個以上），**即使在大螢幕上也不應橫向並排**。由於頁面主體最大寬度限制為 `720px`，並排會使每欄寬度過窄（如低於 `240px`）導致文字嚴重擠壓。此類情況請使用 `.stack-cards` 類別進行垂直上下排列。
+
 ### minmax 最小寬度參考
 
 | 用途 | 建議 minmax 最小值 |
@@ -89,6 +92,24 @@ grid-template-columns: 1fr 1fr;
   ```
 
 ### 背景
+
+## 課與課之間的銜接規則
+
+> 2026-06-29 建立，同日依據前段課件樣式修正統一
+
+每當生成新的一課（第 N 課）時，同步更新前一課（第 N−1 課）的結尾，加入：
+
+1. **下一課預告**（`<h2>下一課預告</h2>`）：使用獨立的 `<h2>下一課預告</h2>` 標題（**禁止使用** `.callout` 或 `.callout.tip` 包裹預告區塊），用 3–5 句話說明上一課學到的概念如何自然延伸至下一課主題。並在下方放置一個居中的跳轉按鈕，樣式如下：
+   ```html
+   <div style="text-align: center; margin: 1.5rem 0;">
+     <a href="下一課檔名.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+       → 前往 Lxxxx：下一課標題
+     </a>
+   </div>
+   ```
+2. **底部導覽連結**：使用乾淨的 `<nav class="lesson-nav">`（flex 排版已在 `assets/style.css` `.lesson-nav` 類別中定義），**僅保留**「← 回到課程索引」連結，**不要**在 `nav` 內放入下一課的文字連結，保持頁面簡潔。
+
+這是強制規則——不能只新增課程檔案，必須回頭把前一課的結尾打開、接上。
 
 2026-06-29 修正 `0001-shape-of-data.html` 及 `0004-bayes-theorem.html` 時發現：
 1. 課程中多處使用了固定 `1fr 1fr` 兩欄，在手機或小視窗下兩張圖表擠在一起，改用 `auto-fit + minmax`。

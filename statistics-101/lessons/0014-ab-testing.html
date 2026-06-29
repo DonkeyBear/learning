@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 14 課：A/B 測試 — 從科學方法到商業決策</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 14 課：A/B 測試</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0013-beat-the-market-institutional.html">第 13 課</a></span>
+</div>
+
+<h2>🧪 一個看似簡單的問題</h2>
+
+<p>
+你的產品經理說：「我們把結帳按鈕從綠色改成橘色，你幫我跑個 A/B 測試，看哪個轉換率比較高。」
+</p>
+
+<p>
+聽起來簡單。但<strong>A/B 測試是現代版的女士品茶實驗</strong>——你在第 6 課學過的 Fisher 經典。只是現在那杯茶的替代品是一個網頁按鈕，而品茶的是數萬名使用者。同樣的統計邏輯、同樣的陷阱——只是代價更昂貴。
+</p>
+
+<div class="card">
+<h3>A/B 測試的統計核心</h3>
+<p style="margin-bottom: 0;">
+<strong>虛無假設 H₀：</strong>兩個版本沒有差異（p̂_A = p̂_B）。<br>
+<strong>對立假設 H₁：</strong>兩個版本有差異（p̂_A ≠ p̂_B）。<br>
+我們收集數據、計算 P 值、決定是否拒絕 H₀。聽起來和 Fisher 的實驗一模一樣——<strong>但有一個關鍵差異：你可以在任何時間點「偷看」。</strong>
+</p>
+</div>
+
+<h2>📏 樣本數：做 A/B 之前的第一個問題</h2>
+
+<p>
+在第 7 課我們學過信心水準的公式。A/B 測試的樣本數需求是它的直接應用。對於兩組比例的比較：
+</p>
+
+<div class="math-scroll">
+$$ n \approx \frac{2 \cdot (z_{\alpha/2} + z_{\beta})^2 \cdot \bar{p}(1-\bar{p})}{(\Delta)^2} $$
+</div>
+
+<p>
+其中 \( z_{\alpha/2} \) 來自信心水準（通常 α = 0.05 → \( z = 1.96 \)），\( z_{\beta} \) 來自統計檢定力（通常 β = 0.2 → \( z = 0.84 \)），\( \bar{p} \) 是兩個版本的合併基準轉換率，\( \Delta \) 是你要能偵測到的<strong>最小效果量</strong>。
+</p>
+
+<div class="callout">
+<strong>🔑 關鍵數字：</strong>如果基準轉換率是 10%，你想偵測 2% 的改善（10% → 12%），需要每組約 <strong>3,800 人</strong>，兩組共約 7,600 人。如果你只給它 500 人，你連 5% 的改善都偵測不到——統計檢定力不足。很多公司宣稱「A/B 測試結果不顯著」，其實只是樣本不夠大。
+</div>
+
+<h2>⚠️ Type I/II Error 與統計檢定力：A/B 測試的四格遊戲</h2>
+
+<p>
+你還記得第 6 課的假設檢定框架。A/B 測試中，有四種可能的結果：
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead><tr><th></th><th>H₀ 為真（無差異）</th><th>H₁ 為真（有差異）</th></tr></thead>
+  <tbody>
+    <tr><td><strong>拒絕 H₀（宣稱顯著）</strong></td><td style="color: var(--danger);">Type I Error（假陽性）<br>機率 = α = 5%</td><td style="color: var(--success);">✅ 正確偵測<br>機率 = 1−β（檢定力）</td></tr>
+    <tr><td><strong>未拒絕 H₀（宣稱不顯著）</strong></td><td style="color: var(--success);">✅ 正確</td><td style="color: var(--danger);">Type II Error（假陰性）<br>機率 = β</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+多數人只關注 α（控制假陽性在 5%），卻完全忽略了 β。如果你的樣本數太小，檢定力（1−β）可能只有 30%——意思是：<strong>即使 B 版本真的比 A 好 5%，你有 70% 的機率會錯過它，然後錯誤地結論「A 和 B 沒有差異」。</strong>
+</p>
+
+<div class="card">
+<h3>為什麼「不顯著」和「沒有差異」不是同一件事</h3>
+<p style="margin-bottom: 0;">
+「P = 0.12，所以 B 沒有比較好」——<strong>這是錯誤的。</strong>P = 0.12 只代表「如果兩組真的沒有差異，你有 12% 的機率看到這樣的數據」。這不能拿來證明「沒有差異」——尤其當樣本數不足時。就像你不能因為用望遠鏡找不到外星人，就結論外星人不存在——可能只是望遠鏡不夠強大（樣本不夠大）。
+</p>
+</div>
+
+<h2>🎮 互動沙盒：Peeking 的致命誘惑</h2>
+
+<p>
+下方同時執行 <strong>10 組 A/A 測試</strong>——兩個版本完全相同（真實轉換率 = 10%）。每一條線代表一組測試中 P 值的變化軌跡。
+</p>
+<p>
+<strong>P 值在實驗過程中會劇烈波動。</strong>點擊「Peek（偷看）」按鈕模擬邊看邊停的行為：記錄目前有多少組測試的 P 值低於 0.05。你會發現：即使 A 和 B 完全一樣，只要你看得夠多次，總會看到「顯著」的結果。
+</p>
+
+<div class="card" id="peekingLab">
+
+  <div style="position: relative; height: 320px; margin-bottom: 1rem;">
+    <canvas id="pvalueChart"></canvas>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; margin-bottom: 1rem;">
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center;">
+      <div style="font-size: 0.75rem; color: var(--muted);">每組樣本數</div>
+      <div style="font-size: 1.2rem; font-weight: 700; color: var(--accent);" id="sampleSize">0</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center;">
+      <div style="font-size: 0.75rem; color: var(--muted);">偷看次數</div>
+      <div style="font-size: 1.2rem; font-weight: 700; color: var(--warning);" id="peekCount">0</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center; border-left: 4px solid var(--danger);">
+      <div style="font-size: 0.75rem; color: var(--muted);">P &lt; 0.05 的組數</div>
+      <div style="font-size: 1.2rem; font-weight: 700; color: var(--danger);" id="sigCount">—</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center; border-left: 4px solid var(--warning);">
+      <div style="font-size: 0.75rem; color: var(--muted);">假陽性率</div>
+      <div style="font-size: 1.2rem; font-weight: 700; color: var(--warning);" id="falsePosRate">—</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap;">
+    <button id="btnAddUsers" style="padding: 0.55em 1.3em; background: var(--accent); color: #0f1119; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.95rem;">➕ 增加 200 名使用者</button>
+    <button id="btnPeek" style="padding: 0.55em 1.3em; background: var(--card-bg); color: var(--warning); border: 2px solid var(--warning); border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.95rem;">👁️ Peek（偷看 P 值）</button>
+    <button id="btnReset" style="padding: 0.55em 1em; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem;">🔄 重設</button>
+  </div>
+
+  <div id="peekVerdict" style="font-size: 0.9rem; padding: 0.7rem; background: var(--code-bg); border-radius: 6px; margin-top: 0.8rem; color: var(--text-dim); line-height: 1.5;"></div>
+
+</div>
+
+<div class="callout warn">
+<strong>⚠️ Peeking 的數學：</strong>如果你計畫在 5 個不同時間點各偷看一次、任何一次 P &lt; 0.05 就停，那麼你的<strong>整體 Type I error 不再是 5%，而是接近 20%</strong>。偷看次數越多，膨脹越嚴重。在第 6 課我們學過「P &lt; 0.05 代表虛無假設下只有 5% 機率看到這結果」——但那假設你<strong>只看一次</strong>。看了十次之後，「至少一次 P &lt; 0.05」的機率遠高於 5%。
+</div>
+
+<h2>🛡️ 如何正確地處理偷看衝動？</h2>
+
+<p>
+你的 PM 每五分鐘就問你一次「顯著了嗎」。怎麼辦？
+</p>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🔒 方法一：固定樣本數（Fixed Horizon）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">事先計算所需樣本數，達到目標之前<strong>完全不看 P 值</strong>。這是最簡單、最安全的方法。缺點是你無法提早停止一個明顯有效的測試（浪費流量）。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">📐 方法二：Sequential Testing（序貫檢定）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">使用阿爾法消耗函數（Alpha Spending Function），例如 Pocock 或 O'Brien-Fleming 邊界。在每次 interim analysis 時，將 α 門檻設得更嚴格（例如第一次檢查用 α = 0.005，而非 0.05），確保<strong>整體 Type I error 維持在 5%</strong>。這是 FDA 核准臨床試驗的標準方法。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">🎲 方法三：貝氏 A/B 測試</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">放棄 P 值，改用<strong>事後分布</strong>（Posterior Distribution）。每次看到新數據，更新你對「B 比 A 好的機率」的信念。貝氏方法<strong>天然免疫於 peeking 問題</strong>——因為它不是在做「重複檢定」，而是在做「連續的信念更新」（還記得第 4 課的貝氏更新嗎？這就是它在商業場景中的終極應用）。</p>
+  </div>
+</div>
+
+<h2>🏢 真實世界的 A/B 測試：巨頭們怎麼做</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🔵 Google：41 種藍色的故事</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">2009 年，Google 設計團隊為了 Gmail 工具列的藍色，測試了 41 種不同色調。其中一種藍色讓每年的廣告收入增加了 <strong>$200M USD</strong>。這是一個開發者不喜歡聽到的故事——你覺得按鈕顏色無所謂，但數據說一個十六進位色碼值 $200M。這也解釋了為什麼 Google 每年執行超過 30,000 次 A/B 測試。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">🔴 Netflix：推薦演算法的實驗文化</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">Netflix 幾乎所有功能——從推薦縮圖、預告片自動播放，到「繼續觀看」的按鈕位置——都經過 A/B 測試。他們甚至為此建立了一套完整的實驗平台（AET），任何工程師都可以在不用擔心統計方法論的情況下安全地跑測試。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">⚠️ Microsoft Bing：一個 A/A 測試的教訓</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">2012 年，Bing 團隊進行了一個 A/A 測試（兩個版本完全相同），結果——居然出現了統計顯著差異。調查發現：使用者的瀏覽器類型（IE vs Chrome）在實驗組中不均衡。這是隨機分派的失敗案例——即使樣本夠大，隨機化有時也會產出不平衡的分組。教訓：<strong>除了看 P 值，也要檢查兩組的 baseline characteristics 是否匹配。</strong></p>
+  </div>
+</div>
+
+<h2>🔬 實務陷阱：A/B 測試的黑暗面</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">🧩 多重比較：測試 20 個指標</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">如果你的 A/B 測試同時觀察「轉換率」「點擊率」「停留時間」「跳出率」等 20 個指標，則至少一個指標純靠運氣出現 P &lt; 0.05 的機率為 1 − 0.95²⁰ ≈ <strong>64%</strong>。還記得第 13 課的 √(2 ln N) 嗎？同一個數學。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">📐 統計顯著 ≠ 實務顯著</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">樣本夠大時，任何微小的差異都能達到統計顯著。轉換率從 10.00% 改善到 10.02%（P &lt; 0.001！）——但你願意為了 0.02% 的改善重寫整個結帳流程嗎？效應量（effect size）和信賴區間比 P 值更值得關注。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">🎯 分割測試的誘惑</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「整體不顯著...但我們看看：在 iOS 使用者中 P = 0.02，在 25–34 歲中 P = 0.01，在早晨時段 P = 0.03...」——你剛剛對同一組數據做了 30 次子群分析，肯定能挖出幾個「顯著」的子群。這是 p-hacking 最常見的企業應用。</p>
+  </div>
+</div>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 為什麼在 A/B 測試進行中反覆「偷看」P 值會導致錯誤結論？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="偷看不會改變資料本身——但它改變了你「對同一筆資料做多少次檢定」的問題。每次偷看都是一次獨立的假設檢定，多次檢定會累積 Type I error。">A. 因為偷看會改變使用者的行為，汙染實驗資料</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！每次偷看都是一次獨立的假設檢定。如果你偷看 5 次、任何一次 P &lt; 0.05 就停止，你的整體 Type I error 遠高於 5%（可達 ~20%）。正確做法是：事先決定樣本數，在達到目標樣本數之前不看結果。">B. 每次偷看都是一次假設檢定——重複檢定會累積 Type I error，讓假陽性率遠超過 5%</span>
+      <span class="quiz-option" data-correct="false" data-feedback="P 值在實驗過程中大幅度波動是正常現象（尤其是樣本還小時）——這正是為什麼你不能邊看邊停的原因。波動本身不是問題，問題是你對每一次波動都做一次檢定。">C. 因為 P 值在實驗過程中會不穩定地波動</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 一個 A/B 測試的 P 值 = 0.04，但轉換率改善只有 0.1%。以下哪個判斷最正確？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="P &lt; 0.05 代表差異「不太可能是隨機波動造成的」——但它不能告訴你這個差異在商業上值不值得。0.1% 的改善可能遠低於改版的工程成本。">A. P &lt; 0.05，所以 B 版本確實比較好，應該立即上線</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！P 值只告訴你「差異是否可能是隨機的」，效應量告訴你「差異有多大」。樣本夠大時，任何微小的效應都能達到 P &lt; 0.05。決策應基於效應量 + 信賴區間 + 業務成本，而非只看 P 值。">B. 雖然統計顯著，但效應量極小——需要考慮「統計顯著」和「實務顯著」的差異</span>
+      <span class="quiz-option" data-correct="false" data-feedback="如果效應量是 0.1%，提升樣本數只會讓 P 值變得更小（因為標準誤縮小了）——它不會讓效應量變大。">C. 需要增加樣本數來確認這個效果是否真實</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 你同時觀察 10 項指標，其中 3 項的 P &lt; 0.05。這代表什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="如果 10 項指標彼此獨立且所有真實差異都是零，純靠運氣也有 1 − 0.95¹⁰ ≈ 40% 的機率看到至少一項 P &lt; 0.05。3 項顯著不需要假設 B 版本「全面改善」——多重比較本身就是解釋。">A. B 版本在這 3 個指標上確實優於 A</span>
+      <span class="quiz-option" data-correct="false" data-feedback="這 3 項不一定就是「真正的改善」——它們可能只是多重比較中偶然出現的顯著結果。問題的根源是你測了 10 個指標，而不是哪 3 個指標恰好顯著。">B. 應該只關注這 3 項顯著的指標，其他的可以忽略</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！10 次獨立檢定中，即使所有真實差異都是零，看到至少 3 項 P &lt; 0.05 也遠非不可能。你需要對多重比較進行校正（如 Bonferroni：α / 10 = 0.005），或事先指定一個主要指標（primary endpoint），其他指標僅做探索性分析。">C. 這可能是多重比較的產物——需要對 P 值進行校正（如 Bonferroni correction），或者事先指定主要指標</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>四個核心收穫</h3>
+<ol>
+  <li><strong>Peeking 是 A/B 測試的頭號殺手</strong>——每次偷看都是一次檢定；反覆偷看並在 P &lt; 0.05 時停止，會讓假陽性率從 5% 膨脹到 20–30%。事先決定樣本數，達到之前不要看結果。</li>
+  <li><strong>樣本數不足 = 檢定力不足</strong>——第 7 課的信賴區間公式直接告訴你需要多少人。如果你偵測不到有意義的效應量，做 A/B 測試是浪費時間。</li>
+  <li><strong>多重比較和子群分析是合法的 p-hacking</strong>——測試 20 個指標或切割 30 個子群，必定會挖出「顯著」的東西。解決方案：事先註冊主要指標（primary endpoint）。</li>
+  <li><strong>統計顯著 ≠ 商業價值</strong>——報告效應量和信賴區間，而不只是 P 值。0.1% 的改善就算 P &lt; 0.001，也不值得為它重寫程式。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Kohavi, Tang &amp; Xu —《Trustworthy Online Controlled Experiments》</strong>：A/B 測試的實務聖經。三位作者來自 Google、Microsoft 和 LinkedIn。</li>
+  <li><strong>Alex Reinhart —《Statistics Done Wrong》第 2–3 章</strong>：Peeking 和多重比較問題的輕鬆入門。</li>
+  <li><strong>Evan Miller — <a href="https://www.evanmiller.org/how-not-to-run-an-ab-test.html" target="_blank" rel="noopener">"How Not to Run an A/B Test"</a></strong>：經典短文，寫給 PM 和非統計背景的決策者。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你在第 13 課的假策略偵測器中短暫瞥見了倖存者偏誤的威力。下一課，我們將這個概念完整拆解——從二戰飛機的傳奇故事（Abraham Wald），到共同基金的績效排名，再到「所有成功新創都在做這五件事」的荒謬商管書邏輯。
+</p>
+<p>
+  你會用一個互動模擬器，親手操作「只顯示存活者」和「顯示全部樣本」之間的績效落差——這堂課會讓你從此再也不相信任何「歷史績效排名」。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0015-survivorship-bias.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0015：倖存者偏誤——你看不到的屍體不會說話
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>A/B 測試看起來是入門統計，但實務中的陷阱密度極高——peeking、多重比較、效應量 vs P 值、子群分析的誘惑。任何一個陷阱想深入討論，現在就問。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== Peeking 模擬器 ==========
+(function() {
+  var N_TESTS = 10;
+  var TRUE_RATE = 0.10;
+  var BATCH_SIZE = 100; // users per variant per batch
+
+  // 每組測試的累積資料
+  var data = []; // [{nA, sA, nB, sB}]
+
+  var totalUsers = 0;
+  var peekCount = 0;
+
+  var chart = null;
+
+  function resetData() {
+    data = [];
+    for (var i = 0; i < N_TESTS; i++) {
+      data.push({ nA: 0, sA: 0, nB: 0, sB: 0, everSig: false });
+    }
+    totalUsers = 0;
+    peekCount = 0;
+    updateUI();
+    document.getElementById('peekVerdict').textContent = '';
+  }
+
+  // Normal CDF approximation
+  function normalCDF(x) {
+    var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+    var a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x) / Math.sqrt(2);
+    var t = 1 / (1 + p * x);
+    var y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    return 0.5 * (1 + sign * y);
+  }
+
+  function calcPValue(nA, sA, nB, sB) {
+    if (nA === 0 || nB === 0) return 1;
+    var pA = sA / nA, pB = sB / nB;
+    var pPool = (sA + sB) / (nA + nB);
+    if (pPool === 0 || pPool === 1) return 1;
+    var se = Math.sqrt(pPool * (1 - pPool) * (1/nA + 1/nB));
+    var z = (pB - pA) / se;
+    return 2 * (1 - normalCDF(Math.abs(z)));
+  }
+
+  var trajectories = []; // trajectories[i] = [{n, pA, pB, pVal}]
+
+  function updateUI() {
+    document.getElementById('sampleSize').textContent = Math.floor(totalUsers / N_TESTS / 2);
+    document.getElementById('peekCount').textContent = peekCount;
+  }
+
+  function resetTrajectories() {
+    trajectories = [];
+    for (var i = 0; i < N_TESTS; i++) {
+      trajectories.push([]);
+    }
+  }
+
+  function addUsersV2(batchPerVariant) {
+    for (var i = 0; i < N_TESTS; i++) {
+      for (var j = 0; j < batchPerVariant; j++) {
+        data[i].sA += Math.random() < TRUE_RATE ? 1 : 0;
+        data[i].nA++;
+      }
+      for (var j = 0; j < batchPerVariant; j++) {
+        data[i].sB += Math.random() < TRUE_RATE ? 1 : 0;
+        data[i].nB++;
+      }
+
+      // Record trajectory point every batch
+      var p = calcPValue(data[i].nA, data[i].sA, data[i].nB, data[i].sB);
+      trajectories[i].push({
+        users: data[i].nA + data[i].nB,
+        pA: data[i].sA / data[i].nA,
+        pB: data[i].sB / data[i].nB,
+        pVal: p,
+      });
+    }
+    totalUsers += batchPerVariant * 2 * N_TESTS;
+    updateUI();
+    drawChart();
+  }
+
+  function doPeekV2() {
+    peekCount++;
+    var sigNow = 0;
+    for (var i = 0; i < N_TESTS; i++) {
+      var last = trajectories[i][trajectories[i].length - 1];
+      if (last && last.pVal < 0.05) {
+        if (!data[i].everSig) data[i].everSig = true;
+        sigNow++;
+      }
+    }
+    var everSigCount = data.filter(function(d) { return d.everSig; }).length;
+    var fpRate = (everSigCount / N_TESTS * 100).toFixed(1);
+
+    document.getElementById('peekCount').textContent = peekCount;
+    document.getElementById('sigCount').textContent = everSigCount + ' / ' + N_TESTS;
+    document.getElementById('falsePosRate').textContent = fpRate + '%';
+
+    var verdict = document.getElementById('peekVerdict');
+    if (everSigCount >= 3) {
+      verdict.innerHTML = '🚨 <strong>警示：</strong>' + everSigCount + ' / ' + N_TESTS + ' 組測試（' + fpRate + '%）在至少一次偷看中出現過 P &lt; 0.05。但<strong>所有 A 和 B 的真實轉換率完全相同（10%）</strong>——這些「顯著」結果全部是假陽性。如果你每次偷看後在 P &lt; 0.05 時停止實驗，你的假陽性率是 <strong>' + fpRate + '%</strong>（而非宣稱的 5%）。';
+    } else {
+      verdict.innerHTML = '目前 ' + everSigCount + ' / ' + N_TESTS + ' 組（' + fpRate + '%）曾出現 P &lt; 0.05。繼續增加使用者和偷看次數來觀察假陽性率的變化。';
+    }
+
+    drawChart();
+  }
+
+  function drawChart() {
+    var ctx = document.getElementById('pvalueChart').getContext('2d');
+    if (chart) chart.destroy();
+
+    var colors = [
+      '#2dd4bf', '#f59e0b', '#4ade80', '#f87171', '#60a5fa',
+      '#c084fc', '#fb923c', '#34d399', '#a78bfa', '#fbbf24',
+    ];
+
+    var datasets = [];
+    var allLabels = null;
+
+    for (var i = 0; i < N_TESTS; i++) {
+      var traj = trajectories[i];
+      if (traj.length === 0) continue;
+      if (!allLabels) allLabels = traj.map(function(p) { return p.users; });
+
+      datasets.push({
+        label: '測試 ' + (i + 1),
+        data: traj.map(function(p) { return p.pVal; }),
+        borderColor: colors[i],
+        backgroundColor: 'transparent',
+        borderWidth: data[i].everSig ? 2.5 : 1.2,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+        order: 1,
+      });
+    }
+
+    // Add p=0.05 reference line
+    if (allLabels && allLabels.length > 0) {
+      datasets.push({
+        label: 'P = 0.05',
+        data: allLabels.map(function() { return 0.05; }),
+        borderColor: 'rgba(248,113,113,0.5)',
+        borderWidth: 1.5,
+        borderDash: [6, 3],
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+        order: 2,
+      });
+    }
+
+    var labelArray = allLabels || [0, 1000];
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: labelArray, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: '#9e9eb2',
+              usePointStyle: true,
+              boxWidth: 6,
+              padding: 8,
+              font: { size: 10 },
+              filter: function(item) { return item.text !== 'P = 0.05'; },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.dataset.label === 'P = 0.05') return 'P = 0.05（閥值）';
+                return c.dataset.label + ': P = ' + c.raw.toFixed(4);
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '總使用者數（A+B）', color: '#9e9eb2' },
+            ticks: { color: '#9e9eb2', maxTicksLimit: 8 },
+            grid: { color: 'rgba(39,42,58,0.4)' },
+          },
+          y: {
+            title: { display: true, text: 'P 值', color: '#9e9eb2' },
+            min: 0,
+            max: 0.5,
+            ticks: { color: '#9e9eb2', callback: function(v) { return v.toFixed(2); } },
+            grid: { color: 'rgba(39,42,58,0.4)', lineWidth: function(ctx) { return ctx.tick.value === 0.05 ? 2 : 0.5; }, color: function(ctx) { return ctx.tick.value === 0.05 ? 'rgba(248,113,113,0.4)' : 'rgba(39,42,58,0.4)'; } },
+          },
+        },
+      },
+    });
+  }
+
+  // Wire up UI
+  document.getElementById('btnAddUsers').addEventListener('click', function() {
+    addUsersV2(BATCH_SIZE);
+  });
+  document.getElementById('btnPeek').addEventListener('click', function() {
+    doPeekV2();
+  });
+  document.getElementById('btnReset').addEventListener('click', function() {
+    resetData();
+    resetTrajectories();
+    document.getElementById('peekCount').textContent = '0';
+    document.getElementById('sigCount').textContent = '—';
+    document.getElementById('falsePosRate').textContent = '—';
+    if (chart) { chart.destroy(); chart = null; }
+    // Re-initialize with 3 batches
+    addUsersV2(100);
+    addUsersV2(100);
+    addUsersV2(100);
+  });
+
+  // Init
+  resetData();
+  resetTrajectories();
+  // Pre-load with 300 users per group (3 batches)
+  addUsersV2(100);
+  addUsersV2(100);
+  addUsersV2(100);
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+        feedback.textContent = isCorrect ? '✅ ' + this.dataset.feedback : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

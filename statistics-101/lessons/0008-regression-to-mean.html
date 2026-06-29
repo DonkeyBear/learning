@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 8 課：均值回歸 — 為什麼「反彈」不是魔法？</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 8 課：均值回歸</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+</div>
+
+<h2>🏈 運動畫刊詛咒：上了封面就衰退？</h2>
+
+<p>
+如果你是運動迷，可能聽過「<strong>運動畫刊詛咒</strong>」：運動員一旦登上《運動畫刊》封面，接下來的賽季表現就會下滑。2015 年，ESPN 的資料記者統計了過去 30 年登上封面的 MLB 球員，發現平均而言，封面前的打擊率是 <strong>.315</strong>，封面後跌到 <strong>.284</strong>。
+</p>
+
+<p>
+是封面帶來了詛咒嗎？還是——<strong>有一個更簡單、更無聊的統計學解釋？</strong>
+</p>
+
+<p>
+答案藏在 1886 年，一位英國紳士在自家花園裡種豌豆時發現的規律中。
+</p>
+
+<h2>🌱 高爾頓的豌豆：回歸平凡的發現</h2>
+
+<div class="card">
+<p>
+Francis Galton（高爾頓）——你還記得第 2 課的釘板實驗就是他發明的——在 1877 年又做了另一件有趣的事：他測量了 205 對父母與其成年子女的身高。
+</p>
+</div>
+
+<p>
+高爾頓注意到一個現象：<strong>特別高的父親，兒子通常也很高，但沒有父親那麼高；特別矮的父親，兒子通常也很矮，但沒有父親那麼矮。</strong>兒子的身高，似乎在「往回走」——往平均值靠攏。
+</p>
+
+<p>
+高爾頓把這個現象稱為 <strong>「回歸平凡」（regression to mediocrity）</strong>。今天我們叫它<strong>均值回歸（regression to the mean）</strong>。
+</p>
+
+<p>
+這個「回歸」和我們今天說的「迴歸分析（regression analysis）」是同一個詞源——後來的統計學家借用了高爾頓的命名，發展出一整套建模工具。但<strong>均值回歸本身不是一種分析方法，而是一個自然現象</strong>：它描述的是「極端值傾向被較不極端的值接續」的統計必然性。
+</p>
+
+<div class="callout tip">
+<strong>💡 一句話版本：</strong>如果兩次觀測之間的相關性不完美（r &lt; 1），那麼第二次觀測的極端程度，平均而言會比第一次輕微。
+</div>
+
+<h2>🎮 互動沙盒：拖曳看看回歸的力量</h2>
+
+<p>
+下方模擬了 200 對父子身高的配對資料（真實相關係數約為 0.5）。橘色線是<strong>回歸線</strong>：給定父親的身高，它預測兒子最可能落在哪個高度。
+</p>
+
+<p>
+<strong>拖曳滑桿</strong>，選一個極端的父親身高，觀察預測的兒子身高如何「往平均值回歸」：
+</p>
+
+<div class="card">
+  <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; justify-content: center;">
+    <div style="flex: 1; min-width: 200px;">
+      <label for="fatherSlider" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+        父親身高：<span id="fatherValue">190</span> cm
+      </label>
+      <input type="range" id="fatherSlider" min="151" max="199" value="190" step="0.5"
+        style="width: 100%; accent-color: var(--accent);">
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+        <span>151 cm</span><span>175 cm（均值）</span><span>199 cm</span>
+      </div>
+    </div>
+    <div style="flex: 0 0 auto; text-align: center; background: var(--code-bg); border-radius: 8px; padding: 1rem 1.5rem; border: 1px solid var(--border);">
+      <div style="font-size: 0.85rem; color: var(--muted);">預測兒子身高</div>
+      <div style="font-size: 2rem; font-weight: 700; color: var(--accent);" id="predictedValue">182.5</div>
+      <div style="font-size: 0.85rem; color: var(--muted);">cm</div>
+      <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+        回歸幅度：<strong style="color: var(--warning);" id="regressionAmount">7.5 cm</strong>
+      </div>
+    </div>
+  </div>
+  <div style="position: relative; margin-top: 1rem;">
+    <canvas id="regressionChart" height="400"></canvas>
+  </div>
+  <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; text-align: center;">
+    灰點：200 對父子身高配對 &nbsp;|&nbsp; 橘線：回歸線 &nbsp;|&nbsp; 紅框：選取的父親 &nbsp;|&nbsp; 綠框：預測的兒子位置
+  </p>
+</div>
+
+<h2>📐 回歸的數學直覺</h2>
+
+<p>
+當兩組觀測的標準差相同時，回歸方程式簡化為：
+</p>
+
+<div class="math-scroll">
+$$ \hat{y} = \bar{y} + r \cdot (x - \bar{x}) $$
+</div>
+
+<p>
+其中 \( r \) 是相關係數（介於 −1 到 +1 之間）。<strong>關鍵洞察：</strong>
+</p>
+
+<ul>
+  <li>如果 \( r = 1 \)（完美正相關），極端父親 → 同樣極端的兒子（沒有回歸）</li>
+  <li>如果 \( r = 0.5 \)（如身高），父親偏離均值 10 cm → 兒子平均只偏離 5 cm</li>
+  <li>如果 \( r = 0 \)（零相關），不管父親多高，兒子都回到均值</li>
+</ul>
+
+<div class="math-scroll">
+$$ |\hat{y} - \bar{y}| = |r| \cdot |x - \bar{x}| $$
+</div>
+
+<p>
+<strong>偏離均值的幅度，會被相關係數「打折」。</strong>相關係數越低，折扣越大，回歸越強。
+</p>
+
+<div class="callout">
+<strong>🔑 均值回歸不是一種「力」或「因果機制」</strong>——它只是一個數學事實：在兩個不完全相關的變數之間，極端值不會完全複製自己。就像你不會因為丟出一次 12 點（兩個骰子），就期望下一把也丟出 12 點。
+</div>
+
+<h2>✈️ Kahneman 的飛行教官：獎勵無用論的終結</h2>
+
+<p>
+Daniel Kahneman（你會在後續課程中反覆遇到他）年輕時曾為以色列空軍的飛行教官講授心理學。他提到一個行為心理學的基本原則：<strong>獎勵比懲罰更能促進學習</strong>。
+</p>
+
+<p>
+一位資深教官舉手反駁：
+</p>
+
+<blockquote>
+「我不同意。每次我因為學員飛得漂亮而誇獎他，下次他就飛得比較差。每次我因為學員飛得爛而痛罵他，下次他就飛得比較好。顯然，懲罰比獎勵有效。」
+</blockquote>
+
+<p>
+Kahneman 愣了一下，然後意識到：<strong>這不是獎勵 vs 懲罰的問題，而是均值回歸。</strong>
+</p>
+
+<div class="card">
+<p>
+飛行表現 = 技能 + 運氣。一個學員飛得「特別好」的那次，運氣成分很可能佔了很大比例。下次飛行，運氣回歸均值，表現自然下滑——<strong>不管你有沒有誇獎他</strong>。
+</p>
+<p style="margin-bottom: 0;">
+同理，一個學員飛得「特別爛」的那次，可能是運氣特別差。下次飛行運氣回歸，表現自然回升——<strong>跟你罵不罵他無關</strong>。
+</p>
+</div>
+
+<p>
+但人類大腦天生是<strong>因果故事製造機</strong>：我們看到「誇獎 → 下次變差」，就自動編出「誇獎讓他驕傲鬆懈」的故事。我們看到「痛罵 → 下次變好」，就自動編出「罵醒了他」的故事。均值回歸——這個無聊的統計事實——從來不在我們的自動編劇本裡。
+</p>
+
+<h2>🔍 日常生活中的均值回歸</h2>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr>
+      <th>場景</th>
+      <th>你看到的</th>
+      <th>均值回歸的解釋</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>🎵 第二張專輯症候群</td>
+      <td>爆紅首專 → 第二張「走下坡」</td>
+      <td>首專的成功包含大量運氣（剛好打中時代情緒），第二張運氣回歸</td>
+    </tr>
+    <tr>
+      <td>📈 股市均值回歸</td>
+      <td>去年漲 80% 的基金 → 今年表現平平</td>
+      <td>超常報酬難以持續，長期會回歸市場平均</td>
+    </tr>
+    <tr>
+      <td>💊 安慰劑效應的陷阱</td>
+      <td>劇痛時吃藥 → 下次比較不痛</td>
+      <td>疼痛在最劇烈時就注定會回歸減輕，與吃什麼無關</td>
+    </tr>
+    <tr>
+      <td>🏫 補習班的「見證」</td>
+      <td>考最爛的學生補完進步最多</td>
+      <td>最爛的成績本身就有最大回歸空間（地板效應的鏡像）</td>
+    </tr>
+    <tr>
+      <td>🏈 運動畫刊詛咒</td>
+      <td>上封面後成績下滑</td>
+      <td>能上封面本身就是極端好表現的結果，之後回歸均值是必然</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+<strong>均值回歸是「事後諸葛」的最大敵人。</strong>任何「我有個偏方，試了之後就改善了」的宣稱，都必須先排除均值回歸的解釋——因為症狀在最嚴重的時候，本來就最可能自行改善。
+</p>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 為什麼特別高的父親，兒子平均來說沒有父親那麼高？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="true" data-feedback="正確！相關係數 r ≈ 0.5，父親偏離均值 10 cm，兒子平均只偏離 5 cm。">A. 因為父子身高的相關係數小於 1，父親偏離均值的幅度會被「打折」傳遞</span>
+      <span class="quiz-option" data-correct="false" data-feedback="這聽起來合理但不是主因。營養和環境確實有影響，但均值回歸是純統計現象，不需要任何環境變化解釋。">B. 因為兒子的營養和成長環境與父親不同</span>
+      <span class="quiz-option" data-correct="false" data-feedback="不是。基因是身高的重要因子，但這不能解釋為什麼兒子系統性地比極端父親更接近均值。">C. 因為身高主要由母親的基因決定</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 飛行教官說「誇獎之後學員變差，痛罵之後學員變好」。問題出在哪？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="這不是 Kahneman 的論點。教官確實觀察到了現象，但給出了錯誤的因果解釋。">A. 教官在說謊，學員根本沒有變差或變好</span>
+      <span class="quiz-option" data-correct="true" data-feedback="沒錯！特別好或特別爛的表現都含有運氣成分，下次運氣回歸均值，表現自然往平均靠攏——與獎懲無關。">B. 教官觀察到的現象是真的，但原因是均值回歸，不是獎懲的效果</span>
+      <span class="quiz-option" data-correct="false" data-feedback="不完全對。獎勵本身是有價值的教學工具，這裡的問題不是獎勵有效與否，而是教官把均值回歸錯誤歸因於獎懲。">C. 獎勵本來就沒有效果，教官是對的</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 以下哪一種情況，均值回歸的效果會最強？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="當 r 接近 1 時，極端值幾乎完全複製，回歸效果很弱。想想完美正相關的情況：父親身高 190，兒子也差不多 190。">A. 兩次觀測之間的相關係數 r = 0.9</span>
+      <span class="quiz-option" data-correct="false" data-feedback="r = 0.5 時約有一半的偏離會被回歸，但還有更極端的情況。">B. 兩次觀測之間的相關係數 r = 0.5</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！r = 0 時，第二次觀測完全不受第一次影響——無論第一次多極端，第二次的期望值就是母體均值。這就是最強的回歸效果。">C. 兩次觀測之間的相關係數 r = 0（完全無關）</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>均值回歸是統計必然，不是因果現象</strong>——只要兩個變數的相關性不完美，極端值就會傾向被較不極端的值接續。</li>
+  <li><strong>人類天生是因果故事機</strong>——我們會自動為「A 然後 B」編出「A 導致 B」的故事，而均值回歸這個無聊的數學事實永遠不在我們的劇本裡。</li>
+  <li><strong>檢驗任何「改善」宣稱時，先問：這會不會只是均值回歸？</strong>——症狀最嚴重的時候，本來就最可能自行緩解。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Daniel Kahneman —《Thinking, Fast and Slow》第 17 章</strong>：飛行教官故事的原始出處，也是均值回歸最經典的非技術解釋。</li>
+  <li><strong>Jordan Ellenberg —《How Not to Be Wrong》第 4 章</strong>：用棒球和選舉民調講解均值回歸，非常易讀。</li>
+  <li><strong>Galton, F. (1886) — "Regression Towards Mediocrity in Hereditary Stature"</strong>：原始論文，15 頁。如果你好奇「回歸」這個詞的起源。</li>
+</ul>
+
+<h2>下一課預告</h2>
+
+<p>
+  均值回歸是人類「因果故事製造機」的經典受害者——我們看到 A 然後 B，就自動編出「A 導致 B」的故事。但還有一個更致命的認知陷阱：<strong>我們甚至會為「完全獨立的事件」編故事。</strong>
+</p>
+<p>
+  為什麼賭徒堅信連開 5 次紅之後黑色「該出了」？為什麼籃球迷真心相信「手感火燙」？下一課，我們把均值回歸的「因果幻覺」推廣到最極端的情境——<strong>獨立隨機事件。</strong>
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0009-gamblers-fallacy.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0009：賭徒謬誤與熱手謬誤
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>均值回歸是統計學中最容易被忽略、卻最常被誤用的概念之一。如果你對回歸線的計算、相關係數的意義、或者任何日常生活的回歸案例有疑問，現在就問你的 AI 老師——這裡沒有蠢問題，只有還沒問的問題。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 互動沙盒：父子身高均值回歸模擬器 ==========
+
+(function() {
+  // 生成相關聯的常態隨機數（Box-Muller + Cholesky decomposition）
+  function generateCorrelatedData(n, r, mean, sd) {
+    const points = [];
+    for (let i = 0; i < n; i++) {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      const z1 = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      const z2 = Math.sqrt(-2 * Math.log(u)) * Math.sin(2 * Math.PI * v);
+      const father = mean + sd * z1;
+      const son = mean + sd * (r * z1 + Math.sqrt(1 - r * r) * z2);
+      points.push({ x: father, y: son });
+    }
+    return points;
+  }
+
+  const MEAN = 175;
+  const SD = 8;
+  const R = 0.5;
+  const N = 200;
+
+  const points = generateCorrelatedData(N, R, MEAN, SD);
+
+  // 回歸線端點
+  const xMin = MEAN - 3.3 * SD;
+  const xMax = MEAN + 3.3 * SD;
+  const regLine = [
+    { x: xMin, y: MEAN + R * (xMin - MEAN) },
+    { x: xMax, y: MEAN + R * (xMax - MEAN) }
+  ];
+
+  // 均值參照線
+  const meanLine = [
+    { x: xMin, y: MEAN },
+    { x: xMax, y: MEAN }
+  ];
+
+  const ctx = document.getElementById('regressionChart').getContext('2d');
+
+  function makeHighlightData(fatherH) {
+    const predictedSon = MEAN + R * (fatherH - MEAN);
+    return {
+      fatherPoint: [{ x: fatherH, y: predictedSon + 20 }],
+      sonPoint: [{ x: fatherH, y: predictedSon }],
+      vLine: [{ x: fatherH, y: MEAN - 3.5 * SD }, { x: fatherH, y: predictedSon }],
+    };
+  }
+
+  let initialFather = 190;
+  let hl = makeHighlightData(initialFather);
+
+  const chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: '父子身高配對 (n=200)',
+          data: points,
+          backgroundColor: 'rgba(45, 212, 191, 0.12)',
+          borderColor: 'rgba(45, 212, 191, 0.25)',
+          pointRadius: 3.5,
+          pointHoverRadius: 6,
+          order: 2,
+        },
+        {
+          label: '回歸線 y̅ = μ + r·(x − μ)',
+          data: regLine,
+          type: 'line',
+          borderColor: '#f59e0b',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          fill: false,
+          order: 1,
+        },
+        {
+          label: '母體均值 μ = 175',
+          data: meanLine,
+          type: 'line',
+          borderColor: 'rgba(158, 158, 178, 0.35)',
+          borderWidth: 1,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          order: 3,
+        },
+        {
+          label: '父親位置',
+          data: hl.fatherPoint,
+          backgroundColor: '#f87171',
+          borderColor: '#f87171',
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          pointStyle: 'rectRot',
+          order: 0,
+        },
+        {
+          label: '預測兒子',
+          data: hl.sonPoint,
+          backgroundColor: '#4ade80',
+          borderColor: '#4ade80',
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          pointStyle: 'rectRot',
+          order: 0,
+        },
+        {
+          label: '回歸距離',
+          data: hl.vLine,
+          type: 'line',
+          borderColor: 'rgba(248, 113, 113, 0.5)',
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+          pointRadius: 0,
+          fill: false,
+          order: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#9e9eb2',
+            usePointStyle: true,
+            boxWidth: 8,
+            padding: 16,
+            font: { size: 12 },
+            filter: function(item) {
+              // 隱藏輔助元素的圖例
+              return !['父親位置', '預測兒子', '回歸距離', '母體均值 μ = 175'].includes(item.text);
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.dataset.label === '父子身高配對 (n=200)') {
+                return '父親: ' + ctx.raw.x.toFixed(1) + ' cm, 兒子: ' + ctx.raw.y.toFixed(1) + ' cm';
+              }
+              return '';
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '父親身高 (cm)', color: '#9e9eb2' },
+          min: MEAN - 3.2 * SD,
+          max: MEAN + 3.2 * SD,
+          ticks: { color: '#9e9eb2' },
+          grid: { color: 'rgba(39, 42, 58, 0.4)' },
+        },
+        y: {
+          title: { display: true, text: '兒子身高 (cm)', color: '#9e9eb2' },
+          min: MEAN - 3.2 * SD,
+          max: MEAN + 3.2 * SD,
+          ticks: { color: '#9e9eb2' },
+          grid: { color: 'rgba(39, 42, 58, 0.4)' },
+        },
+      },
+    },
+  });
+
+  // 滑桿互動
+  const slider = document.getElementById('fatherSlider');
+  const fatherValueEl = document.getElementById('fatherValue');
+  const predictedValueEl = document.getElementById('predictedValue');
+  const regressionAmountEl = document.getElementById('regressionAmount');
+
+  slider.addEventListener('input', function() {
+    const fatherH = parseFloat(this.value);
+    const predictedSon = MEAN + R * (fatherH - MEAN);
+    const gap = fatherH - predictedSon;
+
+    fatherValueEl.textContent = fatherH;
+    predictedValueEl.textContent = predictedSon.toFixed(1);
+    regressionAmountEl.textContent = Math.abs(gap).toFixed(1) + ' cm';
+
+    hl = makeHighlightData(fatherH);
+    chart.data.datasets[3].data = hl.fatherPoint;
+    chart.data.datasets[4].data = hl.sonPoint;
+    chart.data.datasets[5].data = hl.vLine;
+    chart.update();
+  });
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+
+        // 標記所有選項
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+
+        // 顯示回饋
+        feedback.textContent = isCorrect
+          ? '✅ ' + this.dataset.feedback
+          : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

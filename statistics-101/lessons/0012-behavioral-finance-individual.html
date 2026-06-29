@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 12 課：行為財務學 — 為什麼散戶總是賠錢？</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 12 課：行為財務學</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0011-prospect-theory.html">第 11 課</a></span>
+</div>
+
+<!-- ═══════════════ 1. THE DATA ═══════════════ -->
+<h2>📉 散戶的殘酷真相：數據說了什麼</h2>
+
+<p>
+加州大學 Barber 和 Odean 教授在 2000 年分析了 66,000 個美國散戶帳戶長達 6 年的交易紀錄（這本身就是一堂推論統計的示範課——用大樣本推論母體行為）。他們的發現是行為財務學的里程碑：
+</p>
+
+<div class="card" style="border: 2px solid var(--danger);">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; text-align: center;">
+  <div>
+    <div style="font-size: 0.8rem; color: var(--muted);">散戶平均年化報酬</div>
+    <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">11.4%</div>
+    <div style="font-size: 0.75rem; color: var(--muted);">（同期大盤 17.9%）</div>
+  </div>
+  <div>
+    <div style="font-size: 0.8rem; color: var(--muted);">交易最頻繁的 20% 散戶</div>
+    <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">10.0%</div>
+    <div style="font-size: 0.75rem; color: var(--muted);">年化報酬（更慘）</div>
+  </div>
+  <div>
+    <div style="font-size: 0.8rem; color: var(--muted);">買入持有（不交易）</div>
+    <div style="font-size: 2rem; font-weight: 700; color: var(--success);">17.9%</div>
+    <div style="font-size: 0.75rem; color: var(--muted);">贏過絕大多數散戶</div>
+  </div>
+</div>
+</div>
+
+<div class="callout">
+<strong>📐 統計學觀點：</strong>這不是軼事、不是印象、不是「我有個朋友⋯⋯」。這是 66,000 個帳戶的<strong>系統性證據</strong>。在第 6 課我們學過，當樣本這麼大時，抽樣誤差極小——這組數據所揭示的規律是高度可信的。散戶輸給大盤不是運氣不好，是<strong>系統性行為偏誤</strong>的必然結果。
+</div>
+
+<!-- ═══════════════ 2. RANDOM WALK ═══════════════ -->
+<h2>🎲 統計學視角：你以為的規律，其實是雜訊</h2>
+
+<p>
+在開始討論心理學之前，我們必須先問一個統計學問題：<strong>短期股價走勢，真的可以被預測嗎？</strong>
+</p>
+
+<h3>隨機漫步假說：股價像醉漢走路</h3>
+
+<p>
+如果股價遵循<strong>隨機漫步（Random Walk）</strong>——每一天的漲跌彼此獨立，且大致服從某個機率分布——那麼你從歷史價格圖中找到的任何「模式」（頭肩頂、W 底、均線交叉），本質上跟你從第 9 課的硬幣序列中看到「連續 3 次正面之後該出反面」沒有兩樣：都是<strong>賭徒謬誤或熱手謬誤在圖表上的投影</strong>。
+</p>
+
+<div class="card">
+<h3>隨機漫步的數學</h3>
+<p>最簡單的模型：</p>
+<div class="math-scroll">
+$$ P_t = P_{t-1} \cdot (1 + r_t), \quad r_t \sim N(\mu, \sigma^2) $$
+</div>
+<p>其中 \( r_t \) 是每日報酬，服從平均值 \( \mu \)（長期漂移）和標準差 \( \sigma \)（波動率）的常態分布。在效率市場中，<strong>今日的 \( r_t \) 和昨日的 \( r_{t-1} \) 互相獨立</strong>——就像拋硬幣。</p>
+<p style="margin-bottom: 0;">這不是說市場<strong>永遠</strong>是效率的——而是說：在你聲稱自己找到規律之前，必須先排除「這只是隨機波動」的虛無假設。還記得第 6 課的 P 值嗎？</p>
+</div>
+
+<p>
+學術界檢驗效率市場的標準方法正是<strong>假設檢定</strong>：
+</p>
+
+<ul>
+  <li><strong>虛無假設 \( H_0 \)</strong>：股價走勢是隨機漫步，歷史價格無法預測未來價格。</li>
+  <li><strong>對立假設 \( H_1 \)</strong>：存在某種可預測的規律（動能、反轉、季節效應等）。</li>
+</ul>
+
+<p>
+半個世紀的實證文獻的大致結論是：<strong>在扣除交易成本後，絕大多數技術分析策略無法顯著擊敗買入持有。</strong>換句話說——大多數「技術」，P 值都大於 0.05。
+</p>
+
+<div class="callout warn">
+<strong>⚠️ 一個思想實驗：</strong>假設有 10,000 個人各自用隨機亂數產生器來交易。純靠運氣，大約 500 個人在第一年會「顯著」擊敗大盤（P &lt; 0.05，記得嗎？）。這些「倖存者」會認為自己的策略有效，並開始出書、開課、賣課程。這就是第 15 課要仔細討論的<strong>倖存者偏誤</strong>——也是行為財務學中最致命的統計陷阱。
+</div>
+
+<!-- ═══════════════ 3. GAME THEORY ═══════════════ -->
+<h2>🎯 博弈論視角：你的交易對手是誰？</h2>
+
+<p>
+每次你按下「買入」，就有一個人（或機構）按下「賣出」。你和他之間，<strong>至少有一個人是錯的</strong>。問題是：你憑什麼認為錯的人不是你？
+</p>
+
+<h3>零和博弈（Zero-Sum Game）</h3>
+
+<p>
+扣除大盤本身的成長（beta），<strong>所有主動交易者之間的競賽是零和的</strong>：任何一個超越大盤的報酬，必然對應另一個低於大盤的報酬——還要扣掉手續費、稅金和買賣價差。而零和博弈（更精確地說是負和博弈，因為券商和中間商抽頭）中，你的對手是誰？
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>你的對手</th><th>他們的優勢</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>🏦 量化基金</td><td>PhD 級的數學模型、毫秒級執行速度、全市場的即時數據</td></tr>
+    <tr><td>🏢 共同基金</td><td>全職分析師團隊、直接接觸公司管理層、機構級研究資源</td></tr>
+    <tr><td>🤖 高頻交易公司</td><td>距離交易所僅數米的伺服器、比你快 0.0001 秒的報價優勢</td></tr>
+    <tr><td>👤 其他散戶</td><td>擁有同樣的心理偏誤——你們在互賭，券商在中間收費</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+<strong>🎓 凱因斯的「選美博弈」（Keynesian Beauty Contest）：</strong>凱因斯在《就業、利息與貨幣通論》中用一個絕妙的比喻描述股市：報紙上刊登 100 張照片，讀者被要求選出「最美的 6 張」。但贏家不是選出<strong>自己</strong>認為最美的——而是選出<strong>最多其他讀者會選</strong>的那 6 張。<br><br>
+股市也是如此：你不是在挑「最好的公司」，你是在挑「其他投資人<strong>以後</strong>會認為是最好的公司」。這是一個<strong>無限遞歸的猜心遊戲</strong>（I think that you think that I think...），早已不是基本面分析能解決的命題。
+</div>
+
+<h3>資訊不對稱：這不是公平競賽</h3>
+
+<p>
+在博弈論中，<strong>資訊不對稱</strong>（Information Asymmetry）是最基本的優勢來源之一。當你用手機看財經新聞時，那些新聞早已被機構的演算法讀取、分析、並在毫秒內完成交易。你看到的「新資訊」是二手甚至三手的；你認為的「好機會」，很可能是某個機構賣給你的。
+</p>
+
+<h2>🔴 處置效應：展望理論在股市中的現場直播</h2>
+
+<p>
+這是最核心的散戶偏誤——也是第 11 課的展望理論最直接、最昂貴的應用場景。
+</p>
+
+<div class="card">
+<p>
+<strong>獲利區（股票上漲）：</strong>價值函數 concave → 風險趨避 → 你急著賣掉，落袋為安。<br>
+<strong>損失區（股票下跌）：</strong>價值函數 convex → 風險追求 → 你死抱不放，賭它反彈。
+</p>
+<p style="margin-bottom: 0;">
+結果：你賣掉的是會繼續漲的好股票，留在手上的是繼續跌的爛股票。Odean 的數據證實：散戶賣出的賺錢股，在賣出後三個月<strong>平均跑贏大盤 2.6%</strong>；而散戶死抱的賠錢股，同期<strong>平均跑輸大盤 1.1%</strong>。
+</p>
+</div>
+
+<p>
+處置效應不是單一偏誤——它是<strong>三個行為經濟學機制的疊加</strong>：
+</p>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">⚓ 錨定效應（Anchoring）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你的參考點被鎖定在<strong>買入價</strong>上。股價 $105 → $95 對你來說是「賠了 $10」，而不是「這檔股票現在值 $95，我願意在這個價位持有它嗎？」。你為了一個無關的歷史數字，做出了錯誤的持有決策。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🎁 稟賦效應（Endowment Effect）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">一旦你擁有某樣東西，你會<strong>高估它的價值</strong>——僅僅因為它是「你的」。Kahneman 的馬克杯實驗證明了這一點。你手上的賠錢股，在你眼中比在市場眼中值錢，所以你捨不得賣。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">😞 後悔厭惡（Regret Aversion）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">賣出賠錢股 = 承認「我錯了」。不賣 = 錯誤還停留在「帳面」，沒有變成「現實」。人類寧可承受更大的金錢損失，也不願承受「承認錯誤」的心理痛苦。</p>
+  </div>
+</div>
+
+<!-- ═══════════════ 4. TRADING SIMULATOR ═══════════════ -->
+<h2>🎮 互動沙盒：你的交易直覺 vs 買入持有</h2>
+
+<p>
+下方是一檔股票 200 個交易日的模擬走勢（隨機漫步 + 輕微上漂）。<strong>你可以在任意時間點買入和賣出</strong>（只能持有一個做多部位）。遊戲結束後，我們會分析你的績效 vs 買入持有，並診斷是否有處置效應。
+</p>
+
+<div class="card" id="tradingGame">
+
+  <div style="position: relative; height: 300px; margin-bottom: 0.8rem;">
+    <canvas id="priceChart"></canvas>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem; margin-bottom: 0.8rem;">
+    <div class="card" style="margin: 0; padding: 0.6rem 0.8rem;">
+      <div style="font-size: 0.7rem; color: var(--muted);">交易日</div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent);" id="dayNum">1 / 200</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.6rem 0.8rem;">
+      <div style="font-size: 0.7rem; color: var(--muted);">股價</div>
+      <div style="font-size: 1.1rem; font-weight: 700;" id="currentPrice">$100.00</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.6rem 0.8rem;">
+      <div style="font-size: 0.7rem; color: var(--muted);">現金</div>
+      <div style="font-size: 1.1rem; font-weight: 700;" id="cashAmt">$10,000</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.6rem 0.8rem;">
+      <div style="font-size: 0.7rem; color: var(--muted);">部位</div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: var(--muted);" id="positionInfo">無</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.6rem 0.8rem;">
+      <div style="font-size: 0.7rem; color: var(--muted);">總權益</div>
+      <div style="font-size: 1.1rem; font-weight: 700;" id="totalEquity">$10,000</div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.8rem;">
+    <button id="btnBuy" class="trade-btn buy-btn" disabled>📈 買入</button>
+    <button id="btnSell" class="trade-btn sell-btn" disabled>📉 賣出</button>
+    <button id="btnNext" class="trade-btn next-btn">▶ 下一天</button>
+    <button id="btnSkip" class="trade-btn skip-btn">⏩ 跳到結束</button>
+  </div>
+
+  <div id="tradeLog" style="max-height: 120px; overflow-y: auto; font-size: 0.8rem; color: var(--muted);"></div>
+
+  <div id="gameResults" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+    <h3 style="color: var(--accent);">📊 績效分析</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+      <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+        <div style="font-size: 0.8rem; color: var(--muted);">你的總報酬</div>
+        <div style="font-size: 1.5rem; font-weight: 700;" id="yourReturn">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+        <div style="font-size: 0.8rem; color: var(--muted);">買入持有報酬</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);" id="bhReturn">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+        <div style="font-size: 0.8rem; color: var(--muted);">交易次數</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="tradeCount">—</div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; margin: 0.8rem 0;">
+      <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+        <div style="font-size: 0.8rem; color: var(--muted);">獲利交易平均持有</div>
+        <div style="font-size: 1.2rem; font-weight: 700; color: var(--success);" id="winHold">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+        <div style="font-size: 0.8rem; color: var(--muted);">虧損交易平均持有</div>
+        <div style="font-size: 1.2rem; font-weight: 700; color: var(--danger);" id="lossHold">—</div>
+      </div>
+    </div>
+    <div id="dispositionVerdict" style="font-size: 0.95rem; padding: 0.8rem; background: var(--code-bg); border-radius: 6px; margin-top: 0.8rem;"></div>
+    <button id="btnReplay" style="margin-top: 1rem; display: block; width: 100%; padding: 0.6em; background: var(--accent); color: #0f1119; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.95rem;">🔄 重新開始</button>
+  </div>
+
+</div>
+
+<style id="tradeStyles">
+  .trade-btn {
+    padding: 0.55em 1.3em; border-radius: 6px; border: 2px solid var(--border);
+    background: var(--card-bg); color: var(--text); font-size: 0.95rem;
+    font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .trade-btn:hover:not(:disabled) { background: var(--accent-glow); }
+  .trade-btn:disabled { opacity: 0.35; pointer-events: none; }
+  .trade-btn:active:not(:disabled) { transform: scale(0.97); }
+  .buy-btn:hover:not(:disabled) { border-color: var(--success); background: rgba(74,222,128,0.12); }
+  .sell-btn:hover:not(:disabled) { border-color: var(--danger); background: rgba(248,113,113,0.12); }
+  .next-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .skip-btn { font-size: 0.85rem; opacity: 0.7; }
+  .skip-btn:hover:not(:disabled) { opacity: 1; border-color: var(--warning); }
+</style>
+
+<!-- ═══════════════ 5. PSYCHOLOGY ═══════════════ -->
+<h2>🧠 心理學透視：你的大腦不是為股市設計的</h2>
+
+<p>
+人類大腦的硬體，是在非洲草原上為躲避獅子和尋找食物而演化出來的。它從來沒有為「評估一間公司的現金流折現價值」做過優化。以下四個心理機制，聯手把你的投資決策拉進深淵：
+</p>
+
+<h3>🎰 多巴胺與間歇性變率增強</h3>
+
+<p>
+查看股價、看到帳戶數字跳動——這個行為本身，和拉吃角子老虎的把手<strong>共享同一條神經迴路</strong>。心理學家稱之為<strong>間歇性變率增強（Variable Ratio Reinforcement）</strong>：你不知道下一次查看會不會看到好消息（漲了！），但偶爾的好消息就足以驅動你無止境地重複這個行為。
+</p>
+
+<div class="card">
+<p style="margin-bottom: 0;">
+賭場和券商 App 都深諳此道：即時報價、推播通知、紅色綠色的閃爍——這些不是「功能」，是<strong>精心設計的多巴胺觸發器</strong>。每一次你收到「你的自選股漲了 3%」的通知，你的大腦就被強化一次「查看股價 = 快樂」的迴路。而過度查看直接導致<strong>過度交易</strong>——你已經看到數據證明交易越多報酬越低。
+</p>
+</div>
+
+<h3>🎭 控制幻覺（Illusion of Control）</h3>
+
+<p>
+人們系統性地高估自己對隨機事件的控制力。心理學家 Ellen Langer 在 1975 年的經典實驗中發現：當人們可以自己擲骰子（vs 別人幫他們擲），他們下的賭注更大——即使擲骰子的結果完全是隨機的。
+</p>
+
+<p>
+在股市中，控制幻覺的表現是：自己選的股票讓你覺得比指數基金「更有把握」；使用複雜的交易介面讓你覺得「這不是賭博，這是專業操作」；畫了趨勢線後，你真心覺得「這條線有意義」。但還記得嗎——<strong>第 9 課的獨立事件沒有記憶。</strong>
+</p>
+
+<h3>🔍 確認偏誤（Confirmation Bias）</h3>
+
+<p>
+買入一檔股票後，你的大腦自動啟動<strong>選擇性資訊搜尋</strong>：你只點開那些「看好」的新聞，忽略那些「看空」的分析。你加入的 FB 社團、追蹤的 Youtuber、甚至 Google 搜尋的關鍵字，都因為演算法而被你的確認偏誤強化——這叫<strong>過濾泡泡（Filter Bubble）</strong>。
+</p>
+
+<p>
+這不是比喻，而是<strong>貝氏推論的系統性失靈</strong>：在第 4 課我們學過 \( P(H|E) = \frac{P(E|H) \cdot P(H)}{P(E)} \)。確認偏誤意味著你只蒐集支持 H 的證據，系統性地忽視不支持 H 的證據——你更新了信念，但更新的方向永遠是一樣的。
+</p>
+
+<h3>🔮 後見之明偏誤（Hindsight Bias）</h3>
+
+<p>
+事情發生之後，你覺得「我早就知道會這樣」。2008 年金融海嘯之後，每個人都「早就知道房市泡沫會破」。2020 年疫情後，每個人都「早就知道股市會 V 型反轉」。後見之明讓你高估自己的預測能力，進而強化過度自信，進而驅動更多交易。
+</p>
+
+<div class="callout warn">
+<strong>🔗 回顧前課：</strong>後見之明是第 6 課假設檢定的大敵——它讓你覺得「這結果很明顯」，而忘了在事前，結果的機率分布遠比事後看起來的寬廣。這也是為什麼科學家堅持<strong>事先註冊假設</strong>（pre-registration）——消除了後見之明的汙染。
+</div>
+
+<!-- ═══════════════ 6. OTHER BIASES ═══════════════ -->
+<h2>💸 散戶的其他自毀機制</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">💵 賭資效應（House Money Effect）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">賭場中，贏來的錢叫 house money——你對它比對本金更隨意。股市也一樣：上一筆賺到的利潤，你更容易拿來做更冒險的下一筆交易。Thaler 的心理帳戶理論預測：同一塊錢，被標記為「本金」或「利潤」，會導致完全不同的風險行為。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🧾 心理帳戶（Mental Accounting）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你把股息、價差、年終獎金、薪水放在不同的心理抽屜，對它們採取不同的風險態度——即使金錢是可完全互換的。這也是第 10 課的延續：你願花 $100 從「娛樂預算」買樂透，卻從不從「房貸帳戶」中提取同樣的 $100 做任何風險投資。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">🐑 從眾效應（Herding）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">當你看到所有人都在買某檔股票，你不買會產生 FOMO（Fear Of Missing Out）。但從博弈論的角度看，從眾之所以理性，不是因為「大家是對的」，而是因為凱因斯的選美博弈——如果夠多人相信它會漲，它就真的會漲（自我實現預言），直到音樂停止。</p>
+  </div>
+</div>
+
+<!-- ═══════════════ 7. COURSE MAP ═══════════════ -->
+<h2>🗺️ 與前 11 課的連結地圖</h2>
+
+<p>本課不是獨立的——它是整門課程所有概念在金融市場的終極匯聚：</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>課次</th><th>概念</th><th>在本課中的應用</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>L0001–L0002</td><td>分布、標準差</td><td>股票報酬的分布是 fat-tailed——極端事件比常態分布預測的更常見。用標準差思考波動率</td></tr>
+    <tr><td>L0003–L0004</td><td>獨立事件、貝氏定理</td><td>股價變化接近獨立；用貝氏更新評估你的交易策略是否真的有 edge</td></tr>
+    <tr><td>L0005</td><td>中央極限定理</td><td>年化報酬的抽樣分布；為什麼即使策略無效，少數人也會在統計上看起來「顯著」</td></tr>
+    <tr><td>L0006–L0007</td><td>假設檢定、P 值、信賴區間</td><td>檢驗你的策略：H₀ = 隨機漫步。p-hacking 對應到回測過度擬合</td></tr>
+    <tr><td>L0008</td><td>均值回歸</td><td>「去年冠軍基金」是典型的均值回歸陷阱；極端報酬不會持續</td></tr>
+    <tr><td>L0009</td><td>賭徒謬誤、熱手謬誤</td><td>「連跌 5 天該反彈了」= 賭徒謬誤；「這檔正在漲勢上」= 熱手謬誤</td></tr>
+    <tr><td>L0010</td><td>期望值</td><td>每一次交易都有交易成本，在效率市場中 EV 為負（扣除成本）</td></tr>
+    <tr><td>L0011</td><td>展望理論</td><td>處置效應、錨定買入價、稟賦效應——全都源自 S 形價值函數和損失厭惡</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 處置效應和展望理論的關係是什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="處置效應不是與展望理論無關的獨立現象——它是展望理論在投資行為中最經典的表現。">A. 沒有關係——處置效應是獨立的行為偏誤</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！獲利區 concave → 風險趨避 → 急著賣；損失區 convex → 風險追求 → 死抱不賣。處置效應就是 S 形價值函數在股市中的現場直播。">B. 是展望理論的直接推論——獲利區 concave（急賣），損失區 convex（死抱）</span>
+      <span class="quiz-option" data-correct="false" data-feedback="損失厭惡是推手之一，但處置效應中「賣賺錢股、抱賠錢股」的行為，是靠獲利區 concave + 損失區 convex 的互動來完整解釋。">C. 只有損失厭惡能解釋，和價值函數形狀無關</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 從博弈論的角度看，散戶主動交易為什麼是負和博弈？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="散戶之間可以是零和，但整體而言——計入手續費、稅金和買賣價差後——全部主動交易者的總和是小於零的（負和）。">A. 因為散戶之間在互相競爭，輸家的錢被贏家拿走</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！所有主動交易者超越大盤的報酬總和為零（彼此抵消），但券商手續費、交易所費用、政府稅金從系統中抽取了資金。散戶的對手包括擁有資訊優勢和速度優勢的機構——這不是公平競賽。">B. 扣除交易成本後，全部主動交易者超越大盤的總和為負；且散戶的對手方擁有資訊和速度優勢</span>
+      <span class="quiz-option" data-correct="false" data-feedback="被動投資（買入持有）獲得的是大盤的 beta，而非 alpha。它不參與零和博弈——它只是跟著大盤走。">C. 散戶只要做被動投資就能確保正和博弈</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 在行為財務學中，「確認偏誤」如何影響投資人的貝氏推論？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="確認偏誤讓你的推論更快、更有把握——但不是因為你變聰明了，而是因為你只看正面證據。還記得貝氏定理中的 P(E|H) 嗎？你只蒐集支持 H 的證據，自然每次都更新出更強的 H。">A. 它讓投資人更快、更準確地更新信念</span>
+      <span class="quiz-option" data-correct="false" data-feedback="確認偏誤和基礎比率是不同的概念。確認偏誤是偏頗的證據蒐集；忽略基礎比率是低估了 P(H) 的重要性——兩者都是貝氏推論的失敗，但機制不同。">B. 它讓投資人忽略基礎比率，只關注個案資訊</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！確認偏誤意味著你只蒐集支持 H 的證據（P(E|H)），系統性忽略不支持 H 的證據。這導致事後機率 P(H|E) 永遠被高估——不是因為 H 真的更可能為真，而是因為你刻意忽略了反面證據。這是貝氏定理在人類認知中最系統性的失靈。">C. 它讓投資人只蒐集支持自己觀點的證據，系統性忽略反面證據，導致事後機率永遠被高估</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>五個核心收穫</h3>
+<ol>
+  <li><strong>統計上，短期股價接近隨機漫步</strong>——在扣除交易成本後，大多數技術分析策略無法顯著擊敗買入持有。任何宣稱找到規律的人，都必須先通過假設檢定。</li>
+  <li><strong>博弈論上，主動交易是資訊不對稱的負和博弈</strong>——你的對手擁有更快的數據、更深的模型、更低的成本。凱因斯的選美博弈告訴你：你不是在選好公司，你是在猜別人會選什麼。</li>
+  <li><strong>處置效應 = 展望理論 + 錨定 + 稟賦 + 後悔厭惡</strong>——這不是單一錯誤，而是多重行為偏誤的疊加，每一層都指向同一個結果：太快賣出贏家，太慢賣出輸家。</li>
+  <li><strong>你的大腦硬體不適合股市</strong>——多巴胺迴路驅動過度查看和過度交易、控制幻覺讓你高估自己的擇時能力、確認偏誤讓你只看到想看的、後見之明讓你以為「我早就知道」。</li>
+  <li><strong>散戶最大的競爭優勢是「什麼都不做」</strong>——買入持有指數基金，是唯一被大量實證數據支持的有效策略。問題是：什麼都不做，是行為上最困難的事。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Barber &amp; Odean (2000) — "Trading Is Hazardous to Your Wealth"</strong>（Journal of Finance）：散戶過度交易的經典實證。</li>
+  <li><strong>Burton Malkiel —《A Random Walk Down Wall Street》</strong>：隨機漫步假說與效率市場的最佳大眾讀物。</li>
+  <li><strong>Richard Thaler —《Misbehaving》第 14–20 章</strong>：心理帳戶、處置效應、行為財務學的完整論述。</li>
+  <li><strong>Daniel Kahneman —《Thinking, Fast and Slow》第 19–24 章</strong>：過度自信、控制幻覺、確認偏誤的認知心理學基礎。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你已經從散戶視角看到了所有可能出錯的方式——隨機漫步的幻覺、零和博弈的對手、以及自身大腦的系統性偏誤。但站在市場對面的<strong>法人</strong>是怎麼思考的？
+</p>
+<p>
+  下一課切換到機構視角：效率市場假說的三個層次、為什麼回測漂亮的策略卻在實戰中失效（過度擬合）、夏普比率和最大回撤如何用來客觀評估策略——以及最重要的：<strong>你怎麼知道自己是真的有 edge，還是只是倖存者偏誤中那個幸運的樣本？</strong>
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0013-beat-the-market-institutional.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0013：你能打敗大盤嗎？——策略評估與法人視角
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>行為財務學是整門課程所有概念交匯的十字路口——隨機性、機率、期望值、展望理論、博弈論全部在這裡會合。任何一個角度想深入討論，現在就問你的 AI 老師。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 股票交易模擬器 ==========
+(function() {
+  var TOTAL_DAYS = 200;
+  var INITIAL_CASH = 10000;
+  var DRIFT = 0.0003;
+  var VOL = 0.012;
+
+  function generatePrices() {
+    var prices = [100];
+    for (var i = 1; i < TOTAL_DAYS; i++) {
+      var u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      var z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      prices.push(prices[i - 1] * (1 + DRIFT + VOL * z));
+    }
+    return prices;
+  }
+
+  var prices = generatePrices();
+  var currentDay = 0;
+  var cash = INITIAL_CASH;
+  var shares = 0;
+  var buyDay = -1;
+  var buyPrice = 0;
+  var trades = [];
+  var gameOver = false;
+
+  function formatMoney(n) { return '$' + n.toFixed(2); }
+  function getEquity() { return cash + shares * prices[currentDay]; }
+
+  function updateUI() {
+    document.getElementById('dayNum').textContent = (currentDay + 1) + ' / ' + TOTAL_DAYS;
+    document.getElementById('currentPrice').textContent = formatMoney(prices[currentDay]);
+    document.getElementById('cashAmt').textContent = formatMoney(cash);
+
+    if (shares > 0) {
+      var pl = shares * (prices[currentDay] - buyPrice);
+      var plSign = pl >= 0 ? '+' : '';
+      document.getElementById('positionInfo').textContent = shares + ' 股 (' + plSign + formatMoney(pl) + ')';
+      document.getElementById('positionInfo').style.color = pl >= 0 ? 'var(--success)' : 'var(--danger)';
+    } else {
+      document.getElementById('positionInfo').textContent = '無';
+      document.getElementById('positionInfo').style.color = 'var(--muted)';
+    }
+
+    var eq = getEquity();
+    var eqEl = document.getElementById('totalEquity');
+    eqEl.textContent = formatMoney(eq);
+    var eqRet = (eq - INITIAL_CASH) / INITIAL_CASH * 100;
+    eqEl.style.color = eqRet >= 0 ? 'var(--success)' : 'var(--danger)';
+
+    document.getElementById('btnBuy').disabled = gameOver || shares > 0;
+    document.getElementById('btnSell').disabled = gameOver || shares === 0;
+    document.getElementById('btnNext').disabled = gameOver;
+    document.getElementById('btnSkip').disabled = gameOver;
+    updateChart();
+  }
+
+  var chart = null;
+  var chartReady = false;
+
+  function initChart() {
+    var ctx = document.getElementById('priceChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: TOTAL_DAYS}, function(_, i) { return i + 1; }),
+        datasets: [{ label: '股價', data: prices, borderColor: '#2dd4bf', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return '價格: ' + formatMoney(ctx.raw); } } } },
+        scales: {
+          x: { ticks: { color: '#9e9eb2', maxTicksLimit: 10 }, grid: { color: 'rgba(39, 42, 58, 0.3)' } },
+          y: { ticks: { color: '#9e9eb2', callback: function(v) { return '$' + v.toFixed(0); } }, grid: { color: 'rgba(39, 42, 58, 0.3)' } },
+        },
+      },
+    });
+    chartReady = true;
+  }
+
+  function updateChart() {
+    if (!chartReady) initChart();
+    var buyPts = [], sellPts = [];
+    for (var i = 0; i < trades.length; i++) {
+      buyPts.push({ x: trades[i].buyDay + 1, y: trades[i].buyPrice });
+      sellPts.push({ x: trades[i].sellDay + 1, y: trades[i].sellPrice });
+    }
+    if (shares > 0 && buyDay >= 0) buyPts.push({ x: buyDay + 1, y: buyPrice });
+
+    chart.data.datasets = [
+      { label: '股價', data: prices, borderColor: '#2dd4bf', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1 },
+    ];
+    if (buyPts.length) chart.data.datasets.push({ label: '買入', data: buyPts, type: 'scatter', backgroundColor: '#4ade80', borderColor: '#4ade80', pointRadius: 5, pointStyle: 'triangle', order: 0 });
+    if (sellPts.length) chart.data.datasets.push({ label: '賣出', data: sellPts, type: 'scatter', backgroundColor: '#f87171', borderColor: '#f87171', pointRadius: 5, pointStyle: 'triangle', rotation: 180, order: 0 });
+    chart.data.datasets.push({ label: '今日', data: [{ x: currentDay + 1, y: Math.min.apply(null, prices) * 0.95 }, { x: currentDay + 1, y: Math.max.apply(null, prices) * 1.02 }], type: 'line', borderColor: 'rgba(255,255,255,0.3)', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false, order: 10 });
+    chart.update();
+  }
+
+  function addTradeLog(msg, color) {
+    var log = document.getElementById('tradeLog');
+    var entry = document.createElement('div');
+    entry.style.color = color || 'var(--muted)';
+    entry.style.padding = '0.15rem 0';
+    entry.textContent = msg;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function doBuy() {
+    if (shares > 0 || gameOver) return;
+    shares = Math.floor(cash / prices[currentDay]);
+    if (shares === 0) return;
+    cash -= shares * prices[currentDay];
+    buyDay = currentDay; buyPrice = prices[currentDay];
+    addTradeLog('📈 第 ' + (currentDay + 1) + ' 天 買入 ' + shares + ' 股 @ ' + formatMoney(buyPrice), 'var(--success)');
+    updateUI();
+  }
+
+  function doSell() {
+    if (shares === 0 || gameOver) return;
+    var revenue = shares * prices[currentDay];
+    cash += revenue;
+    var profit = revenue - shares * buyPrice;
+    trades.push({ buyDay: buyDay, buyPrice: buyPrice, sellDay: currentDay, sellPrice: prices[currentDay], profit: profit, shares: shares });
+    var plSign = profit >= 0 ? '+' : '';
+    addTradeLog('📉 第 ' + (currentDay + 1) + ' 天 賣出 ' + shares + ' 股 @ ' + formatMoney(prices[currentDay]) + ' (' + plSign + formatMoney(profit) + ')', profit >= 0 ? 'var(--success)' : 'var(--danger)');
+    shares = 0; buyDay = -1; buyPrice = 0;
+    updateUI();
+  }
+
+  function doNext() {
+    if (gameOver) return;
+    currentDay++;
+    if (currentDay >= TOTAL_DAYS) { currentDay = TOTAL_DAYS - 1; endGame(); }
+    updateUI();
+  }
+
+  function doSkip() {
+    if (gameOver) return;
+    if (shares > 0) doSell();
+    currentDay = TOTAL_DAYS - 1;
+    endGame();
+  }
+
+  function endGame() {
+    if (gameOver) return;
+    if (shares > 0) doSell();
+    gameOver = true; updateUI();
+    var finalEquity = cash;
+    var yourReturn = (finalEquity - INITIAL_CASH) / INITIAL_CASH * 100;
+    var bhShares = Math.floor(INITIAL_CASH / prices[0]);
+    var bhEquity = INITIAL_CASH - bhShares * prices[0] + bhShares * prices[TOTAL_DAYS - 1];
+    var bhReturn = (bhEquity - INITIAL_CASH) / INITIAL_CASH * 100;
+
+    var winTrades = [], lossTrades = [];
+    for (var i = 0; i < trades.length; i++) {
+      var holding = trades[i].sellDay - trades[i].buyDay;
+      if (trades[i].profit >= 0) winTrades.push(holding); else lossTrades.push(holding);
+    }
+    function avg(a) { return a.length ? a.reduce(function(x,y){return x+y;},0)/a.length : 0; }
+    var winAvg = winTrades.length ? avg(winTrades).toFixed(0) : '—';
+    var lossAvg = lossTrades.length ? avg(lossTrades).toFixed(0) : '—';
+
+    document.getElementById('yourReturn').textContent = (yourReturn >= 0 ? '+' : '') + yourReturn.toFixed(2) + '%';
+    document.getElementById('yourReturn').style.color = yourReturn >= 0 ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('bhReturn').textContent = (bhReturn >= 0 ? '+' : '') + bhReturn.toFixed(2) + '%';
+    document.getElementById('tradeCount').textContent = trades.length + ' 次';
+    document.getElementById('winHold').textContent = winAvg + ' 天';
+    document.getElementById('lossHold').textContent = lossAvg + ' 天';
+
+    var verdict = document.getElementById('dispositionVerdict');
+    if (trades.length === 0) {
+      verdict.innerHTML = '你沒有進行任何完整交易。這本身就是一個有趣的結果——也許你意識到了「不做任何事」的價值？買入持有報酬 <strong>' + bhReturn.toFixed(1) + '%</strong>。';
+      verdict.style.color = 'var(--accent)';
+    } else {
+      var parts = [];
+      if (winAvg !== '—' && lossAvg !== '—' && parseFloat(winAvg) < parseFloat(lossAvg)) {
+        parts.push('🟡 <strong>偵測到處置效應：</strong>獲利交易平均持有 ' + winAvg + ' 天，虧損交易平均持有 ' + lossAvg + ' 天。你傾向於太快賣出贏家、太慢賣出輸家。');
+      } else if (winAvg !== '—' && lossAvg !== '—') {
+        parts.push('🟢 獲利和虧損交易持有天數相近，沒有明顯的處置效應。');
+      }
+      if (yourReturn < bhReturn) {
+        parts.push('🔴 <strong>你的報酬（' + yourReturn.toFixed(1) + '%）低於買入持有（' + bhReturn.toFixed(1) + '%）</strong>。' + trades.length + ' 次交易沒有創造價值——可能反而摧毀了價值。');
+      } else if (trades.length > 0 && yourReturn > bhReturn) {
+        parts.push('🟢 你擊敗了買入持有！但請記住：這可能是隨機波動——200 天太短，不足以判斷策略有效性（這正是第 13 課的主題）。');
+      }
+      verdict.innerHTML = parts.join('<br><br>');
+      verdict.style.color = 'var(--text-dim)';
+    }
+    document.getElementById('gameResults').style.display = 'block';
+  }
+
+  function resetGame() {
+    prices = generatePrices(); currentDay = 0; cash = INITIAL_CASH;
+    shares = 0; buyDay = -1; buyPrice = 0; trades = []; gameOver = false;
+    document.getElementById('gameResults').style.display = 'none';
+    document.getElementById('tradeLog').innerHTML = '';
+    if (chart) { chart.destroy(); chartReady = false; }
+    updateUI();
+  }
+
+  document.getElementById('btnBuy').addEventListener('click', doBuy);
+  document.getElementById('btnSell').addEventListener('click', doSell);
+  document.getElementById('btnNext').addEventListener('click', doNext);
+  document.getElementById('btnSkip').addEventListener('click', doSkip);
+  document.getElementById('btnReplay').addEventListener('click', resetGame);
+  updateUI();
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+        feedback.textContent = isCorrect ? '✅ ' + this.dataset.feedback : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

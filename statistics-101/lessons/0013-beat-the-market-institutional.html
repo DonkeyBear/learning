@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 13 課：你能打敗大盤嗎？ — 策略評估與法人視角</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 13 課：策略評估與法人視角</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0012-behavioral-finance-individual.html">第 12 課</a></span>
+</div>
+
+<h2>🔍 開場：一個「完美」的回測</h2>
+
+<p>
+想像你花了三個月，測試了 5,000 種不同的交易規則組合。終於——你找到了。夏普比率 2.3，年化報酬 45%，最大回撤只有 8%。你把回測圖拿給朋友看，對方說：「這太強了，你應該立刻募一支基金。」
+</p>
+
+<p>
+<strong>只有一個問題：你的策略完全是隨機的。</strong>你只是測試了夠多種規則，而隨機性——配上過度擬合——必然會產出某個看起來「極其顯著」的東西。
+</p>
+
+<div class="callout">
+<strong>🎯 這一課的核心命題：</strong>給你一個回測結果，你如何判斷它是真正的 edge，還是 5,000 次嘗試中偶然出現的倖存者？法人用什麼工具來區分兩者？
+</div>
+
+<!-- ═══════════════ 1. EMH ═══════════════ -->
+<h2>🏛️ 效率市場假說：你的對手有多聰明？</h2>
+
+<p>
+在討論策略評估之前，必須先問：<strong>市場上的價格，反映了多少資訊？</strong>這決定了你「找到規律」的難度。
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>層次</th><th>價格反映了…</th><th>這代表…</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>弱式效率</strong></td>
+      <td>所有歷史價格與交易量</td>
+      <td>技術分析無效——過去的 K 線無法預測未來走勢</td>
+    </tr>
+    <tr>
+      <td><strong>半強式效率</strong></td>
+      <td>所有公開資訊（財報、新聞、央行決策…）</td>
+      <td>基本面分析無效——公開資訊一發布就立即反映在價格上</td>
+    </tr>
+    <tr>
+      <td><strong>強式效率</strong></td>
+      <td>所有資訊，包括內線消息</td>
+      <td>連內線交易也無法持續獲利（這個層次幾乎肯定不成立）</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+實證研究的共識是：<strong>弱式和半強式效率大致成立，但存在例外</strong>（如動能效應、價值溢酬）。這些例外是否能在扣除交易成本後持續存在，是至今仍激烈辯論的命題。但對你來說，核心教訓是：
+</p>
+
+<div class="card">
+<p style="margin-bottom: 0;">
+<strong>如果你認為自己找到了一個可以打敗市場的策略，你的虛無假設不是「這個策略無效」，而是「這個策略在效率市場中不應該存在」。</strong>舉證責任在你身上——而且門檻非常高。
+</p>
+</div>
+
+<!-- ═══════════════ 2. BACKTEST TRAP ═══════════════ -->
+<h2>🪤 回測陷阱：為什麼漂亮的回測會在實戰中崩壞？</h2>
+
+<h3>過度擬合：你只是在記住雜訊</h3>
+
+<p>
+還記得第 8 課的均值回歸嗎？那堂課的核心洞察——<strong>相關性不完美，所以極端值不會持續</strong>——在回測中同樣致命。當你測試數千種參數組合時，你找到的「最佳參數」之所以最佳，往往是因為它們<strong>恰好擬合了歷史資料中的隨機雜訊</strong>。這些雜訊不會重複——所以你的策略在樣本外崩壞。
+</p>
+
+<div class="card">
+<h3>回測過度擬合的數學：多重測試問題</h3>
+<p>如果每條策略的 Sharpe ratio 在虛無假設下服從 \( N(0, \sigma^2) \)，而你測試了 \( N \) 條策略，則：</p>
+<div class="math-scroll">
+$$ \mathbb{E}[\max_i \text{Sharpe}_i] \approx \sigma \cdot \sqrt{2 \ln N} $$
+</div>
+<p style="margin-bottom: 0;">測試 10 條策略 → 期望最大 Sharpe ≈ 2.1σ；測試 1,000 條 → 期望最大 Sharpe ≈ 3.7σ；測試 10,000 條 → 期望最大 Sharpe ≈ 4.3σ。<strong>你測得越多，你的「最佳策略」看起來越厲害——即使每一條策略的 edge 都是零。</strong></p>
+</div>
+
+<p>
+這正是第 6 課 p-hacking 的金融版本：<strong>測試了夠多策略之後，你必定會找到一個在歷史數據上「顯著」的。</strong>問題是：它只是倖存者偏誤的產物。
+</p>
+
+<h3>其他致命陷阱</h3>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">👀 前視偏誤（Look-Ahead Bias）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">在回測中不小心使用了「未來的資訊」——例如用年末的財報數據來決定年初的買賣。這會讓你的回測績效虛高，而在實戰中不可能重現。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">💀 倖存者偏誤（Survivorship Bias）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你的歷史股價資料庫只包含「還活著」的股票。那些已經下市、破產、歸零的公司不在資料中——所以你的回測自動排除了最慘烈的失敗案例。這就是第 15 課的主題。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">📉 交易成本忽略</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">回測中幾毛錢的價差或 0.1% 的手續費看似微不足道。但如果你一年交易 200 次，每次 0.3% 的雙邊成本會吃掉超過 60% 的名目報酬。很多「有 edge」的策略，扣掉成本後 edge 就歸零了。</p>
+  </div>
+</div>
+
+<!-- ═══════════════ 3. INTERACTIVE ═══════════════ -->
+<h2>🎮 互動沙盒：假策略偵測器</h2>
+
+<p>
+下方模擬了<strong>完全隨機的股價走勢</strong>（真實 edge = 0）。系統在歷史資料上測試了多條隨機策略，從中選出「回測表現最好的那條」。你可以在左圖看到這條策略的<strong>樣本內（in-sample）</strong>輝煌戰績。
+</p>
+<p>
+然後——我們把<strong>同一條策略</strong>套用到全新的樣本外資料（右圖）。拖曳滑桿調整測試的策略數量，看看會發生什麼事：
+</p>
+
+<div class="card" id="strategyLab">
+
+  <div style="margin-bottom: 1rem;">
+    <label for="nStrategies" style="display: block; font-weight: 600; margin-bottom: 0.3rem;">
+      測試的策略數量 N = <strong style="color: var(--accent);" id="nVal">100</strong>
+    </label>
+    <input type="range" id="nStrategies" min="10" max="2000" value="100" step="10"
+      style="width: 100%; accent-color: var(--accent);">
+    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+      <span>10</span><span>500</span><span>1000</span><span>2000</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+    <div>
+      <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--success); margin-bottom: 0.3rem;">📈 樣本內回測（歷史資料）</div>
+      <div style="position: relative; height: 220px;">
+        <canvas id="chartInSample"></canvas>
+      </div>
+      <div class="card" style="margin: 0.5rem 0 0; padding: 0.5rem 0.8rem; text-align: center; border-left: 4px solid var(--success);">
+        <span style="font-size: 0.8rem; color: var(--muted);">最佳策略 Sharpe：</span>
+        <strong style="color: var(--success);" id="sharpeIS">—</strong>
+      </div>
+    </div>
+    <div>
+      <div style="text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--danger); margin-bottom: 0.3rem;">📉 樣本外測試（全新資料）</div>
+      <div style="position: relative; height: 220px;">
+        <canvas id="chartOutSample"></canvas>
+      </div>
+      <div class="card" style="margin: 0.5rem 0 0; padding: 0.5rem 0.8rem; text-align: center; border-left: 4px solid var(--danger);">
+        <span style="font-size: 0.8rem; color: var(--muted);">同一策略 Sharpe：</span>
+        <strong style="color: var(--danger);" id="sharpeOOS">—</strong>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 0.8rem; display: flex; gap: 0.6rem; justify-content: center;">
+    <button id="btnRerun" style="padding: 0.5em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit;">🔄 重新產生</button>
+  </div>
+
+  <div id="labVerdict" style="font-size: 0.9rem; padding: 0.7rem; background: var(--code-bg); border-radius: 6px; margin-top: 0.8rem; color: var(--text-dim);"></div>
+
+</div>
+
+<!-- ═══════════════ 4. METRICS ═══════════════ -->
+<h2>📏 法人如何量化風險？——夏普比率與最大回撤</h2>
+
+<p>
+散戶看報酬，法人看<strong>風險調整後報酬</strong>。兩個最核心的指標：
+</p>
+
+<h3>夏普比率（Sharpe Ratio）</h3>
+
+<div class="math-scroll">
+$$ \text{Sharpe} = \frac{R_p - R_f}{\sigma_p} $$
+</div>
+
+<p>
+\( R_p \) = 策略年化報酬，\( R_f \) = 無風險利率，\( \sigma_p \) = 策略年化波動率。<strong>它衡量的是「每承受一單位波動，你獲得了多少超額報酬」。</strong>
+</p>
+
+<div class="card">
+<p><strong>解讀標準：</strong></p>
+<ul>
+  <li>Sharpe &lt; 0.5：不太理想（和現金差不多）</li>
+  <li>Sharpe 0.5–1.0：可接受</li>
+  <li>Sharpe 1.0–2.0：不錯（多數避險基金的目標區間）</li>
+  <li>Sharpe &gt; 2.0：極好——<strong>但要高度懷疑是不是過度擬合</strong>（Renaissance Technologies 的 Medallion Fund 據說長期 Sharpe ≈ 2.5–3.0，但這是極端 outlier）</li>
+</ul>
+</div>
+
+<div class="callout warn">
+<strong>⚠️ 夏普比率的陷阱：</strong>它假設報酬是常態分布，但真實世界的報酬是 fat-tailed。一個策略可能靠著「賣出極端價外的選擇權」獲得漂亮的高 Sharpe——然後在一次黑天鵝事件中爆倉（這是 Nassim Taleb 的招牌批評）。
+</div>
+
+<h3>最大回撤（Maximum Drawdown, MDD）</h3>
+
+<div class="math-scroll">
+$$ \text{MDD} = \frac{\text{Peak} - \text{Trough}}{\text{Peak}} $$
+</div>
+
+<p>
+從歷史最高點到最低點的<strong>最大累積虧損百分比</strong>。為什麼 MDD 比 Sharpe 更受投資人在意？
+</p>
+
+<div class="card">
+<p style="margin-bottom: 0;">
+假設你的策略 MDD = 50%。這意味著你需要<strong>100% 的報酬</strong>才能回到原點——不是 50%，而是翻倍。一個 Sharpe = 1.5 的策略，如果 MDD = 60%，大多數投資人會在谷底贖回（而他們的贖回時機，恰好是最該加碼的時候——這又是處置效應和展望理論的現場直播）。
+</p>
+</div>
+
+<!-- ═══════════════ 5. SURVIVORSHIP ═══════════════ -->
+<h2>💀 提前預習：倖存者偏誤與基金績效</h2>
+
+<p>
+假設 2000 年有 1,000 檔科技基金同時成立。到 2010 年：
+</p>
+
+<ul>
+  <li>300 檔因為績效太差被清算（它們不會出現在任何歷史績效排名中）</li>
+  <li>200 檔被合併到其他基金（也消失了）</li>
+  <li>剩下 500 檔的「平均績效」看起來還不錯——但這是倖存者樣本</li>
+</ul>
+
+<p>
+<strong>基金資料庫中的「歷史平均報酬」系統性地高估了真實的投資人體驗。</strong>那些被清算的基金——績效最差的那些——從來不會出現在你的篩選器裡面。這就是倖存者偏誤最昂貴的體現。第 15 課會用互動模擬器讓你親眼看到這個效果。
+</p>
+
+<!-- ═══════════════ 6. QUIZ ═══════════════ -->
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 為什麼測試了 1,000 條策略之後，必定會出現「夏普比率很高」的策略——即使每一條的 edge 都是零？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="隨機策略的期望值是零，但因為抽樣誤差，單一策略的實現值（realized Sharpe）不會恰等於零——有些會偏正，有些偏負。測得夠多，總有幾個偏正的極端值。">A. 因為大量策略的平均值會收斂到零</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！這正是第 6 課多重測試問題（p-hacking）的金融版本。每一條策略的實現 Sharpe 都含有抽樣誤差，測試 N 條策略後，最大值的期望會以 √(2 ln N) 的速度成長。N=1000 時，即使所有策略的真實 edge 都是零，你也可以看到 Sharpe ≈ 2 的「明星策略」。">B. 這是抽樣誤差的必然結果——測試 N 條策略後，最佳 Sharpe 的期望值隨 √(2 ln N) 成長</span>
+      <span class="quiz-option" data-correct="false" data-feedback="隨機策略之間是彼此獨立的（假設沒有 overlapping 的資料窺探），不是「相關性」導致了極端值。">C. 因為策略之間有高度相關性，會放大彼此的績效</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 一個策略的 Sharpe = 2.5，MDD = 65%。以下哪個判斷最正確？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="高 Sharpe 和超大 MDD 同時存在是可能的（例如頻繁的小額獲利 + 偶發的巨額虧損），而 MDD 65% 意味著翻倍才能回本——這是非常危險的訊號。">A. Sharpe 這麼高，MDD 一定是計算錯誤</span>
+      <span class="quiz-option" data-correct="false" data-feedback="兩個指標都很重要。Sharpe 告訴你「每單位波動的報酬」，MDD 告訴你「最壞情況下的痛苦程度」。只看 Sharpe 不看 MDD 的投資人，是下一個爆倉的候選人。">B. Sharpe 比 MDD 重要，因為它是風險調整後的指標</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！高 Sharpe 可能來自於頻繁小賺 + 偶發巨虧（賣出深價外選擇權的策略就是典型）——這會讓 MDD 極大。MDD 65% 意味著你需要 186% 的回報才能回本。在這種策略中，大部分投資人會在谷底恐慌贖回，永遠實現不了那個漂亮的 Sharpe。">C. 這可能是個陷阱策略：高 Sharpe 掩蓋了毀滅性的尾部風險（MDD 65% 需要 +186% 才能回本）</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 在回測中，什麼是「前視偏誤」（Look-Ahead Bias）？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="這描述的是過度擬合（overfitting），不是前視偏誤。過度擬合是測試太多參數組合導致記住了雜訊，前視偏誤是使用了不該知道的未來資訊。">A. 測試了太多種策略組合，導致找到的最佳參數純屬運氣</span>
+      <span class="quiz-option" data-correct="false" data-feedback="這描述的是存活者偏誤（survivorship bias），不是前視偏誤。存活者偏誤是只看到成功的案例而忽略了被淘汰的。">B. 只回測目前還存活的股票，忽略了已下市的公司</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！前視偏誤是在回測的時間點使用了當時還不存在的資訊。例如在 2020 年 1 月的交易決策中使用了 2020 年 3 月才公布的財報數據——這個錯誤會讓回測績效虛高，但在真實交易中完全不可能實現。">C. 在 t 時刻的交易決策中，使用了 t 時刻之後才公布的資訊</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>四個核心收穫</h3>
+<ol>
+  <li><strong>效率市場不是「對或錯」的二元命題</strong>——但它設定了很高的舉證門檻。在弱式和半強式效率成立的前提下，你找到的任何規律都必須經得起交易成本和樣本外測試的考驗。</li>
+  <li><strong>回測過度擬合 = 第 6 課多重測試問題的金融版本</strong>——測試 N 條策略後，最佳 Sharpe 的期望值以 √(2 ln N) 的速度增長。你測得越多，你的「明星策略」看起來越厲害——即使 edge 是零。</li>
+  <li><strong>法人用 Sharpe ratio 和 MDD 量化風險</strong>——但兩者都有盲點。Sharpe 假設常態分布（真實市場不是），高 Sharpe + 超大 MDD 是尾部風險的經典指紋。</li>
+  <li><strong>樣本外驗證是唯一的真相檢查</strong>——如果你不能用「回測期間之後」的資料複製同一條策略的績效，那麼回測中的 edge 幾乎確定是過度擬合的產物。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Marcos López de Prado —《Advances in Financial Machine Learning》第 10–12 章</strong>：回測過度擬合的數學與解決方案（技術性強，但極有價值）。</li>
+  <li><strong>Burton Malkiel —《A Random Walk Down Wall Street》</strong>：效率市場假說的最佳大眾入門。</li>
+  <li><strong>Nassim Taleb —《Fooled by Randomness》</strong>：Sharpe ratio、存活者偏誤、與金融市場中隨機性的哲學反思。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你已經學會了從散戶和法人兩個角度審視金融市場的陷阱。現在我們回到更廣闊的日常應用——<strong>A/B 測試</strong>。
+</p>
+<p>
+  你在第 6 課學過假設檢定，在這一課學過多重測試的危險。A/B 測試正是這兩者的交匯點：網站改版、廣告文案、App 介面——所有科技公司每天都在進行數千次 A/B 測試，而其中大多數人都犯了一個致命的錯誤：<strong>Peeking</strong>（邊看邊停）。下一課，你會用互動模擬器親眼看到：Peeking 如何讓你的假陽性率從 5% 膨脹到 30%。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0014-ab-testing.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0014：A/B 測試——從科學方法到商業決策
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>策略評估是統計學在金融中最密集的應用場景——Sharpe ratio 的數學、回測的陷阱、樣本外驗證的方法論。任何一個面向想深入討論，現在就問。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 假策略偵測器 ==========
+(function() {
+  var DAYS = 200;
+  var DAILY_DRIFT = 0.0002;
+
+  function generatePrices() {
+    var p = [100];
+    for (var i = 1; i < DAYS; i++) {
+      var u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      var z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      p.push(p[i - 1] * (1 + DAILY_DRIFT + 0.015 * z));
+    }
+    return p;
+  }
+
+  // 隨機策略：隨機買入日 + 隨機賣出日（單次交易，做多）
+  function randomStrategy(prices) {
+    var buy = Math.floor(Math.random() * (DAYS - 20));
+    var sell = buy + 5 + Math.floor(Math.random() * (DAYS - buy - 5));
+    var ret = (prices[sell] - prices[buy]) / prices[buy];
+    var rets = [];
+    for (var i = 1; i < DAYS; i++) {
+      rets.push((prices[i] - prices[i-1]) / prices[i-1]);
+    }
+    var avgRet = rets.reduce(function(a,b){return a+b;},0) / rets.length;
+    var sdRet = Math.sqrt(rets.reduce(function(s,r){return s+(r-avgRet)*(r-avgRet);},0) / rets.length);
+    var sharpe = sdRet > 0 ? (avgRet / sdRet) * Math.sqrt(252) : 0;
+    return { buyDay: buy, sellDay: sell, return: ret, sharpe: sharpe };
+  }
+
+  function applyStrategy(prices, strategy) {
+    var buy = strategy.buyDay;
+    var sell = strategy.sellDay;
+    var ret = (prices[sell] - prices[buy]) / prices[buy];
+    var rets = [];
+    for (var i = 1; i < DAYS; i++) {
+      rets.push((prices[i] - prices[i-1]) / prices[i-1]);
+    }
+    var avgRet = rets.reduce(function(a,b){return a+b;},0) / rets.length;
+    var sdRet = Math.sqrt(rets.reduce(function(s,r){return s+(r-avgRet)*(r-avgRet);},0) / rets.length);
+    var sharpe = sdRet > 0 ? (avgRet / sdRet) * Math.sqrt(252) : 0;
+    return { buyDay: buy, sellDay: sell, return: ret, sharpe: sharpe };
+  }
+
+  var inPrices, outPrices, bestStrategy, oosResult, N;
+  var chartIS = null, chartOOS = null;
+
+  function makeEquityCurve(prices, strategy) {
+    var curve = [100];
+    for (var i = 1; i < DAYS; i++) {
+      curve.push(curve[i-1] * (prices[i] / prices[i-1]));
+    }
+    return curve;
+  }
+
+  function makeBHEquity(prices) {
+    var curve = [100];
+    for (var i = 1; i < DAYS; i++) {
+      curve.push(curve[i-1] * (prices[i] / prices[i-1]));
+    }
+    return curve;
+  }
+
+  function buildChart(canvasId, prices, strategy, bhCurve, isInSample) {
+    var ctx = document.getElementById(canvasId).getContext('2d');
+    var labels = Array.from({length: DAYS}, function(_, i) { return i + 1; });
+
+    // Highlight region if strategy exists
+    var datasets = [{
+      label: '買入持有',
+      data: bhCurve,
+      borderColor: 'rgba(158,158,178,0.35)',
+      borderWidth: 1,
+      borderDash: [4, 3],
+      pointRadius: 0,
+      fill: false,
+      tension: 0.1,
+      order: 3,
+    }];
+
+    if (strategy) {
+      // Highlight the holding period
+      var strategyCurve = [];
+      for (var i = 0; i < DAYS; i++) {
+        if (i >= strategy.buyDay && i <= strategy.sellDay) {
+          strategyCurve.push(bhCurve[i]);
+        } else {
+          strategyCurve.push(null);
+        }
+      }
+      datasets.push({
+        label: isInSample ? '策略持倉區間' : '同一策略（樣本外）',
+        data: strategyCurve,
+        borderColor: isInSample ? '#4ade80' : '#f87171',
+        backgroundColor: isInSample ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.1,
+        order: 1,
+      });
+
+      // Mark buy/sell points
+      datasets.push({
+        label: '買入',
+        data: [{ x: strategy.buyDay + 1, y: bhCurve[strategy.buyDay] }],
+        type: 'scatter',
+        backgroundColor: isInSample ? '#4ade80' : '#f59e0b',
+        borderColor: isInSample ? '#4ade80' : '#f59e0b',
+        pointRadius: 6,
+        pointStyle: 'triangle',
+        order: 0,
+      });
+      datasets.push({
+        label: '賣出',
+        data: [{ x: strategy.sellDay + 1, y: bhCurve[strategy.sellDay] }],
+        type: 'scatter',
+        backgroundColor: isInSample ? '#f59e0b' : '#f87171',
+        borderColor: isInSample ? '#f59e0b' : '#f87171',
+        pointRadius: 6,
+        pointStyle: 'triangle',
+        rotation: 180,
+        order: 0,
+      });
+    }
+
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function(c) { return '$' + c.raw.toFixed(2); } } },
+        },
+        scales: {
+          x: { ticks: { color: '#9e9eb2', maxTicksLimit: 6 }, grid: { color: 'rgba(39,42,58,0.3)' } },
+          y: { ticks: { color: '#9e9eb2', callback: function(v) { return '$' + v.toFixed(0); } }, grid: { color: 'rgba(39,42,58,0.3)' } },
+        },
+      },
+    });
+  }
+
+  function runSim(nStrategies) {
+    N = nStrategies;
+    inPrices = generatePrices();
+    outPrices = generatePrices();
+
+    // Test N random strategies on in-sample
+    var best = null;
+    var bestSharpe = -Infinity;
+    for (var i = 0; i < N; i++) {
+      var strat = randomStrategy(inPrices);
+      if (strat.sharpe > bestSharpe) {
+        bestSharpe = strat.sharpe;
+        best = strat;
+      }
+    }
+    bestStrategy = best;
+
+    // Apply best strategy to out-of-sample
+    oosResult = applyStrategy(outPrices, bestStrategy);
+
+    // Charts
+    var bhIn = makeBHEquity(inPrices);
+    var bhOut = makeBHEquity(outPrices);
+
+    if (chartIS) chartIS.destroy();
+    if (chartOOS) chartOOS.destroy();
+    chartIS = buildChart('chartInSample', inPrices, bestStrategy, bhIn, true);
+    chartOOS = buildChart('chartOutSample', outPrices, bestStrategy, bhOut, false);
+
+    // Stats
+    document.getElementById('sharpeIS').textContent = bestStrategy.sharpe.toFixed(2);
+    document.getElementById('sharpeOOS').textContent = oosResult.sharpe.toFixed(2);
+    var oosEl = document.getElementById('sharpeOOS');
+    oosEl.style.color = oosResult.sharpe > 0.5 ? 'var(--success)' : 'var(--danger)';
+
+    // Verdict
+    var expectedMax = 0.45 * Math.sqrt(2 * Math.log(N));
+    var verdict = document.getElementById('labVerdict');
+    verdict.innerHTML =
+      '在 <strong>' + N + '</strong> 條隨機策略中，最佳樣本內 Sharpe 為 <strong style="color: var(--success);">' + bestStrategy.sharpe.toFixed(2) + '</strong>（理論期望最大 ≈ ' + expectedMax.toFixed(2) + '）。' +
+      '同一策略在樣本外的 Sharpe 為 <strong style="color: ' + (oosResult.sharpe > 0.5 ? 'var(--success)' : 'var(--danger)') + ';">' + oosResult.sharpe.toFixed(2) + '</strong>。' +
+      (N >= 500 && bestStrategy.sharpe > 1.5 && oosResult.sharpe < 0.5
+        ? ' <strong>樣本內的華麗績效在樣本外完全瓦解——這就是過度擬合的現場直播。</strong>'
+        : ' 反覆點擊「重新產生」觀察變化：有時候連樣本外也會出現好看的值——但那是隨機波動，不表示策略真的有效。');
+  }
+
+  document.getElementById('nStrategies').addEventListener('input', function() {
+    document.getElementById('nVal').textContent = this.value;
+    runSim(parseInt(this.value));
+  });
+
+  document.getElementById('btnRerun').addEventListener('click', function() {
+    runSim(parseInt(document.getElementById('nStrategies').value));
+  });
+
+  // Initial
+  runSim(100);
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+        feedback.textContent = isCorrect ? '✅ ' + this.dataset.feedback : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

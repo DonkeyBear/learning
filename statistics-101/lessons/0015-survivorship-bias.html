@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 15 課：倖存者偏誤 — 你看不到的屍體不會說話</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 15 課：倖存者偏誤</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0014-ab-testing.html">第 14 課</a></span>
+</div>
+
+<h2>✈️ 1943 年，哥倫比亞大學，一位統計學家走進軍方會議室</h2>
+
+<p>
+二戰期間，盟軍轟炸機在歐洲上空遭受慘烈的防空炮火。軍方統計了返航飛機上的彈孔分布——
+</p>
+
+<div class="card">
+<p style="margin-bottom: 0;">
+<strong>機身上彈孔密密麻麻，引擎部位卻幾乎沒有彈孔。</strong>軍方指揮官的結論：「我們應該在彈孔最多的地方加強裝甲——那裡挨的子彈最多。」
+</p>
+</div>
+
+<p>
+Abraham Wald——一位在哥倫比亞大學工作的猶太裔統計學家——給出了完全相反的建議：<strong>「裝甲應該加在彈孔最少的地方。」</strong>
+</p>
+
+<p>
+他的理由——如今已成為統計學史上最著名的洞見之一——是：<strong>你們只看到了飛回來的飛機。</strong>那些引擎中彈的飛機，根本沒有返航。彈孔分布圖不是「哪裡容易中彈」的地圖，而是「飛機中彈後還能飛回來」的地圖。引擎部位的零彈孔，不是因為引擎不會中彈——而是因為引擎中彈的飛機全部墜毀在英吉利海峽裡了。
+</p>
+
+<div class="callout">
+<strong>🔑 倖存者偏誤（Survivorship Bias）的經典定義：</strong>當你只觀察到「通過某種選擇機制的樣本」，而看不見那些「被淘汰或被摧毀的樣本」時，你對母體的推論會產生<strong>系統性的高估或誤判</strong>。Wald 的洞見不是「他很聰明」，而是他意識到了<strong>樣本本身是有偏的</strong>——還記得第 1 課我們討論過偏誤樣本的危險嗎？
+</div>
+
+<h2>📊 這個偏誤如何運作</h2>
+
+<p>任何「只看到存活者」的情境，都會高估成功率和平均表現：</p>
+
+<div class="math-scroll">
+$$ \mathbb{E}[X \mid \text{Survived}] > \mathbb{E}[X] \quad \text{（存活者的期望值被系統性高估）} $$
+</div>
+
+<p>
+在第 4 課我們學過貝氏定理。倖存者偏誤正是條件機率的經典陷阱——你觀察到的是 \( P(\text{看起來很強} \mid \text{存活}) \)，但你以為自己觀察到的是 \( P(\text{存活} \mid \text{看起來很強}) \)。<strong>你混淆了條件機率的方向。</strong>
+</p>
+
+<h2>📐 截斷分布的數學：存活如何扭曲統計量</h2>
+
+<p>
+從統計學的角度看，倖存者偏誤創造了<strong>截斷分布（Truncated Distribution）</strong>——一個完整的機率分布，被一道看不見的門檻切掉了尾巴。
+</p>
+
+<div class="card">
+<h3>截斷如何改變期望值</h3>
+<p>假設共同基金的年報酬服從 \( N(7\%, 15\%) \)。如果我們只觀察存活超過 5 年的基金（那些不被清算的）：</p>
+<div class="math-scroll">
+$$ \mathbb{E}[R \mid \text{Survived}] = \mathbb{E}[R \mid R_{\text{cumulative}} > -50\%] > \mathbb{E}[R] $$
+</div>
+<p style="margin-bottom: 0;">
+被截斷的分布，不僅<strong>平均數</strong>被高估了——<strong>標準差也被低估了</strong>。因為那些最極端的負報酬（尾部風險的來源）被整段刪除了。這就是為什麼歷史績效排名總是看起來「報酬不錯、波動不大」——那些波動最大的基金，早已不在了。這和第 13 課的 Sharpe ratio 陷阱是同一條數學血脈：倖存者偏誤直接汙染了夏普比率的估計。
+</p>
+</div>
+
+<h2>🎮 互動沙盒：共同基金的鬼魂</h2>
+
+<p>
+下方模擬了 <strong>500 檔共同基金</strong>在 20 年間的績效。每檔基金的年報酬來自常態分布（平均 7%，標準差 15%）。如果一檔基金的累計虧損超過 50%，它就會<strong>被清算</strong>——從此消失在歷史績效排名中。
+</p>
+<p>
+<strong>切換下方開關</strong>，親眼看看「只顯示存活基金」和「顯示所有基金」之間的績效落差：
+</p>
+
+<div class="card" id="survivorshipLab">
+
+  <div style="position: relative; height: 330px; margin-bottom: 0.8rem;">
+    <canvas id="fundChart"></canvas>
+  </div>
+
+  <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 1rem;">
+    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; user-select: none;">
+      <input type="checkbox" id="toggleSurvivors" style="accent-color: var(--accent); width: 18px; height: 18px;">
+      <span>只顯示存活基金</span>
+    </label>
+    <button id="btnRerun" style="padding: 0.45em 1em; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem;">🔄 重新模擬</button>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem;">
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center;">
+      <div style="font-size: 0.75rem; color: var(--muted);">存活基金數</div>
+      <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent);" id="survivorCount">—</div>
+      <div style="font-size: 0.7rem; color: var(--muted);">/ 500</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center; border-left: 4px solid var(--accent);">
+      <div style="font-size: 0.75rem; color: var(--muted);">存活基金平均年報酬</div>
+      <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent);" id="survivorMean">—</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 0.5rem 0.7rem; text-align: center; border-left: 4px solid var(--danger);">
+      <div style="font-size: 0.75rem; color: var(--muted);">全部 500 檔平均年報酬</div>
+      <div style="font-size: 1.3rem; font-weight: 700; color: var(--danger);" id="allMean">—</div>
+    </div>
+  </div>
+
+  <div id="labVerdict" style="font-size: 0.9rem; padding: 0.7rem; background: var(--code-bg); border-radius: 6px; margin-top: 0.8rem; color: var(--text-dim); line-height: 1.5;"></div>
+
+</div>
+
+<h2>🔍 日常生活中的倖存者偏誤</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">📕 「成功企業的五個習慣」</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">商管暢銷書研究「最成功企業的共同特徵」——但從不研究<strong>失敗企業是否也具備同樣特徵</strong>。如果 90% 的失敗新創也「重視公司文化、快速迭代、以客戶為中心」，那這些特徵就不是成功的原因——它們只是「經營一間公司」的必要條件。你不知道失敗者長什麼樣子，就無從判斷任何特徵的預測力。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">🚬 「我爺爺抽菸活到 90 歲」</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">抽菸而早逝的人不會在家庭聚會上講故事。你永遠只聽到那些「抽菸但長壽」的案例——因為<strong>他們存活了</strong>。而那些在 60 歲死於肺癌的人，已經沒有機會被孫子提起。你用一個倖存案例對抗整個公衛統計——這裡的<strong>邏輯破洞正是樣本偏誤</strong>。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🏛️ 歷史的「必然性錯覺」</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">我們讀到的歷史是「存活者的敘事」。羅馬帝國看起來「注定」會崛起——但迦太基也曾同樣強盛，只是它輸了。每一個「歷史的必然」，背後都有幾百個同樣合理、但最終失敗的替代路徑。這些失敗路徑沒有留下敘事者。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">🐱 「貓從高樓摔下來不會死」</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">獸醫統計了從高樓摔下來送醫的貓——結果發現：摔得越高，存活率越高（因為貓有時間翻身）。問題是：<strong>摔下來當場死亡的貓，不會被送進獸醫院。</strong>樣本排除了最致命的案例，所以活下來的貓看起來摔不死。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">📧 投資顧問信詐騙</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你收到一封信：「我們的 AI 模型預測下週股市會漲。」下週股市真的漲了。第二週又收到：「預測會跌。」又中了。連續八週準確預測。你決定訂閱他們的 VIP 服務。真相：<strong>寄信者第一週寄給 10,000 人——5,000 封說漲、5,000 封說跌。淘汰錯誤的一半，第二週只寄給猜對的那群。</strong>經過 8 輪篩選，剩下約 39 個「見證奇蹟」的人。你沒看到的是那 9,961 個被淘汰的收件者。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">📊 股票指數的成分股汰換</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">S&P 500 指數看起來長期上漲——但它會<strong>定期汰換表現不佳的成分股</strong>，加入正在崛起的公司。指數回報不是「買了放著」的回報——它是「隨時持有市場上最強的 500 家公司」的回報。如果你買了原始的 S&P 500 成分股並且從不調整，你的回報遠低於指數顯示的數字。<strong>指數本身就是一個不斷進行倖存者篩選的機制。</strong></p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">📄 科學出版偏誤（Publication Bias）</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">學術期刊偏好發表「顯著結果」（P &lt; 0.05）。一項療法被 20 個團隊獨立測試——只有 1 個團隊得到 P = 0.03（可能是假陽性），而這篇論文被發表了。其他 19 個得到 P &gt; 0.05 的團隊，永遠不會被刊登。Meta-analysis 如果只搜集「已發表的論文」，會系統性高估效應量——<strong>這正是第 14 課多重比較問題的學術版本。</strong></p>
+  </div>
+</div>
+
+<h2>🛠️ 如何對抗倖存者偏誤？</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">1️⃣ 問「誰不在這裡？」</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">這是 Wald 的問題。每當看到一個資料集，先問：有哪些東西應該在、但因為某種原因不在了？被清算的基金、倒閉的公司、罹難的飛機、發表不出來的論文。把<strong>缺失資料的機制</strong>畫出來。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">2️⃣ 使用「從成立日開始」的資料</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">任何歷史績效分析都應該從<strong>母體定義的起點</strong>開始，追蹤全部樣本到終點——包含中途退出和死亡的案例。在金融中，這叫「無倖存者偏誤的資料庫」（如 CRSP 的 delisting returns）。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">3️⃣ 對反向條件機率保持警覺</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你在分析 P(特徵 | 存活)——但你真正想知道的是 P(存活 | 特徵)。這兩者之間的差距取決於<strong>基礎存活率</strong>（base rate）。還記得第 4 課的疾病檢驗嗎？即使陽性檢驗結果，真正有病的機率也取決於疾病的基礎盛行率。同樣地：即使存活者都有某個特徵，不代表有這個特徵就能存活。</p>
+  </div>
+</div>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> Abraham Wald 為什麼建議在彈孔<strong>最少</strong>的引擎部位加強裝甲？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="引擎不是裝甲最厚的地方——Wald 的論點是統計學的，不是工程學的。引擎部位零彈孔的原因不是它的裝甲特別厚，而是引擎中彈的飛機根本回不來。">A. 因為引擎是飛機最重要的部位，需要最厚的裝甲</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！彈孔分布圖是「飛機中彈後還能飛回來」的分布。引擎中彈的飛機全部墜毀了，所以返航飛機的引擎部位才沒有彈孔。將裝甲加在彈孔最多的機身部位是浪費——那些中彈部位根本不致命。">B. 因為返航飛機的彈孔分布只代表「中彈後還能存活的位置」——引擎中彈的飛機根本沒回來</span>
+      <span class="quiz-option" data-correct="false" data-feedback="彈孔最多的部位正是那些中彈後還能飛回來的部位——這證明了這些部位不是致命的。你不該把裝甲浪費在不致命的位置。">C. 因為彈孔最多的部位已經夠堅固了，再裝甲是浪費</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 共同基金績效排名中的倖存者偏誤是如何產生的？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="盈餘管理確實存在，但這不是倖存者偏誤的核心機制。問題在於「消失的基金」不進入排名——無論原因是清算、合併還是關閉。">A. 基金公司透過盈餘管理美化報酬數字</span>
+      <span class="quiz-option" data-correct="false" data-feedback="投資人贖回是結果而非原因——表現差的基金先跌，然後投資人贖回，然後基金被清算。清算才是從資料庫中消失的關鍵環節。">B. 表現差的基金因為投資人贖回而自然萎縮</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！表現最差的基金被清算或合併，從歷史資料庫中消失。剩下的「存活基金」平均績效看起來相當不錯——但這不是因為基金經理很厲害，而是因為爛的都被刪掉了。這就像只算考試及格的學生的平均分數，然後說「我們學校的學生成績很好」。">C. 表現最差的基金被清算或合併，從歷史績效資料庫中消失，導致「存活者平均」系統性高於「全體平均」</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 倖存者偏誤和貝氏定理（第 4 課）有什麼關聯？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="它們密切相關！倖存者偏誤正是條件機率被錯誤反轉的產物——你觀察到 P(看起來強|存活)，卻解讀為 P(存活|看起來強)。">A. 沒有直接關聯——一個是抽樣偏誤，一個是機率推論</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！你觀察到的條件機率是「給定存活，看起來很強（機率很高）」。但你錯誤地解讀為「給定看起來很強，存活（機率很高）」。這兩者在數學上是完全不同的值——它們透過基礎比率 P(存活) 和 P(看起來強) 產生差距。就像第 4 課的疾病檢驗：陽性不代表有病，存活不代表策略好。">B. 倖存者偏誤是一種條件機率的方向錯誤——你混淆了 P(看起來強 | 存活) 和 P(存活 | 看起來強)</span>
+      <span class="quiz-option" data-correct="false" data-feedback="倖存者偏誤確實常出現在回溯性研究中，但它和貝氏定理的關聯更深：兩者都涉及條件機率的詮釋。">C. 只有在回溯性研究中才有關聯</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>你永遠看不到失敗者</strong>——無論是墜毀的飛機、被清算的基金、倒閉的新創、還是早逝的菸民。任何只包含「存活者」的資料集，對母體的估計都是系統性偏誤的。</li>
+  <li><strong>這是貝氏定理的現場直播</strong>——你觀察到的是 \( P(\text{特徵} \mid \text{存活}) \)，但你以為是 \( P(\text{存活} \mid \text{特徵}) \)。條件機率的方向錯誤，是倖存者偏誤的數學本質。</li>
+  <li><strong>問一個 Wald 式的問題</strong>——每當你看到一個「成功案例」的清單，問自己：<strong>那些失敗了的案例長什麼樣子？我為什麼沒有看到它們？</strong></li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Abraham Wald (1943) — "A Method of Estimating Plane Vulnerability Based on Damage of Survivors"</strong>（機密備忘錄，戰後解密）：原始論文的數學推導。</li>
+  <li><strong>Jordan Ellenberg —《How Not to Be Wrong》第 1–2 章</strong>：Wald 故事的絕佳敘述，附有數學細節。</li>
+  <li><strong>Nassim Taleb —《Fooled by Randomness》第 7–8 章</strong>：倖存者偏誤在金融市場中的表現。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你已經學會了識別「因為沒看到失敗者而產生的假規律」。但還有一種更狡猾的統計陷阱——<strong>你看到了兩件事一起發生，就自動假設其中一件導致了另一件。</strong>
+</p>
+<p>
+  下一課是本課程的最後一堂：<strong>相關 ≠ 因果</strong>。冰淇淋和溺水、巧克力與諾貝爾獎、以及最經典的<strong>辛普森悖論</strong>（Simpson's Paradox）——當整體趨勢在每個子群體中完全逆轉，你要相信哪一個？
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0016-correlation-vs-causation.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0016：相關 ≠ 因果——冰淇淋和溺水都是天氣害的
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>倖存者偏誤是日常推理中最普遍的統計陷阱——它不需要數學知識也會犯，但懂了統計之後，你就能像 Wald 一樣看見那些「不在資料中的資料」。有疑問隨時問。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 共同基金倖存者模擬器 ==========
+(function() {
+  var N_FUNDS = 500;
+  var N_YEARS = 20;
+  var MEAN_R = 0.07;
+  var SD_R = 0.15;
+  var LIQ_THRESHOLD = 0.5; // cumulative return below 0.5 = fund liquidated
+
+  var funds = []; // [{finalReturn, survived, annualReturns[], cumulativeReturns[]}]
+  var showSurvivorsOnly = false;
+  var chart = null;
+
+  function boxMuller() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function simulate() {
+    funds = [];
+    for (var i = 0; i < N_FUNDS; i++) {
+      var cumulative = 1.0;
+      var survived = true;
+      var annualReturns = [];
+      var cumulativeReturns = [1.0];
+      for (var y = 0; y < N_YEARS; y++) {
+        var r = MEAN_R + SD_R * boxMuller();
+        annualReturns.push(r);
+        cumulative *= (1 + r);
+        cumulativeReturns.push(cumulative);
+        if (cumulative < LIQ_THRESHOLD) {
+          survived = false;
+          // fund liquidated - stays at this cumulative
+          break;
+        }
+      }
+      funds.push({
+        finalReturn: cumulative,
+        survived: survived,
+        annualReturns: annualReturns,
+        cumulativeReturns: cumulativeReturns,
+      });
+    }
+  }
+
+  function calcStats() {
+    var allReturns = funds.map(function(f) { return f.finalReturn; });
+    var survivors = funds.filter(function(f) { return f.survived; });
+    var survivorReturns = survivors.map(function(f) { return f.finalReturn; });
+
+    function avg(arr) { return arr.reduce(function(a,b){return a+b;},0) / arr.length; }
+
+    var allAvg = avg(allReturns);
+    var survAvg = survivors.length > 0 ? avg(survivorReturns) : 0;
+
+    // Annualize: geometric mean
+    // allAvg and survAvg are final cumulative multiples. Annualize = (final)^(1/N_YEARS) - 1
+    var allAnn = (Math.pow(allAvg, 1/N_YEARS) - 1) * 100;
+    var survAnn = (Math.pow(survAvg, 1/N_YEARS) - 1) * 100;
+
+    return {
+      survivorCount: survivors.length,
+      allMean: allAnn,
+      survivorMean: survAnn,
+      survivors: survivors,
+    };
+  }
+
+  function drawChart(stats) {
+    var ctx = document.getElementById('fundChart').getContext('2d');
+    if (chart) chart.destroy();
+
+    // Sort funds by final return for visualization
+    var allSorted = funds.slice().sort(function(a,b) { return a.finalReturn - b.finalReturn; });
+
+    var survData = [];
+    var liqData = [];
+    for (var i = 0; i < allSorted.length; i++) {
+      if (allSorted[i].survived) {
+        survData.push({ x: i, y: allSorted[i].finalReturn });
+      } else {
+        liqData.push({ x: i, y: allSorted[i].finalReturn });
+      }
+    }
+
+    var datasets = [];
+    if (!showSurvivorsOnly) {
+      datasets.push({
+        label: '已清算基金',
+        data: liqData,
+        backgroundColor: 'rgba(248,113,113,0.3)',
+        borderColor: 'rgba(248,113,113,0.5)',
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        order: 2,
+      });
+    }
+    datasets.push({
+      label: '存活基金',
+      data: survData,
+      backgroundColor: 'rgba(45,212,191,0.35)',
+      borderColor: 'rgba(45,212,191,0.6)',
+      pointRadius: showSurvivorsOnly ? 3.5 : 3,
+      pointHoverRadius: 6,
+      order: 1,
+    });
+
+    // Mean reference lines
+    if (stats.survivors.length > 0) {
+      var survMean = stats.survivors.reduce(function(s,f){return s+f.finalReturn;},0) / stats.survivors.length;
+      var allMean = funds.reduce(function(s,f){return s+f.finalReturn;},0) / funds.length;
+
+      var yMin = Math.min.apply(null, funds.map(function(f){return f.finalReturn;})) * 0.95;
+      var yMax = Math.max.apply(null, funds.map(function(f){return f.finalReturn;})) * 1.05;
+
+      if (!showSurvivorsOnly) {
+        // All funds mean
+        datasets.push({
+          label: '全部平均',
+          data: [{ x: 0, y: allMean }, { x: N_FUNDS - 1, y: allMean }],
+          type: 'line',
+          borderColor: 'rgba(248,113,113,0.6)',
+          borderWidth: 1.5,
+          borderDash: [5, 3],
+          pointRadius: 0,
+          fill: false,
+          order: 0,
+        });
+      }
+      // Survivor mean
+      datasets.push({
+        label: '存活平均',
+        data: [{ x: 0, y: survMean }, { x: N_FUNDS - 1, y: survMean }],
+        type: 'line',
+        borderColor: 'rgba(45,212,191,0.8)',
+        borderWidth: 2,
+        borderDash: [5, 3],
+        pointRadius: 0,
+        fill: false,
+        order: 0,
+      });
+
+      // Threshold line
+      datasets.push({
+        label: '清算門檻 (-50%)',
+        data: [{ x: 0, y: LIQ_THRESHOLD }, { x: N_FUNDS - 1, y: LIQ_THRESHOLD }],
+        type: 'line',
+        borderColor: 'rgba(158,158,178,0.3)',
+        borderWidth: 1,
+        borderDash: [2, 4],
+        pointRadius: 0,
+        fill: false,
+        order: 10,
+      });
+    }
+
+    chart = new Chart(ctx, {
+      type: 'scatter',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: '#9e9eb2',
+              usePointStyle: true,
+              boxWidth: 8,
+              padding: 14,
+              font: { size: 11 },
+              filter: function(item) {
+                return ['存活基金', '已清算基金'].indexOf(item.text) !== -1;
+              },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.dataset.label === '存活基金' || ctx.dataset.label === '已清算基金') {
+                  return (ctx.dataset.label === '存活基金' ? '存活' : '清算') + ' | 期末價值: ' + ctx.raw.y.toFixed(2) + '×';
+                }
+                return '';
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '基金（按績效排序）', color: '#9e9eb2' },
+            ticks: { display: false },
+            grid: { display: false },
+          },
+          y: {
+            title: { display: true, text: '20 年後累計價值（倍數）', color: '#9e9eb2' },
+            ticks: { color: '#9e9eb2', callback: function(v) { return v.toFixed(1) + '×'; } },
+            grid: { color: 'rgba(39,42,58,0.4)' },
+            // Show log-like ticks
+            min: 0,
+          },
+        },
+      },
+    });
+  }
+
+  function updateDisplay() {
+    var stats = calcStats();
+    document.getElementById('survivorCount').textContent = stats.survivorCount;
+    document.getElementById('survivorMean').textContent = (stats.survivorMean >= 0 ? '+' : '') + stats.survivorMean.toFixed(1) + '%';
+    document.getElementById('allMean').textContent = (stats.allMean >= 0 ? '+' : '') + stats.allMean.toFixed(1) + '%';
+
+    var verdict = document.getElementById('labVerdict');
+    var gap = stats.survivorMean - stats.allMean;
+    if (stats.survivorCount < N_FUNDS && gap > 0.5) {
+      verdict.innerHTML = '📊 <strong>倖存者偏誤現場：</strong>存活基金的平均年報酬（<strong style="color: var(--accent);">' + stats.survivorMean.toFixed(1) + '%</strong>）比全部 500 檔的真實平均（<strong style="color: var(--danger);">' + stats.allMean.toFixed(1) + '%</strong>）高出 <strong>' + gap.toFixed(1) + ' 個百分點</strong>。這 ' + (N_FUNDS - stats.survivorCount) + ' 檔已清算的基金不會出現在任何歷史排名中——但它們的損失是真實的。如果你只看得到存活基金，你會以為基金經理的平均表現比事實好 ' + gap.toFixed(1) + '%。';
+    } else if (stats.survivorCount === N_FUNDS) {
+      verdict.innerHTML = '🟢 這次模擬中全部 500 檔基金都存活了（罕見的好運）。切換開關不會看到變化——這代表本輪市場條件特別好，沒有基金觸及清算門檻。點擊「重新模擬」再試一次。';
+    } else {
+      verdict.innerHTML = '已清算 ' + (N_FUNDS - stats.survivorCount) + ' 檔基金。切換「只顯示存活基金」開關來觀察績效落差。';
+    }
+    drawChart(stats);
+  }
+
+  // Event handlers
+  document.getElementById('toggleSurvivors').addEventListener('change', function() {
+    showSurvivorsOnly = this.checked;
+    updateDisplay();
+  });
+
+  document.getElementById('btnRerun').addEventListener('click', function() {
+    simulate();
+    document.getElementById('toggleSurvivors').checked = false;
+    showSurvivorsOnly = false;
+    updateDisplay();
+  });
+
+  // Initial
+  simulate();
+  updateDisplay();
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+        feedback.textContent = isCorrect ? '✅ ' + this.dataset.feedback : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

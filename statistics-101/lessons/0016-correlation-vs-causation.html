@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 16 課：相關 ≠ 因果 — 冰淇淋和溺水都是天氣害的</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 16 課：相關 ≠ 因果</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0015-survivorship-bias.html">第 15 課</a></span>
+</div>
+
+<h2>🎪 當統計學背叛了常識</h2>
+
+<p>
+在 1999 到 2009 年間，美國的溺水死亡人數和 Nicholas Cage 出演的電影數量之間，相關性高達 <strong>r = 0.67</strong>。在 2000 到 2009 年間，每人的起司消費量和「被自己的床單纏住而死亡」的人數之間，相關性高達 <strong>r = 0.95</strong>。
+</p>
+
+<p>
+這些是<strong>虛假相關（Spurious Correlation）</strong>——兩個變數在數據上高度相關，但在因果上毫無關係。它們只是碰巧在同一段時間內往同一個方向移動。哈佛學生 Tyler Vigen 為此做了一整個網站（Spurious Correlations），每一張圖都是對「相關係數 = 因果關係」的無聲嘲笑。
+</p>
+
+<div class="callout">
+<strong>📐 這堂課回答一個問題：</strong>當你看到兩件事一起發生，你怎麼知道是誰導致了誰——還是兩者都是被第三件事驅動的？這是整門課程的期末考：你需要用到描述統計（L0001–2）、機率推論（L0003–4）、假設檢定（L0006–7）、以及你在過去 8 課累積的所有行為經濟學直覺。
+</div>
+
+<h2>🔗 相關 ≠ 因果的三種機制</h2>
+
+<p>當你看到 X 和 Y 有統計相關時，至少有五種可能的解釋——其中只有一種是「X 導致 Y」：</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>機制</th><th>方向</th><th>經典例子</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>① X 導致 Y</strong></td><td>X → Y</td><td>吸菸 → 肺癌</td>
+    </tr>
+    <tr>
+      <td><strong>② Y 導致 X</strong>（反向因果）</td><td>Y → X</td><td>是讀書讓你聰明，還是聰明人比較愛讀書？</td>
+    </tr>
+    <tr>
+      <td><strong>③ Z 同時導致 X 和 Y</strong>（混淆變數）</td><td>X ← Z → Y</td><td>冰淇淋銷量 ↗ 與溺水 ↗——真正原因是「夏天」</td>
+    </tr>
+    <tr>
+      <td><strong>④ 巧合</strong>（虛假相關）</td><td>X ⟂ Y</td><td>Nicholas Cage 電影數 vs 溺水死亡</td>
+    </tr>
+    <tr>
+      <td><strong>⑤ 選擇偏誤</strong></td><td>樣本有偏</td><td>第 15 課的倖存者偏誤——你只看得到存活者的 X 和 Y</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+在真實世界中，「相關性」只是一張入場券——代表「值得進一步研究」。要建立因果，需要<strong>實驗</strong>（隨機分組、控制組）或強大的<strong>準實驗方法</strong>（工具變數、差異中的差異、斷點回歸）。而 99% 的新聞報導都沒有做這些——他們只報導了相關性，然後在標題中悄悄把「相關」換成「導致」。
+</p>
+
+<h2>🔄 辛普森悖論：當整體趨勢在每個子群體中逆轉</h2>
+
+<p>
+這是整門課程中最違反直覺的統計現象。它發生時，你的大腦會抗拒——但數學完全正確。
+</p>
+
+<div class="card">
+<h3>真實案例：腎結石治療（Charig et al., 1986, BMJ）</h3>
+<p>醫生比較了兩種腎結石手術的成功率：</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 0.8rem 0;">
+  <div>
+    <p style="font-weight: 600; font-size: 0.9rem;">📊 整體比較（所有病患）</p>
+    <div class="table-responsive"><table style="font-size: 0.85rem;">
+      <tr><td><strong>手術 X</strong></td><td>78%（273/350）</td></tr>
+      <tr><td><strong>手術 Y</strong></td><td style="color: var(--success);"><strong>83%（289/350）</strong></td></tr>
+    </table></div>
+    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem;">→ 手術 Y 看起來比較好</p>
+  </div>
+  <div>
+    <p style="font-weight: 600; font-size: 0.9rem;">🔬 分層比較（依結石大小）</p>
+    <div class="table-responsive"><table style="font-size: 0.85rem;">
+      <tr><td>小結石 X</td><td style="color: var(--accent);"><strong>93%</strong>（81/87）</td><td>小結石 Y</td><td>87%（234/270）</td></tr>
+      <tr><td>大結石 X</td><td style="color: var(--accent);"><strong>73%</strong>（192/263）</td><td>大結石 Y</td><td>69%（55/80）</td></tr>
+    </table></div>
+    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem;">→ 手術 X 在<strong>兩種</strong>結石中都比較好！</p>
+  </div>
+</div>
+
+<p style="margin-bottom: 0;"><strong>怎麼可能？</strong>手術 X 在每種結石中都更好，但整體卻更差？答案——手術 X 絕大多數用在<strong>大結石</strong>（75% 的病患），而大結石的成功率本來就低。手術 Y 大多用在<strong>小結石</strong>（77% 的病患），而小結石的成功率本來就高。結石大小是<strong>混淆變數</strong>——它同時影響了「選哪種手術」和「手術結果」。</p>
+</div>
+
+<h2>🎮 互動沙盒：親手翻轉結論</h2>
+
+<p>
+下方視覺化了同一個腎結石案例。切換「整體數據」和「分層數據」來親眼看到辛普森悖論：
+</p>
+
+<div class="card" id="simpsonLab">
+
+  <div style="display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;">
+    <button id="btnOverall" class="view-btn active-view" style="padding: 0.5em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit;">📊 整體數據</button>
+    <button id="btnSplit" class="view-btn" style="padding: 0.5em 1.2em; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit;">🔬 分層數據（結石大小）</button>
+  </div>
+
+  <div style="position: relative; height: 300px; margin-bottom: 0.8rem;">
+    <canvas id="simpsonChart"></canvas>
+  </div>
+
+  <div id="simpsonVerdict" style="font-size: 0.9rem; padding: 0.7rem; background: var(--code-bg); border-radius: 6px; color: var(--text-dim); line-height: 1.5;"></div>
+
+</div>
+
+<div class="callout warn">
+<strong>⚠️ 辛普森悖論的實戰教訓：</strong>任何不考慮混淆變數的「整體比較」，都可能給出完全相反的結論。在第 14 課的 A/B 測試中，這就是「不要只跑整體分析，要檢查各子群的效應方向是否一致」的原因。在真實決策中——無論是醫療、商業還是政策——辛普森悖論的存在意味著：<strong>對同一組數據，合理和不合理的分析可以導出完全相反的建議。</strong>
+</div>
+
+<h2>📋 讀到「研究顯示 X 導致 Y」時的快速檢核清單</h2>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">1️⃣ 這是實驗還是觀察研究？</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">只有隨機化實驗可以支持因果宣稱。觀察研究只能建立相關。新聞標題幾乎從不區分兩者。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">2️⃣ 有沒有混淆變數沒被控制？</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「喝紅酒的人比較長壽」——他們也比較有錢、運動較多、醫療資源較好。紅酒可能只是富裕的標記（proxy），不是長壽的原因。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">3️⃣ 效應量有多大？</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「吃培根增加 18% 的大腸癌風險」——但絕對風險從 5% 變成 5.9%。相對風險聽起來恐怖，絕對風險微不足道。永遠要求看到<strong>絕對風險變化</strong>而不只是相對風險。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--success);">4️⃣ 有沒有辛普森悖論的可能？</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">整體趨勢有沒有在重要子群中逆轉？如果一個藥「整體有效」但對年輕人和老年人都無效，那就不是藥有效——是年齡分布不均。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">5️⃣ P 值是多少？信賴區間呢？</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">還記得第 6–7 課嗎？如果 P &gt; 0.05 或信賴區間跨過零，這結果可能是雜訊。新聞從來不報 P 值——你要自己去找。</p>
+  </div>
+</div>
+
+<h2>🎓 課程終點：你從 16 堂課學到了什麼</h2>
+
+<div class="summary-box">
+<h3>統計與機率基礎——四大站的旅程</h3>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; margin-top: 0.6rem;">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--accent);">📊 描述統計（L1–2）</h4>
+    <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">平均數、中位數、標準差、常態分布——如何描述數據的形狀、並看出什麼時候平均數在騙你。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--warning);">🎲 機率論（L3–4）</h4>
+    <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">獨立事件、條件機率、貝氏定理——當你看到新證據，如何更新信念而不被蒙提霍爾或基本比率所騙。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--success);">🔬 推論統計（L5–7）</h4>
+    <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">CLT、假設檢定、P 值、信賴區間——如何用樣本推論母體，以及這些工具最常被誤用的方式。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.2rem; color: var(--danger);">🧠 行為統計 × 經濟學（L8–16）</h4>
+    <p style="margin: 0; font-size: 0.82rem; color: var(--text-dim);">均值回歸、賭徒謬誤、EV、展望理論、行為財務、策略評估、A/B 測試、倖存者偏誤、相關 vs 因果——把前三站的武器帶進真實世界。</p>
+  </div>
+</div>
+</div>
+
+<h2>🧪 小測驗：期末驗收</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 冰淇淋銷量和溺水死亡人數高度正相關。最合理的解釋是？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="吃冰淇淋不會導致溺水，這是典型的虛假相關（或混淆變數）。如果這是因果，世界各國政府早就禁止冰淇淋了。">A. 冰淇淋吃太多會導致抽筋，增加溺水風險（X → Y）</span>
+      <span class="quiz-option" data-correct="false" data-feedback="反過來也不成立——溺水的人不會因此增加冰淇淋銷量。">B. 溺水事件增加讓人們想吃冰淇淋（Y → X）</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！夏天（Z）同時導致更多人吃冰淇淋和更多人游泳——後者增加了溺水機率。冰淇淋和溺水沒有任何因果關係——它們共享一個混淆變數。這是機制 ③（X ← Z → Y）。">C. 第三個變數「夏天／高溫」同時導致冰淇淋銷量上升和溺水增加——兩者之間沒有直接因果關係</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 辛普森悖論告訴我們：當你在整體數據中看到某個趨勢時，你應該做什麼？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="辛普森悖論正是在警告我們：整體趨勢可能完全相反於每個子群的趨勢。接受表面結論正是最危險的做法。">A. 直接接受整體趨勢——因為大樣本的結論更可靠</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！辛普森悖論的標準解法就是：檢查是否存在混淆變數（如結石大小、科系競爭程度），並按這些變數分層分析。如果分層後趨勢逆轉，相信分層結果——因為整體結果被混淆變數汙染了。">B. 檢查是否存在混淆變數，並按可能的混淆變數進行分層分析</span>
+      <span class="quiz-option" data-correct="false" data-feedback="樣本增加無法解決辛普森悖論——這不是樣本數不足的問題，而是混淆變數扭曲了整體比較。即使你有 100 萬筆資料，只要混淆變數存在，整體結論就可能完全逆轉。">C. 增加樣本數，直到整體趨勢和分層趨勢一致為止</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 以下哪一項最能區分「相關」和「因果」？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="P &lt; 0.05 只代表「這個相關不太可能是隨機波動」，不代表它是因果。一個顯著的相關仍然是相關。">A. 統計顯著性（P &lt; 0.05）</span>
+      <span class="quiz-option" data-correct="false" data-feedback="高相關性（r = 0.9）代表兩個變數的線性關聯很強——但這仍然不能證明因果。Nicholas Cage 和溺水死亡的相關性很高（r = 0.67），但顯然不是因果。">B. 高度相關（r &gt; 0.8）</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！因果推論的黃金標準是<strong>隨機化實驗</strong>——將受試者隨機分派到實驗組和控制組。如果沒有實驗，則需要準實驗方法（工具變數、RDD、DID 等）。無論相關性多強、P 值多小、樣本多大——觀察數據只能建立相關，不能證明因果。">C. 隨機化實驗——將受試者隨機分配到處理組和控制組</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>相關 ≠ 因果</strong>——兩個變數一起變動，可能的原因有五種（X→Y、Y→X、Z→X 且 Z→Y、巧合、偏誤），只有隨機化實驗能區分它們。</li>
+  <li><strong>辛普森悖論：整體趨勢可以在每個子群體中完全逆轉</strong>——原因是混淆變數同時影響了分組比例和結果。解法：永遠分層分析，檢查是否存在混淆變數。</li>
+  <li><strong>看到「研究顯示 X 導致 Y」時，問五個問題</strong>——這是實驗還是觀察？有沒有控制混淆變數？效應量多大？有沒有辛普森悖論？P 值和信賴區間在哪裡？</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀與下一步</h2>
+
+<ul>
+  <li><strong>Judea Pearl —《The Book of Why》</strong>：因果推論的現代聖經。如果你只能讀一本關於「因果」的書，讀這本。</li>
+  <li><strong>Tyler Vigen — <a href="https://www.tylervigen.com/spurious-correlations" target="_blank" rel="noopener">Spurious Correlations</a></strong>：虛假相關的歡樂博物館。</li>
+  <li><strong>Charig et al. (1986) — BMJ</strong>：腎結石案例的原始論文，辛普森悖論的經典教材。</li>
+</ul>
+
+<div class="callout tip">
+<strong>🎓 恭喜！你完成了統計學與機率基礎的 16 堂課。</strong><br><br>
+從描述一組數據的形狀，到用貝氏定理更新信念；從理解中央極限定理為何是「推論的魔法」，到親手做假設檢定和信賴區間；從均值回歸、賭徒謬誤、展望理論，到行為財務、A/B 測試、倖存者偏誤、相關 vs 因果——你現在擁有了一套能在真實世界中識別統計陷阱、解讀科學宣稱、並做出更好決策的思維工具。<br><br>
+下一步去哪裡？以下是你可能感興趣的延伸方向：<br>
+<strong>📈 迴歸分析與預測建模</strong>——從相關性到預測。<br>
+<strong>🧪 實驗設計與因果推論</strong>——A/B 測試的進階版。<br>
+<strong>📊 貝氏統計學</strong>——另一套完整的推論框架（你已經有了先驗分布的概念）。<br>
+<strong>💻 用 Python/R 實作</strong>——把這 16 堂課的所有概念變成程式碼。<br><br>
+<strong>想要任何方向的第 1 課，隨時跟我說。</strong>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 辛普森悖論互動 ==========
+(function() {
+  // Kidney stone data (Charig et al., 1986)
+  var smallX = { n: 87, s: 81 };
+  var smallY = { n: 270, s: 234 };
+  var largeX = { n: 263, s: 192 };
+  var largeY = { n: 80, s: 55 };
+
+  var overallX = { n: smallX.n + largeX.n, s: smallX.s + largeX.s };
+  var overallY = { n: smallY.n + largeY.n, s: smallY.s + largeY.s };
+
+  var viewMode = 'overall'; // 'overall' | 'split'
+  var chart = null;
+
+  function pct(s, n) { return (s / n * 100).toFixed(0); }
+
+  function drawChart() {
+    var ctx = document.getElementById('simpsonChart').getContext('2d');
+    if (chart) chart.destroy();
+
+    var labels, datasets;
+
+    if (viewMode === 'overall') {
+      labels = ['手術 X', '手術 Y'];
+      datasets = [{
+        label: '成功率',
+        data: [overallX.s / overallX.n * 100, overallY.s / overallY.n * 100],
+        backgroundColor: ['rgba(45,212,191,0.65)', 'rgba(248,113,113,0.55)'],
+        borderColor: ['#2dd4bf', '#f87171'],
+        borderWidth: 1.5,
+        barPercentage: 0.5,
+      }];
+    } else {
+      labels = ['X·小結石', 'Y·小結石', 'X·大結石', 'Y·大結石'];
+      datasets = [{
+        label: '成功率',
+        data: [
+          smallX.s / smallX.n * 100,
+          smallY.s / smallY.n * 100,
+          largeX.s / largeX.n * 100,
+          largeY.s / largeY.n * 100,
+        ],
+        backgroundColor: [
+          'rgba(45,212,191,0.55)', 'rgba(248,113,113,0.35)',
+          'rgba(45,212,191,0.75)', 'rgba(248,113,113,0.55)',
+        ],
+        borderColor: ['#2dd4bf', '#f87171', '#2dd4bf', '#f87171'],
+        borderWidth: 1.5,
+        barPercentage: 0.6,
+      }];
+    }
+
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                var idx = c.dataIndex;
+                if (viewMode === 'overall') {
+                  var d = idx === 0 ? overallX : overallY;
+                  return '成功率: ' + pct(d.s, d.n) + '% (' + d.s + '/' + d.n + ')';
+                } else {
+                  var arr = [smallX, smallY, largeX, largeY];
+                  var d = arr[idx];
+                  return '成功率: ' + pct(d.s, d.n) + '% (' + d.s + '/' + d.n + ')';
+                }
+              },
+            },
+          },
+        },
+        scales: {
+          x: { ticks: { color: '#9e9eb2', font: { size: 11 } }, grid: { display: false } },
+          y: {
+            title: { display: true, text: '成功率 (%)', color: '#9e9eb2' },
+            min: 50, max: 100,
+            ticks: { color: '#9e9eb2', callback: function(v) { return v + '%'; } },
+            grid: { color: 'rgba(39,42,58,0.4)' },
+          },
+        },
+      },
+    });
+
+    // Update verdict
+    var verdict = document.getElementById('simpsonVerdict');
+    if (viewMode === 'overall') {
+      verdict.innerHTML = '📊 <strong>整體數據：</strong>手術 Y（<strong style="color: var(--danger);">' + pct(overallY.s, overallY.n) + '%</strong>）看起來優於手術 X（<strong style="color: var(--accent);">' + pct(overallX.s, overallX.n) + '%</strong>）。如果只看這個，你會建議所有病患使用手術 Y。<br><br>但請點擊「分層數據」——你會看到驚人的逆轉。';
+    } else {
+      verdict.innerHTML = '🔬 <strong>分層數據：</strong>手術 X 在<strong>小結石</strong>（' + pct(smallX.s, smallX.n) + '% vs ' + pct(smallY.s, smallY.n) + '%）和<strong>大結石</strong>（' + pct(largeX.s, largeX.n) + '% vs ' + pct(largeY.s, largeY.n) + '%）中都優於手術 Y。<br><br><strong>為什麼整體趨勢逆轉？</strong>手術 X 的病人有 75% 是大結石（成功難度高），手術 Y 的病人有 77% 是小結石（成功難度低）。結石大小是混淆變數——決定了選哪種手術，也決定了成功機率。';
+    }
+  }
+
+  function setView(mode) {
+    viewMode = mode;
+    document.querySelectorAll('.view-btn').forEach(function(btn) {
+      btn.style.background = 'var(--card-bg)';
+      btn.style.color = 'var(--text)';
+      btn.style.border = '1px solid var(--border)';
+    });
+    var activeBtn = mode === 'overall' ? document.getElementById('btnOverall') : document.getElementById('btnSplit');
+    activeBtn.style.background = 'var(--accent)';
+    activeBtn.style.color = '#0f1119';
+    activeBtn.style.border = 'none';
+    drawChart();
+  }
+
+  document.getElementById('btnOverall').addEventListener('click', function() { setView('overall'); });
+  document.getElementById('btnSplit').addEventListener('click', function() { setView('split'); });
+
+  drawChart();
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+        feedback.textContent = isCorrect ? '✅ ' + this.dataset.feedback : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

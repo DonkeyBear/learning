@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 9 課：賭徒謬誤與熱手謬誤 — 大腦的隨機性盲點</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 9 課：賭徒謬誤與熱手謬誤</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0008-regression-to-mean.html">第 8 課</a></span>
+</div>
+
+<h2>🎰 1913 年，蒙地卡羅賭場的瘋狂一夜</h2>
+
+<p>
+1913 年 8 月 18 日，蒙地卡羅賭場的輪盤賭桌上，發生了一件機率極低——但邏輯上完全合理——的事：<strong>輪盤連續開出 26 次黑色</strong>。
+</p>
+
+<p>
+當晚的賭客們，在連開 5 次黑之後開始押紅色。連開 10 次黑之後，更多人湧向賭桌，狂押紅色。連開 15 次黑之後，賭客陷入集體瘋狂——「紅色<strong>該出了</strong>！不可能一直開黑色！」連開 26 次黑之後，賭場賺進了數百萬法郎。
+</p>
+
+<div class="callout">
+<strong>🎲 機率冷知識：</strong>輪盤出現連續 26 次黑色的機率約為 \( \left(\frac{18}{37}\right)^{26} \approx \frac{1}{6.7 \times 10^7} \)（約 6700 萬分之一）。非常罕見——但<strong>每一次轉動，黑色機率仍然是 18/37</strong>。輪盤沒有記憶，它不知道前面開過什麼。
+</div>
+
+<h2>🧠 賭徒謬誤：獨立事件的「因果幻覺」</h2>
+
+<p>
+<strong>賭徒謬誤（Gambler's Fallacy）</strong>是指：錯誤地相信，在一個獨立隨機序列中，某個結果「該出了」，因為它已經很久沒出現。
+</p>
+
+<div class="card">
+<h3>核心錯誤</h3>
+<p style="margin-bottom: 0;">
+把 <strong>獨立事件</strong> 當成 <strong>自我修正的因果鏈</strong>。<br>
+擲硬幣五次都是正面 → 「第六次反面機率比較高」——<strong>錯。</strong>第六次仍然是 50%。
+</p>
+</div>
+
+<p>
+這個謬誤有兩個經典的變形：
+</p>
+
+<ul>
+  <li><strong>「平衡謬誤」</strong>：隨機過程會「自我修正」以達成 50/50。連續的硬幣拋擲不是這樣運作的——大數法則說的是長期頻率，不是短期補償。</li>
+  <li><strong>「小樣本謬誤」</strong>：期望小樣本看起來就像大樣本的縮影。拋 6 次硬幣，你覺得「正正正反正反」比「正正正正正正」更「隨機」——但兩者的機率完全相等。</li>
+</ul>
+
+<div class="callout warn">
+<strong>⚠️ 關鍵區分：</strong>大數法則說的是「長期頻率會收斂到真實機率」，不是「短期偏差會被補償」。連開 26 次黑的輪盤，不需要在未來開出 26 次紅來「平衡」——它只需要繼續轉動，26 次黑在億萬次轉動中會自然被稀釋，而非被抵銷。
+</div>
+
+<h2>🏀 熱手謬誤：籃球真的有「手感火燙」嗎？</h2>
+
+<p>
+1985 年，心理學家 Gilovich、Vallone 和 Tversky 分析了費城 76 人隊整個賽季的投籃數據。他們問了一個簡單的問題：<strong>投進一球之後，下一球的命中率會提高嗎？</strong>
+</p>
+
+<div class="card">
+<p>
+答案是：<strong>不會。</strong>投進一球後的命中率，和整體命中率沒有統計顯著差異。球員和球迷「感覺」到的手感火燙，在數據中不存在。
+</p>
+<p style="margin-bottom: 0;">
+這個發現當時震驚了體育界。大多數球員和教練至今不接受這個結論——但數據就是數據。
+</p>
+</div>
+
+<p>
+<strong>熱手謬誤（Hot Hand Fallacy）</strong>：錯誤地相信，隨機過程中的「連續成功」代表著某種狀態的改變（手感來了、運氣變好），因此接下來的成功機率也提高了。
+</p>
+
+<p>
+有趣的是，賭徒謬誤和熱手謬誤是<strong>同一枚硬幣的兩面</strong>：
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th></th><th>賭徒謬誤</th><th>熱手謬誤</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>看到連續 X 次成功後…</strong></td><td>「該失敗了」</td><td>「還會繼續成功」</td></tr>
+    <tr><td><strong>對隨機性的想像</strong></td><td>隨機 = 均勻輪流</td><td>隨機 = 有規律的趨勢</td></tr>
+    <tr><td><strong>錯誤的根源</strong></td><td colspan="2" style="text-align: center;">把獨立事件當成有因果關係的序列</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>🎮 互動沙盒：你會掉進陷阱嗎？</h2>
+
+<p>
+接下來是一場 25 次硬幣拋擲的模擬賭局。<strong>每次拋擲前，你決定賭正面或反面</strong>（或跳過）。賭對 +$10，賭錯 −$10。
+</p>
+<p>
+遊戲結束後，我們會分析你的下注行為——你是否在連開多次正面之後，不自覺地押了反面？
+</p>
+
+<div class="card" id="gameContainer">
+
+  <!-- 狀態列 -->
+  <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+    <div>
+      <span style="font-size: 0.85rem; color: var(--muted);">第</span>
+      <strong style="font-size: 1.3rem; color: var(--accent);" id="flipNum">1</strong>
+      <span style="font-size: 0.85rem; color: var(--muted);">/ 25 次</span>
+    </div>
+    <div>
+      <span style="font-size: 0.85rem; color: var(--muted);">累計損益：</span>
+      <strong style="font-size: 1.3rem;" id="runningTotal">$0</strong>
+    </div>
+    <div>
+      <span style="font-size: 0.85rem; color: var(--muted);">目前連續：</span>
+      <strong style="font-size: 1rem;" id="currentStreak">—</strong>
+    </div>
+  </div>
+
+  <!-- 硬幣陣列 -->
+  <div id="coinGrid" style="display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-bottom: 1.5rem; min-height: 56px;">
+    <!-- JS fills this -->
+  </div>
+
+  <!-- 下注按鈕 -->
+  <div id="betArea" style="display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap;">
+    <button id="btnHeads" class="bet-btn bet-heads">🪙 賭正面 (+$10)</button>
+    <button id="btnTails" class="bet-btn bet-tails">🪙 賭反面 (+$10)</button>
+    <button id="btnSkip" class="bet-btn bet-skip">⏭️ 跳過</button>
+  </div>
+
+  <!-- 回饋訊息 -->
+  <div id="feedbackMsg" style="text-align: center; margin-top: 0.8rem; min-height: 1.5rem; font-weight: 600;"></div>
+
+  <!-- 結果分析區（遊戲結束後顯示） -->
+  <div id="resultArea" style="display: none; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+    <h3 style="color: var(--accent);">📊 你的下注行為分析</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+      <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+        <div style="font-size: 0.8rem; color: var(--muted);">總勝率</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);" id="winRate">—</div>
+        <div style="font-size: 0.75rem; color: var(--muted);">期望值：50%</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+        <div style="font-size: 0.8rem; color: var(--muted);">賭徒謬誤指數</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);" id="gfIndex">—</div>
+        <div style="font-size: 0.75rem; color: var(--muted);">連開 3+ 次後押反面的比例</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+        <div style="font-size: 0.8rem; color: var(--muted);">熱手謬誤指數</div>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--danger);" id="hhIndex">—</div>
+        <div style="font-size: 0.75rem; color: var(--muted);">連開 3+ 次後押同面的比例</div>
+      </div>
+    </div>
+
+    <div style="position: relative; height: 220px; margin: 1.5rem 0;">
+      <canvas id="analysisChart"></canvas>
+    </div>
+
+    <div id="verdictText" style="font-size: 0.95rem; margin-top: 1rem;"></div>
+
+    <button id="btnReplay" style="margin-top: 1rem; display: block; width: 100%;">🔄 再玩一次</button>
+  </div>
+
+</div>
+
+<!-- 遊戲按鈕樣式（僅此課使用，由 JS 動態建立） -->
+<style id="gameStyles">
+  .bet-btn {
+    padding: 0.65rem 1.4rem;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .bet-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+  .bet-btn:active { transform: scale(0.97); }
+  .bet-btn:disabled { opacity: 0.4; pointer-events: none; }
+  .bet-heads { border-color: #2dd4bf55; }
+  .bet-heads:hover { border-color: var(--accent); background: rgba(45,212,191,0.15); }
+  .bet-tails { border-color: #f59e0b55; }
+  .bet-tails:hover { border-color: var(--warning); background: rgba(245,158,11,0.15); }
+  .bet-skip { border-color: #9e9eb255; font-size: 0.9rem; }
+  .bet-skip:hover { border-color: var(--muted); background: rgba(158,158,178,0.1); }
+  .coin {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.8rem;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .coin.hidden { background: #1e2130; color: #3d4055; border: 2px solid #272a3a; }
+  .coin.heads { background: #0d3b3b; color: var(--accent); border: 2px solid var(--accent); }
+  .coin.tails { background: #3d2c0d; color: var(--warning); border: 2px solid var(--warning); }
+  .coin.current { box-shadow: 0 0 12px rgba(45,212,191,0.4); }
+</style>
+
+<h2>🧬 為什麼我們的大腦會犯這種錯？</h2>
+
+<p>
+Kahneman 和 Tversky 提出，這兩種謬誤源自同一個心理機制：<strong>代表性捷思（Representativeness Heuristic）</strong>。
+</p>
+
+<p>
+當我們看到一枚公平硬幣的拋擲結果時，大腦內建了一個「隨機應該長什麼樣子」的模板。在這個模板中，50% 的機率意味著結果應該<strong>輪流出現</strong>——正反正反正反。所以「正正正」看起來不隨機，而我們的大腦會根據「它看起來像什麼」來做判斷，而不是根據「它的實際機率是多少」。
+</p>
+
+<div class="card">
+<h3>兩個致命的大腦捷徑</h3>
+<ol>
+  <li><strong>「局部代表性」</strong>：期望小樣本（6 次拋擲）看起來像母體（50/50）。但統計學告訴我們：小樣本的變異性極大，短期的極端偏差是常態而非異常。</li>
+  <li><strong>「因果直覺壓倒機率邏輯」</strong>：我們的大腦演化來偵測因果模式（獅子的腳印 → 附近有獅子），而不是計算獨立事件的條件機率。當你看到連續的成功，你的因果本能會大喊「這不是巧合！一定有原因！」</li>
+</ol>
+</div>
+
+<h2>🔍 真實世界中的賭徒謬誤與熱手謬誤</h2>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>場景</th><th>謬誤類型</th><th>你聽到的說法</th><th>統計學的現實</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>🎰 賭場輪盤</td>
+      <td>賭徒謬誤</td>
+      <td>「連開 8 次大了，下一把一定開小」</td>
+      <td>每次轉動獨立，大/小機率不變</td>
+    </tr>
+    <tr>
+      <td>📈 股市技術分析</td>
+      <td>兩種都有</td>
+      <td>「連跌 5 天了，該反彈了」/「這檔股票正在漲勢上，追！」</td>
+      <td>每日漲跌接近隨機漫步，短期動能與反轉皆無預測力</td>
+    </tr>
+    <tr>
+      <td>🎲 買彩券選號</td>
+      <td>賭徒謬誤</td>
+      <td>「上期開 42，這期不可能再開 42」</td>
+      <td>每期獨立，42 的機率和任何號碼相同</td>
+    </tr>
+    <tr>
+      <td>⚽ 足球 PK 戰</td>
+      <td>熱手謬誤</td>
+      <td>「他今天狀態很好，連續踢進 3 球了」</td>
+      <td>連續命中的機率在隨機模型預期之內</td>
+    </tr>
+    <tr>
+      <td>💼 面試官判斷</td>
+      <td>熱手謬誤</td>
+      <td>「前三個應徵者都很強，今天運氣不錯」</td>
+      <td>小樣本中的「好運」不需要特殊解釋</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 拋一枚公平硬幣 5 次，結果全是正面。第 6 次出現反面的機率是多少？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="這是賭徒謬誤的經典錯誤。硬幣沒有記憶，前 5 次的結果不影響第 6 次。">A. 高於 50%，因為該平衡了</span>
+      <span class="quiz-option" data-correct="false" data-feedback="前 5 次全是正面並不會讓第 6 次正面機率降低，也不會讓它提高。">B. 低於 50%，因為硬幣可能有偏誤</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！每一次拋擲都是獨立事件，無論前面發生什麼，公平硬幣的機率永遠是 50%。">C. 仍然是 50%，每一次拋擲都是獨立的</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 籃球比賽中，某球員連續投進 4 球。以下哪個解釋最符合統計學的立場？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="Gilovich 的研究發現，投進一球後的命中率並沒有顯著提高。短期的連續命中不需要特殊解釋。">A. 他手感火燙，下一球命中的機率明顯高於他的平均命中率</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！50% 命中率的球員，連續命中 4 球的機率是 (0.5)⁴ = 6.25%。聽起來很低？在一整個賽季數百次出手的樣本中，這種連續命中<strong>必然會出現</strong>，不需要用「手感」來解釋。">B. 在一個賽季的數百次出手中，連續命中 4 球完全在隨機波動的預期範圍內</span>
+      <span class="quiz-option" data-correct="false" data-feedback="防守失誤和連續命中不是互斥的，但重點是：在 50% 命中率的隨機模型中，連續命中 4 球本來就會發生，不需要防守失誤來解釋。">C. 一定是防守方失誤，與隨機性無關</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 為什麼賭徒謬誤和熱手謬誤被稱為「同一個錯誤的兩面」？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="這兩個謬誤確實可能出現在同一種情境中（如賭博），但這不是它們是「同一錯誤的兩面」的原因。">A. 因為它們總是同時發生在同一個人身上</span>
+      <span class="quiz-option" data-correct="false" data-feedback="兩者的機率計算都沒有錯——問題不在計算，而在對獨立性的理解。">B. 因為兩者都涉及錯誤的機率計算</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！賭徒謬誤（連開正面之後賭反面）和熱手謬誤（連開正面之後賭正面），都是在「把獨立序列當成有因果結構」的基礎上做出的判斷——只是方向不同。前者認為隨機過程會自我修正，後者認為隨機過程有慣性。兩者都錯在：獨立事件根本沒有記憶。">C. 因為兩者都錯誤地假設獨立事件之間存在因果或慣性關係</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>獨立事件沒有記憶</strong>——輪盤不知道上一把是紅是黑，硬幣不知道前五次都是正面。每一次的機率是固定的。</li>
+  <li><strong>賭徒謬誤和熱手謬誤是同一個認知錯誤的兩種表現</strong>——都源自「代表性捷思」：我們期望小樣本看起來「像」母體，而忽略了隨機過程的自然波動。</li>
+  <li><strong>短期的極端偏差是正常的，不是訊號</strong>——連續出現 6 次正面的機率是 1.56%，聽起來很低。但在 100 次拋擲中，出現至少一次「連續 6 正」的機率高達 54%。你看到的「模式」，很可能只是隨機性的正常表現。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Gilovich, Vallone &amp; Tversky (1985) — "The Hot Hand in Basketball: On the Misperception of Random Sequences"</strong>：熱手謬誤的原始經典論文。</li>
+  <li><strong>Daniel Kahneman —《Thinking, Fast and Slow》第 10 章</strong>：代表性捷思與小數法則的深入討論。</li>
+  <li><strong>Leonard Mlodinow —《The Drunkard's Walk》第 3–4 章</strong>：蒙地卡羅賭場故事與隨機性的心理學。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  我們已經學會了如何避開隨機性中的認知陷阱，但當面對需要做決策的金融與博弈場景時，我們要如何量化選擇的價值？
+</p>
+<p>
+  下一課，我們將探討統計學中做決策最重要的工具——<strong>期望值（Expected Value）</strong>。我們會重現著名的聖彼得堡悖論，並解開一個看似愚蠢、實則包含深刻心理學與經濟學原理的現象：<strong>為什麼明明知道樂透期望值是負的，人們還是瘋狂購買？</strong>歡迎進入下一課：樂透經濟學。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0010-expected-value-lottery.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0010：樂透經濟學與期望值
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>賭徒謬誤是最容易「理智上理解、情感上犯錯」的統計陷阱之一。如果你對獨立性的定義、大數法則和賭徒謬誤的差別、或是為什麼股市技術分析經常是這兩種謬誤的受害者——現在就問你的 AI 老師。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 硬幣賭局模擬器 ==========
+(function() {
+  var TOTAL_FLIPS = 25;
+  var BET_AMOUNT = 10;
+
+  // 狀態
+  var flips = [];        // boolean[] true=正面, false=反面
+  var bets = [];         // (boolean|null)[] true=賭正面, false=賭反面, null=跳過
+  var outcomes = [];     // (boolean|null)[] true=贏, false=輸, null=跳過
+  var currentIdx = 0;    // 下一個要賭的 index
+  var gameOver = false;
+
+  // DOM refs
+  var coinGrid = document.getElementById('coinGrid');
+  var flipNumEl = document.getElementById('flipNum');
+  var runningTotalEl = document.getElementById('runningTotal');
+  var currentStreakEl = document.getElementById('currentStreak');
+  var feedbackMsg = document.getElementById('feedbackMsg');
+  var betArea = document.getElementById('betArea');
+  var resultArea = document.getElementById('resultArea');
+  var btnHeads = document.getElementById('btnHeads');
+  var btnTails = document.getElementById('btnTails');
+  var btnSkip = document.getElementById('btnSkip');
+  var btnReplay = document.getElementById('btnReplay');
+
+  // 生成隨機序列
+  function generateFlips() {
+    flips = [];
+    for (var i = 0; i < TOTAL_FLIPS; i++) {
+      flips.push(Math.random() >= 0.5);
+    }
+    bets = [];
+    outcomes = [];
+    currentIdx = 0;
+    gameOver = false;
+  }
+
+  // 計算目前連續次數（最近的同面次數，從 currentIdx-1 往回看）
+  function getCurrentStreak() {
+    if (currentIdx === 0) return { side: null, len: 0 };
+    var last = flips[currentIdx - 1];
+    var len = 0;
+    for (var i = currentIdx - 1; i >= 0; i--) {
+      if (flips[i] === last) len++;
+      else break;
+    }
+    return { side: last, len: len };
+  }
+
+  // 渲染硬幣陣列
+  function renderCoins() {
+    coinGrid.innerHTML = '';
+    for (var i = 0; i < TOTAL_FLIPS; i++) {
+      var coin = document.createElement('div');
+      coin.className = 'coin';
+      if (i < currentIdx) {
+        // 已揭示
+        coin.classList.add(flips[i] ? 'heads' : 'tails');
+        coin.textContent = flips[i] ? '正' : '反';
+        if (i === currentIdx - 1) coin.classList.add('current');
+      } else {
+        // 未揭示
+        coin.classList.add('hidden');
+        coin.textContent = '?';
+      }
+      coinGrid.appendChild(coin);
+    }
+  }
+
+  // 更新狀態顯示
+  function updateStatus() {
+    flipNumEl.textContent = Math.min(currentIdx + 1, TOTAL_FLIPS);
+
+    var total = 0;
+    for (var i = 0; i < outcomes.length; i++) {
+      if (outcomes[i] === true) total += BET_AMOUNT;
+      else if (outcomes[i] === false) total -= BET_AMOUNT;
+    }
+    var sign = total >= 0 ? '' : '';
+    var clr = total > 0 ? 'var(--success)' : (total < 0 ? 'var(--danger)' : 'var(--text)');
+    runningTotalEl.textContent = sign + '$' + total;
+    runningTotalEl.style.color = clr;
+
+    var streak = getCurrentStreak();
+    if (streak.len >= 2) {
+      var sideName = streak.side ? '正' : '反';
+      currentStreakEl.textContent = '連續 ' + streak.len + ' 次' + sideName;
+      currentStreakEl.style.color = streak.side ? 'var(--accent)' : 'var(--warning)';
+    } else {
+      currentStreakEl.textContent = '—';
+      currentStreakEl.style.color = 'var(--muted)';
+    }
+  }
+
+  // 下注邏輯
+  function placeBet(betOnHeads) {
+    if (gameOver) return;
+    if (betOnHeads === null) {
+      // 跳過
+      bets.push(null);
+      outcomes.push(null);
+      feedbackMsg.textContent = '⏭️ 跳過這次。結果是：' + (flips[currentIdx] ? '正面' : '反面');
+      feedbackMsg.style.color = 'var(--muted)';
+    } else {
+      bets.push(betOnHeads);
+      var won = betOnHeads === flips[currentIdx];
+      outcomes.push(won);
+      var resultText = flips[currentIdx] ? '正面' : '反面';
+      if (won) {
+        feedbackMsg.textContent = '✅ 你賭對了！結果是 ' + resultText + '，+$' + BET_AMOUNT;
+        feedbackMsg.style.color = 'var(--success)';
+      } else {
+        feedbackMsg.textContent = '❌ 你賭錯了！結果是 ' + resultText + '，-$' + BET_AMOUNT;
+        feedbackMsg.style.color = 'var(--danger)';
+      }
+    }
+
+    currentIdx++;
+    renderCoins();
+    updateStatus();
+
+    if (currentIdx >= TOTAL_FLIPS) {
+      endGame();
+    } else {
+      disableBetButtons(false);
+    }
+  }
+
+  function disableBetButtons(disabled) {
+    btnHeads.disabled = disabled;
+    btnTails.disabled = disabled;
+    btnSkip.disabled = disabled;
+  }
+
+  // 遊戲結束分析
+  function endGame() {
+    gameOver = true;
+    disableBetButtons(true);
+    betArea.style.display = 'none';
+    feedbackMsg.textContent = '🎯 遊戲結束！以下是你的分析報告。';
+    feedbackMsg.style.color = 'var(--accent)';
+    resultArea.style.display = 'block';
+
+    // 計算統計
+    var totalBets = 0, totalWins = 0;
+    var againstStreakCount = 0, againstStreakTotal = 0;
+    var withStreakCount = 0, withStreakTotal = 0;
+
+    for (var i = 0; i < bets.length; i++) {
+      if (bets[i] === null) continue;
+      totalBets++;
+      if (outcomes[i]) totalWins++;
+
+      // 檢查在 i 之前的 streak
+      if (i < 3) continue;
+      var recentSide = flips[i - 1];
+      var streakLen = 1;
+      for (var j = i - 2; j >= 0 && flips[j] === recentSide; j--) streakLen++;
+      if (streakLen < 3) continue;
+
+      if (bets[i] === recentSide) {
+        withStreakTotal++;
+        if (outcomes[i]) withStreakCount++;
+      } else {
+        againstStreakTotal++;
+        if (outcomes[i]) againstStreakCount++;
+      }
+    }
+
+    var winRate = totalBets > 0 ? (totalWins / totalBets * 100).toFixed(0) : '—';
+    var gfRate = againstStreakTotal > 0 ? (againstStreakCount / againstStreakTotal * 100) : 'N/A';
+    var hhRate = withStreakTotal > 0 ? (withStreakCount / withStreakTotal * 100) : 'N/A';
+
+    document.getElementById('winRate').textContent = winRate + '%';
+    document.getElementById('gfIndex').textContent = againstStreakTotal > 2
+      ? (againstStreakTotal - againstStreakCount) + '/' + againstStreakTotal + ' 押錯'
+      : '樣本不足';
+    document.getElementById('hhIndex').textContent = withStreakTotal > 2
+      ? (withStreakCount) + '/' + withStreakTotal + ' 押對'
+      : '樣本不足';
+
+    // 診斷
+    var verdict = '';
+    var againstRate = againstStreakTotal > 0 ? (1 - againstStreakCount / againstStreakTotal) : 0;
+    var withRate = withStreakTotal > 0 ? (withStreakCount / withStreakTotal) : 0;
+
+    if (againstStreakTotal >= 3 && againstRate > 0.5) {
+      verdict += '🟡 <strong>你展現了賭徒謬誤傾向：</strong>在連續開出同一面之後，你傾向押反面，相信「該換邊了」。記住：硬幣沒有記憶。';
+    } else if (againstStreakTotal >= 3) {
+      verdict += '🟢 你沒有明顯的賭徒謬誤傾向——面對連續同一面時，你沒有系統性押反面。';
+    }
+
+    if (withStreakTotal >= 3 && withRate > 0.6) {
+      verdict += (verdict ? '<br><br>' : '') + '🟠 <strong>你展現了熱手謬誤傾向：</strong>在連續開出同一面之後，你傾向押同一面，相信「趨勢會持續」。記住：獨立事件沒有慣性。';
+    } else if (withStreakTotal >= 3) {
+      verdict += (verdict ? '<br><br>' : '') + '🟢 你沒有明顯的熱手謬誤傾向。';
+    }
+
+    if (!verdict) {
+      verdict = '🟢 樣本不足以判斷明顯的謬誤傾向。試著多玩幾次，或者刻意在連續開出同一面時做出選擇。';
+    }
+
+    document.getElementById('verdictText').innerHTML = verdict;
+
+    // 繪製圖表
+    drawAnalysisChart(againstStreakTotal, withStreakTotal, againstStreakCount, withStreakCount);
+  }
+
+  var analysisChart = null;
+  function drawAnalysisChart(againstTotal, withTotal, againstCorrect, withCorrect) {
+    var ctx = document.getElementById('analysisChart').getContext('2d');
+    if (analysisChart) analysisChart.destroy();
+
+    var againstWrong = Math.max(0, againstTotal - againstCorrect);
+    var withCorrectC = Math.max(0, withCorrect);
+    var withWrong = Math.max(0, withTotal - withCorrect);
+
+    analysisChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['連開 3+ 次後\n你押了反面', '連開 3+ 次後\n你押了同面'],
+        datasets: [
+          {
+            label: '押對',
+            data: [againstCorrect, withCorrectC],
+            backgroundColor: 'rgba(74, 222, 128, 0.6)',
+            borderColor: '#4ade80',
+            borderWidth: 1,
+          },
+          {
+            label: '押錯',
+            data: [againstWrong, withWrong],
+            backgroundColor: 'rgba(248, 113, 113, 0.5)',
+            borderColor: '#f87171',
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'x',
+        plugins: {
+          legend: { labels: { color: '#9e9eb2', usePointStyle: true, boxWidth: 8, padding: 14, font: { size: 12 } } },
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { color: '#9e9eb2', font: { size: 11 }, maxRotation: 0 },
+            grid: { display: false },
+          },
+          y: {
+            stacked: true,
+            title: { display: true, text: '次數', color: '#9e9eb2' },
+            ticks: { color: '#9e9eb2', stepSize: 1 },
+            grid: { color: 'rgba(39, 42, 58, 0.4)' },
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+  }
+
+  // 重置遊戲
+  function resetGame() {
+    generateFlips();
+    currentIdx = 0;
+    gameOver = false;
+    bets = [];
+    outcomes = [];
+    renderCoins();
+    updateStatus();
+    disableBetButtons(false);
+    betArea.style.display = 'flex';
+    feedbackMsg.textContent = '';
+    feedbackMsg.style.color = '';
+    resultArea.style.display = 'none';
+    if (analysisChart) { analysisChart.destroy(); analysisChart = null; }
+  }
+
+  // 事件綁定
+  btnHeads.addEventListener('click', function() {
+    disableBetButtons(true);
+    placeBet(true);
+  });
+  btnTails.addEventListener('click', function() {
+    disableBetButtons(true);
+    placeBet(false);
+  });
+  btnSkip.addEventListener('click', function() {
+    disableBetButtons(true);
+    placeBet(null);
+  });
+  btnReplay.addEventListener('click', resetGame);
+
+  // 初始化
+  generateFlips();
+  renderCoins();
+  updateStatus();
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+
+        feedback.textContent = isCorrect
+          ? '✅ ' + this.dataset.feedback
+          : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

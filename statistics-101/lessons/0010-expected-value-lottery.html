@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 10 課：樂透經濟學 — 為什麼負期望值還有人買？</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
+    onload="renderMathInElement(document.body);"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>第 10 課：樂透經濟學</h1>
+<div class="lesson-meta">
+  <span>📊 統計學與機率基礎</span>
+  <span>📅 第四站：行為統計學 × 行為經濟學</span>
+  <span>← <a href="0009-gamblers-fallacy.html">第 9 課</a></span>
+</div>
+
+<h2>🎫 一張樂透的「真實價值」是多少？</h2>
+
+<p>
+想像以下場景：有人以 $100 賣你一張彩券，這張彩券的<strong>平均回報</strong>是 $53。你會買嗎？
+</p>
+
+<p>
+理性的答案很清楚：不會。但這就是台灣大多數合法樂透的現實——<strong>每一張 $100 的彩券，你平均只能拿回約 $50–$55</strong>。剩下的 $45–$50，是「隱形代價」：政府的公益盈餘、經銷商佣金、以及——說得直白一點——你為「做夢的權利」支付的租金。
+</p>
+
+<div class="callout">
+<strong>💡 核心概念：期望值（Expected Value）</strong>——將每個可能的結果乘上其發生機率，再加總。它代表「如果這件事重複無限多次，你平均每次會得到的結果」。
+</div>
+
+<h2>📐 期望值的數學</h2>
+
+<p>
+期望值公式非常簡單：
+</p>
+
+<div class="math-scroll">
+$$ E[X] = \sum_{i} x_i \cdot P(x_i) $$
+</div>
+
+<p>
+\( x_i \) 是每個可能的回報（正數是贏，負數是輸），\( P(x_i) \) 是該回報的機率。所有機率加起來必須等於 1。
+</p>
+
+<div class="card">
+<h3>簡單例子：擲硬幣賭局</h3>
+<p>你付 $1 參加。擲硬幣：正面你贏 $2（淨賺 $1），反面你什麼都沒有（淨賠 $1）。</p>
+<div class="math-scroll">
+$$ E = 0.5 \times (+\$1) + 0.5 \times (-\$1) = \$0 $$
+</div>
+<p style="margin-bottom: 0;">期望值為 $0——這是「公平賭局」。長期下來你不賺不賠。賭場和樂透的期望值永遠是負的，所以長期下來你必定賠錢。</p>
+</div>
+
+<h2>🎰 拆解一張真實樂透的期望值</h2>
+
+<p>
+以下模擬一款「超級樂透」，獎項結構近似台灣常見的公益彩券：
+</p>
+
+<div class="table-responsive">
+<table>
+  <thead>
+    <tr><th>獎項</th><th>中獎條件</th><th>機率</th><th>獎金 (NTD)</th><th>期望值貢獻</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>頭獎</td><td>6 碼全中</td><td>1 / 13,983,816</td><td>$500,000,000</td><td style="color: var(--accent);">$35.75</td></tr>
+    <tr><td>二獎</td><td>5 碼 + 特別號</td><td>1 / 2,330,636</td><td>$5,000,000</td><td style="color: var(--accent);">$2.15</td></tr>
+    <tr><td>三獎</td><td>5 碼</td><td>1 / 55,491</td><td>$200,000</td><td style="color: var(--accent);">$3.60</td></tr>
+    <tr><td>四獎</td><td>4 碼</td><td>1 / 1,032</td><td>$5,000</td><td style="color: var(--accent);">$4.84</td></tr>
+    <tr><td>五獎</td><td>3 碼</td><td>1 / 57</td><td>$400</td><td style="color: var(--accent);">$7.02</td></tr>
+    <tr style="border-top: 2px solid var(--border);"><td colspan="3"><strong>總期望值</strong></td><td><strong style="color: var(--accent);">$53.36</strong></td><td></td></tr>
+    <tr><td colspan="3"><strong>彩券售價</strong></td><td><strong style="color: var(--danger);">$100.00</strong></td><td></td></tr>
+    <tr style="border-top: 2px solid var(--accent);"><td colspan="3"><strong>每張淨損失</strong></td><td><strong style="color: var(--danger);">−$46.64</strong></td><td></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+<strong>每買一張 $100 的彩券，你的期望損失是 $46.64。</strong>換句話說，這張彩券的「真實價值」只有 $53.36——剩下的 $46.64 不是燒掉了，而是流向了政府公益預算和經銷體系。這就是為什麼經濟學家有時戲稱樂透為「隱形窮人稅」：它不是強制的，但確實不成比例地由中低收入族群負擔。
+</p>
+
+<h2>🎮 互動沙盒：你的樂透人生</h2>
+
+<p>
+模擬你從今天開始，<strong>每週固定買 N 張樂透</strong>，持續多年。親眼看看累計花費和累計獎金的差距如何隨著時間擴大。
+</p>
+
+<div class="card" id="lotterySim">
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.2rem;">
+    <div>
+      <label for="ticketsSlider" style="display: block; font-weight: 600; margin-bottom: 0.3rem;">
+        每週購買張數：<strong style="color: var(--accent);" id="ticketsVal">5</strong> 張
+      </label>
+      <input type="range" id="ticketsSlider" min="1" max="50" value="5" step="1"
+        style="width: 100%; accent-color: var(--accent);">
+    </div>
+    <div>
+      <label for="yearsSlider" style="display: block; font-weight: 600; margin-bottom: 0.3rem;">
+        模擬年數：<strong style="color: var(--accent);" id="yearsVal">10</strong> 年
+      </label>
+      <input type="range" id="yearsSlider" min="1" max="40" value="10" step="1"
+        style="width: 100%; accent-color: var(--accent);">
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem;">
+    <button id="btnSimulate" style="padding: 0.6em 1.6em; background: var(--accent); color: #0f1119; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.95rem;">▶ 開始模擬</button>
+    <button id="btnReroll" style="padding: 0.6em 1.2em; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.95rem;">🔄 重新抽獎</button>
+  </div>
+
+  <!-- 模擬進行中指示 -->
+  <div id="simProgress" style="display: none; text-align: center; margin: 0.8rem 0; color: var(--muted);"></div>
+
+  <!-- 結果面板 -->
+  <div id="simResults" style="display: none;">
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
+      <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+        <div style="font-size: 0.8rem; color: var(--muted);">總花費</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--danger);" id="totalSpent">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--success);">
+        <div style="font-size: 0.8rem; color: var(--muted);">總獎金</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--success);" id="totalWon">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+        <div style="font-size: 0.8rem; color: var(--muted);">淨損益</div>
+        <div style="font-size: 1.4rem; font-weight: 700;" id="netResult">—</div>
+      </div>
+      <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+        <div style="font-size: 0.8rem; color: var(--muted);">中頭獎次數</div>
+        <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent);" id="jackpotCount">—</div>
+      </div>
+    </div>
+
+    <div style="position: relative; height: 280px; margin: 1.2rem 0;">
+      <canvas id="lotteryChart"></canvas>
+    </div>
+
+    <div id="simVerdict" style="font-size: 0.95rem; padding: 0.8rem; background: var(--code-bg); border-radius: 6px;"></div>
+
+  </div>
+
+</div>
+
+<h2>🧠 那為什麼還有人買？</h2>
+
+<p>
+如果樂透的期望值明顯為負，為什麼全世界每年仍有數千億美元的樂透銷售額？答案不在統計學——在心理學和經濟學。
+</p>
+
+<div class="stack-cards">
+  <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--warning);">💰 小機率 × 大回報</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">人類大腦不善於處理極小機率。1/1400 萬的頭獎機率，在情感上被「曾經有人中過」的畫面取代。我們過度看重可能的大回報，而低估了近乎確定的損失。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🎭 買的是夢想，不是期望值</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">從買下彩券到開獎之間的幾天，$100 為你買到的不只是一張紙——而是一個「如果中了頭獎，我明天就辭職」的夢。這份快樂是否值 $46.64？對很多人來說，值。</p>
+  </div>
+  <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
+    <h4 style="margin: 0 0 0.3rem; color: var(--danger);">📉 邊際效用遞減</h4>
+    <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">對月薪 3 萬的人來說，每週少 $100 幾乎無感（少喝一杯咖啡），但中頭獎會徹底改變人生。損失的效用極小，贏的效用極大——即使贏的機率微乎其微。</p>
+  </div>
+</div>
+
+<p>
+這些心理機制——小機率的高估、夢想的消費價值、不對稱的效用——正是下一課的主題：<strong>展望理論（Prospect Theory）</strong>。Kahneman 和 Tversky 因為這套理論獲得了諾貝爾經濟學獎，它將徹底解釋你剛才在模擬器中看到的一切。
+</p>
+
+<h2>🧪 小測驗：你學會了嗎？</h2>
+
+<div class="quiz">
+
+  <div class="quiz-question" id="q1">
+    <p><strong>Q1.</strong> 一張彩券售價 $100，總期望值為 $53。如果你每週買一張，持續 10 年（520 張），你的期望總損失大約是多少？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="$24,440 對應每張損失約 $47，但我們的 EV 計算顯示每張淨損失是 $46.64。520 × $46.64 ≈ $24,253。">A. 約 $10,000</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！每張 EV 損失 $46.64，520 張的期望總損失 = 520 × $46.64 ≈ $24,253。即便你「運氣好」中了幾次小獎，長期下來這個數字就是你的命運。">B. 約 $24,000</span>
+      <span class="quiz-option" data-correct="false" data-feedback="$52,000 是你「完全沒中任何獎」的極端情況（520 × $100），但期望值計算已考慮了中小獎的機率——你的實際期望損失比這個少，但仍然是負的。">C. 約 $52,000</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q2">
+    <p><strong>Q2.</strong> 以下哪一種賭局對玩家最有利？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="輪盤的莊家優勢約為 2.7%（歐式）到 5.26%（美式）。EV 為負——長期下來你一定賠。">A. 歐式輪盤（莊家優勢 2.7%）</span>
+      <span class="quiz-option" data-correct="false" data-feedback="樂透的期望值回報率約 50–55%，每 $100 平均賠 $45–$50。在所有常見賭博中，樂透的 EV 通常是最差的。">B. 政府公益樂透（回報率約 53%）</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！百家樂押莊家的莊家優勢僅約 1.06%，是賭場遊戲中最低的之一。但注意——它仍然是負 EV。賭場中<strong>沒有任何遊戲對玩家是正 EV</strong>（除非你是算牌高手）。">C. 百家樂押莊家（莊家優勢 1.06%）</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz-question" id="q3">
+    <p><strong>Q3.</strong> 為什麼經濟學家仍可能說「買樂透不是不理性的」？</p>
+    <div class="quiz-options">
+      <span class="quiz-option" data-correct="false" data-feedback="數學上樂透就是負 EV——沒有「提升中獎率」的策略可以改變期望值。每一張額外的彩券都以同樣的負 EV 增加損失。">A. 因為買夠多張就能提升中獎率，讓 EV 變正</span>
+      <span class="quiz-option" data-correct="false" data-feedback="「某人的損失是別人的收益」描述的是零和博弈，但樂透不是零和的——政府和中間商抽取了大量資金。">B. 因為這是零和博弈，某人的損失就是別人的收益</span>
+      <span class="quiz-option" data-correct="true" data-feedback="正確！行為經濟學的觀點是：如果 $100 的損失對你幾乎無感（邊際效用極低），而中頭獎的效用極大，那麼購買樂透可能是「效用最大化」的理性選擇——即使期望值為負。關鍵是：這筆錢必須在你的「娛樂預算」內。">C. 因為金錢的邊際效用遞減——對低收入者來說，$100 的損失換來的「夢想效用」可能超過期望值損失</span>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+</div>
+
+<h2>📋 本課摘要</h2>
+
+<div class="summary-box">
+<h3>三個核心收穫</h3>
+<ol>
+  <li><strong>期望值是機率決策的核心工具</strong>——\( E[X] = \sum x_i \cdot P(x_i) \)。用這個公式評估任何涉及風險的選擇。</li>
+  <li><strong>樂透是系統性的負期望值交易</strong>——每 $100 的彩券，你平均拿回約 $50–$55。長期購買的期望損失是可精確計算的。</li>
+  <li><strong>人類買樂透不是因為不會算數學</strong>——而是因為金錢的邊際效用遞減、小機率的高估、以及「做夢」本身的消費價值。理解這些不意味著不該買樂透，而是要知道你真正在買的是什麼。</li>
+</ol>
+</div>
+
+<h2>📚 推薦閱讀</h2>
+
+<ul>
+  <li><strong>Daniel Kahneman —《Thinking, Fast and Slow》第 26–29 章</strong>：展望理論與風險決策的完整論述（為第 11 課做準備）。</li>
+  <li><strong>Richard Thaler —《Misbehaving》第 8–10 章</strong>：行為經濟學視角下的賭博與樂透。</li>
+  <li><strong>Jordan Ellenberg —《How Not to Be Wrong》第 10 章</strong>：樂透數學與「應該買多少張」的精采計算。</li>
+</ul>
+
+<!-- ═══════════════ NEXT ═══════════════ -->
+<h2>下一課預告</h2>
+
+<p>
+  你已經親眼看到樂透模擬器的結果——長期下來，負期望值會無情地吞噬你的本金。但樂透只是冰山一角：<strong>為什麼我們明知道該停損，卻死抱賠錢的股票？為什麼「穩贏 3000 元」比「80% 機率贏 4000 元」更有吸引力？</strong>
+</p>
+<p>
+  下一課，我們進入行為經濟學的核心——Kahneman 與 Tversky 的<strong>展望理論（Prospect Theory）</strong>。你將看到一條違反直覺的價值曲線，一次解釋樂透購買、保險消費、股市套牢等所有「不理性」的金錢行為。
+</p>
+
+<div style="text-align: center; margin: 1.5rem 0;">
+  <a href="0011-prospect-theory.html" style="display: inline-block; padding: 0.6em 1.4em; background: var(--accent); color: #0f1119; border-radius: 6px; font-weight: 600; text-decoration: none;">
+    → 前往 L0011：展望理論——Kahneman &amp; Tversky 的行為經濟學革命
+  </a>
+</div>
+
+<div class="callout tip">
+<strong>💬 有問題嗎？</strong>期望值的計算很簡單，但它在真實世界中的應用——特別是和人類心理交織時——變得極其微妙。如果你想知道特定賭局或投資的期望值怎麼算，或者對邊際效用遞減的概念有疑問，現在就問你的 AI 老師。
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+</nav>
+
+<script>
+// ========== 樂透模擬器 ==========
+(function() {
+  // 獎項定義
+  var prizes = [
+    { name: '頭獎', prob: 1/13983816,   amount: 500000000 },
+    { name: '二獎', prob: 1/2330636,    amount: 5000000 },
+    { name: '三獎', prob: 1/55491,      amount: 200000 },
+    { name: '四獎', prob: 1/1032,       amount: 5000 },
+    { name: '五獎', prob: 1/57,         amount: 400 },
+  ];
+  var TICKET_PRICE = 100;
+  var cumulativeThresholds = [];
+  function buildThresholds() {
+    cumulativeThresholds = [];
+    var cumulative = 0;
+    for (var i = 0; i < prizes.length; i++) {
+      cumulative += prizes[i].prob;
+      cumulativeThresholds.push({ name: prizes[i].name, amount: prizes[i].amount, threshold: cumulative });
+    }
+  }
+  buildThresholds();
+
+  function drawOneTicket() {
+    var r = Math.random();
+    for (var i = 0; i < cumulativeThresholds.length; i++) {
+      if (r < cumulativeThresholds[i].threshold) return cumulativeThresholds[i].amount;
+    }
+    return 0;
+  }
+
+  function simulate(ticketsPerDraw, totalDraws) {
+    var totalSpent = ticketsPerDraw * totalDraws * TICKET_PRICE;
+    var totalWon = 0;
+    var jackpotCount = 0;
+    var timeline = []; // {draw, cumulativeSpent, cumulativeWon}
+    var cumulativeSpent = 0;
+    var cumulativeWon = 0;
+
+    // 每 N 次開獎記錄一個資料點（控制圖表資料密度）
+    var recordInterval = Math.max(1, Math.floor(totalDraws / 200));
+
+    for (var d = 0; d < totalDraws; d++) {
+      cumulativeSpent += ticketsPerDraw * TICKET_PRICE;
+      for (var t = 0; t < ticketsPerDraw; t++) {
+        var win = drawOneTicket();
+        cumulativeWon += win;
+        totalWon += win;
+        if (win === prizes[0].amount) jackpotCount++;
+      }
+      if (d % recordInterval === 0 || d === totalDraws - 1) {
+        timeline.push({ draw: d + 1, cumulativeSpent: cumulativeSpent, cumulativeWon: cumulativeWon });
+      }
+    }
+
+    return {
+      totalSpent: totalSpent,
+      totalWon: totalWon,
+      jackpotCount: jackpotCount,
+      totalDraws: totalDraws,
+      ticketsPerDraw: ticketsPerDraw,
+      timeline: timeline,
+    };
+  }
+
+  function formatMoney(n) {
+    if (Math.abs(n) >= 100000000) return '$' + (n / 100000000).toFixed(2) + ' 億';
+    if (Math.abs(n) >= 10000) return '$' + (n / 10000).toFixed(1) + ' 萬';
+    return '$' + n.toLocaleString();
+  }
+
+  var chartInstance = null;
+
+  function showResults(result) {
+    var panel = document.getElementById('simResults');
+    panel.style.display = 'block';
+    document.getElementById('simProgress').style.display = 'none';
+
+    document.getElementById('totalSpent').textContent = formatMoney(result.totalSpent);
+    document.getElementById('totalWon').textContent = formatMoney(result.totalWon);
+    var net = result.totalWon - result.totalSpent;
+    var netEl = document.getElementById('netResult');
+    netEl.textContent = formatMoney(net);
+    netEl.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('jackpotCount').textContent = result.jackpotCount + ' 次';
+
+    // 診斷文字
+    var verdict = document.getElementById('simVerdict');
+    var returnRate = (result.totalWon / result.totalSpent * 100);
+    var years = result.totalDraws / 52;
+
+    if (result.jackpotCount > 0) {
+      verdict.innerHTML = '🎉 你中了 <strong>' + result.jackpotCount + '</strong> 次頭獎！這代表你的報酬率是 ' + returnRate.toFixed(0) + '%。但請注意：<strong>這遠遠偏離期望值</strong>——你能中頭獎代表運氣極好。按「重新抽獎」再試一次，幾乎不可能重現這個結果。';
+      verdict.style.color = 'var(--success)';
+    } else if (returnRate >= 80) {
+      verdict.innerHTML = '你的報酬率是 ' + returnRate.toFixed(0) + '%，比期望值（53%）好。可能有中到較大的獎項。試著增加模擬年數——隨著年數增加，報酬率會<strong>越來越接近 53%</strong>。';
+      verdict.style.color = 'var(--warning)';
+    } else {
+      verdict.innerHTML = '在 ' + years.toFixed(0) + ' 年內，每週買 ' + result.ticketsPerDraw + ' 張樂透，你總共花了 <strong>' + formatMoney(result.totalSpent) + '</strong>，拿回了 <strong>' + formatMoney(result.totalWon) + '</strong>，報酬率 <strong>' + returnRate.toFixed(1) + '%</strong>。淨損 <strong>' + formatMoney(net) + '</strong>。這就是負期望值的累積力量。';
+      verdict.style.color = 'var(--text-dim)';
+    }
+
+    // 繪圖
+    drawChart(result.timeline);
+  }
+
+  function drawChart(timeline) {
+    var ctx = document.getElementById('lotteryChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timeline.map(function(p) { return p.draw; }),
+        datasets: [
+          {
+            label: '累計花費',
+            data: timeline.map(function(p) { return p.cumulativeSpent; }),
+            borderColor: '#f87171',
+            backgroundColor: 'rgba(248,113,113,0.08)',
+            borderWidth: 2,
+            fill: true,
+            pointRadius: 0,
+            tension: 0.1,
+          },
+          {
+            label: '累計獎金',
+            data: timeline.map(function(p) { return p.cumulativeWon; }),
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74,222,128,0.08)',
+            borderWidth: 2,
+            fill: true,
+            pointRadius: 0,
+            tension: 0.1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#9e9eb2', usePointStyle: true, boxWidth: 8, padding: 14, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return ctx.dataset.label + ': ' + formatMoney(ctx.raw); },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '開獎次數', color: '#9e9eb2' },
+            ticks: { color: '#9e9eb2', maxTicksLimit: 10 },
+            grid: { color: 'rgba(39, 42, 58, 0.4)' },
+          },
+          y: {
+            title: { display: true, text: '金額 (NTD)', color: '#9e9eb2' },
+            ticks: { color: '#9e9eb2', callback: function(v) { return formatMoney(v); } },
+            grid: { color: 'rgba(39, 42, 58, 0.4)' },
+          },
+        },
+      },
+    });
+  }
+
+  // UI 事件
+  var ticketsSlider = document.getElementById('ticketsSlider');
+  var ticketsVal = document.getElementById('ticketsVal');
+  var yearsSlider = document.getElementById('yearsSlider');
+  var yearsVal = document.getElementById('yearsVal');
+  var btnSimulate = document.getElementById('btnSimulate');
+  var btnReroll = document.getElementById('btnReroll');
+  var simProgress = document.getElementById('simProgress');
+  var simResults = document.getElementById('simResults');
+  var lastParams = null;
+
+  ticketsSlider.addEventListener('input', function() {
+    ticketsVal.textContent = this.value;
+  });
+  yearsSlider.addEventListener('input', function() {
+    yearsVal.textContent = this.value;
+  });
+
+  function runSim() {
+    var ticketsPerDraw = parseInt(ticketsSlider.value);
+    var years = parseInt(yearsSlider.value);
+    var totalDraws = years * 52;
+    lastParams = { ticketsPerDraw: ticketsPerDraw, years: years };
+
+    simResults.style.display = 'none';
+    simProgress.style.display = 'block';
+    simProgress.textContent = '模擬中⋯⋯每週 ' + ticketsPerDraw + ' 張，共 ' + totalDraws + ' 次開獎';
+
+    // 使用 setTimeout 避免阻塞 UI
+    setTimeout(function() {
+      var result = simulate(ticketsPerDraw, totalDraws);
+      showResults(result);
+    }, 50);
+  }
+
+  btnSimulate.addEventListener('click', runSim);
+  btnReroll.addEventListener('click', function() {
+    if (lastParams) {
+      simResults.style.display = 'none';
+      simProgress.style.display = 'block';
+      simProgress.textContent = '模擬中⋯⋯每週 ' + lastParams.ticketsPerDraw + ' 張，共 ' + (lastParams.years * 52) + ' 次開獎';
+      setTimeout(function() {
+        var result = simulate(lastParams.ticketsPerDraw, lastParams.years * 52);
+        showResults(result);
+      }, 50);
+    } else {
+      runSim();
+    }
+  });
+
+  // 初始模擬一次
+  setTimeout(runSim, 200);
+})();
+
+// ========== 測驗互動邏輯 ==========
+(function() {
+  document.querySelectorAll('.quiz-options').forEach(function(group) {
+    group.querySelectorAll('.quiz-option').forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        if (group.parentElement.dataset.answered === 'true') return;
+        group.parentElement.dataset.answered = 'true';
+
+        var isCorrect = this.dataset.correct === 'true';
+        var feedback = group.parentElement.querySelector('.quiz-feedback');
+
+        group.querySelectorAll('.quiz-option').forEach(function(o) {
+          o.style.pointerEvents = 'none';
+          if (o.dataset.correct === 'true') o.classList.add('correct');
+        });
+        if (!isCorrect) this.classList.add('wrong');
+
+        feedback.textContent = isCorrect
+          ? '✅ ' + this.dataset.feedback
+          : '❌ ' + this.dataset.feedback;
+        feedback.classList.add('show', isCorrect ? 'correct' : 'wrong');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
