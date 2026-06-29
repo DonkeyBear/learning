@@ -8,6 +8,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── RWD：LaTeX 公式橫向捲動 ── */
+  .math-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.25rem 0; }
+  /* ── RWD：表格強制不換行與滾動 ── */
+  .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-responsive th, .table-responsive td { white-space: nowrap; }
+</style>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
     onload="renderMathInElement(document.body);"></script>
@@ -48,7 +56,7 @@
   如果民調只說「候選人 A 的支持度是 52%」，這個數字有多可靠？樣本只有 100 人和樣本有 10000 人，給出的「52%」意義完全不同。
 </p>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
     <h4 style="margin: 0 0 0.2rem; color: var(--warning);">📍 點估計</h4>
     <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">一個數字：\(\bar{x} = 52\%\)<br>但不知道「多可靠」——樣本數不同，可靠性天差地遠。</p>
@@ -71,9 +79,12 @@
 
 <p>由 CLT，\(\bar{x} \sim N(\mu, \sigma/\sqrt{n})\)。因此：</p>
 
-$$ \text{CI} = \bar{x} \pm z^* \times \frac{\sigma}{\sqrt{n}} $$
+<div class="math-scroll">
+  $$ \text{CI} = \bar{x} \pm z^* \times \frac{\sigma}{\sqrt{n}} $$
+</div>
 
-<table style="font-size: 0.88rem; margin: 1rem 0;">
+<div class="table-responsive">
+<table style="font-size: 0.88rem; margin: 1rem 0; width: 100%;">
   <thead>
     <tr style="border-bottom: 2px solid var(--border);">
       <th style="padding: 0.4rem 0.6rem;">信心水準</th>
@@ -87,14 +98,19 @@ $$ \text{CI} = \bar{x} \pm z^* \times \frac{\sigma}{\sqrt{n}} $$
     <tr><td style="padding: 0.3rem 0.6rem;">99%</td><td style="padding: 0.3rem 0.6rem; text-align: right; font-family: 'JetBrains Mono', monospace;">2.576</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">較寬，但信心較高</td></tr>
   </tbody>
 </table>
+</div>
 
 <p>對於民調（比例資料），公式變成：</p>
 
-$$ \text{CI} = \hat{p} \pm z^* \times \sqrt{\frac{\hat{p}(1-\hat{p})}{n}} $$
+<div class="math-scroll">
+  $$ \text{CI} = \hat{p} \pm z^* \times \sqrt{\frac{\hat{p}(1-\hat{p})}{n}} $$
+</div>
 
 <p>當 \(\hat{p} = 0.5\)（最保守的假設），95% 信心水準（\(z^* = 1.96\)），期望誤差 \(E = 0.03\)：</p>
 
-$$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.25}{0.0009} \approx 1067.1 \rightarrow \mathbf{1068} $$
+<div class="math-scroll">
+  $$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.25}{0.0009} \approx 1067.1 \rightarrow \mathbf{1068} $$
+</div>
 
 <div class="summary-box">
   <p style="margin: 0;"><strong>1068 就是這麼來的。</strong>不是慣例、不是整數偏好——它是數學公式的直接結果。而且注意：這個公式裡<strong>完全沒有母體大小的項</strong>。問 1068 人對台灣（2300 萬人）有效，對美國（3 億人）同樣有效。</p>
@@ -105,7 +121,7 @@ $$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.2
 <!-- ═══════════════ CORRECT INTERPRETATION ═══════════════ -->
 <h2>95% 信心水準的正確解釋（大多數人都搞錯了）</h2>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
     <h4 style="margin: 0 0 0.2rem; color: var(--danger);">❌ 常見誤解</h4>
     <p style="margin: 0; font-size: 0.9rem;">「真實支持度有 95% 的機率落在這個區間內。」</p>
@@ -146,10 +162,10 @@ $$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.2
     </div>
   </div>
 
-  <div style="text-align: center; margin-bottom: 0.6rem;">
-    <button id="ciBtnDraw" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🎯 重新抽樣</button>
-    <button id="ciBtnAdd" style="padding: 0.4em 1.2em; background: var(--success); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-left: 0.4rem;">➕ 追加 50 個</button>
-    <button id="ciBtnClear" style="padding: 0.4em 1.2em; background: var(--border); color: var(--text); border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-left: 0.4rem;">↺ 清除</button>
+  <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.6rem;">
+    <button id="ciBtnDraw" style="padding: 0.4em 1.2em; background: var(--accent); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; flex: 1; min-width: 110px; max-width: 140px;">🎯 重新抽樣</button>
+    <button id="ciBtnAdd" style="padding: 0.4em 1.2em; background: var(--success); color: #0f1119; border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; flex: 1; min-width: 120px; max-width: 150px;">➕ 追加 50 個</button>
+    <button id="ciBtnClear" style="padding: 0.4em 1.2em; background: var(--border); color: var(--text); border: none; border-radius: 5px; font-weight: 600; font-size: 0.85rem; cursor: pointer; flex: 1; min-width: 80px; max-width: 100px;">↺ 清除</button>
   </div>
 
   <canvas id="ciCanvas" style="display: block; width: 100%; max-width: 700px; margin: 0 auto; border-radius: 4px;"></canvas>
@@ -170,8 +186,9 @@ $$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.2
 
 <p>信賴區間的寬度由 \(z^* \times \sigma / \sqrt{n}\) 決定。注意那個 \(\sqrt{n}\)：</p>
 
-<div class="card">
-  <table style="font-size: 0.88rem;">
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table style="font-size: 0.88rem; width: 100%;">
     <thead>
       <tr style="border-bottom: 2px solid var(--border);">
         <th style="padding: 0.4rem 0.6rem;">想把誤差減半</th>
@@ -184,7 +201,8 @@ $$ n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.03)^2} = \frac{3.8416 \times 0.2
       <tr><td style="padding: 0.3rem 0.6rem;">±3% → ±1.5%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">1068 → 4272</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">4 倍</td></tr>
       <tr><td style="padding: 0.3rem 0.6rem;">±1.5% → ±0.75%</td><td style="padding: 0.3rem 0.6rem; text-align: right;">4272 → 17088</td><td style="padding: 0.3rem 0.6rem; color: var(--text-dim);">4 倍</td></tr>
     </tbody>
-  </table>
+    </table>
+  </div>
 </div>
 
 <p>
@@ -445,8 +463,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Resize canvas for display
     function resizeCanvas() {
-      var rect = canvas.parentElement.getBoundingClientRect();
-      var displayW = Math.min(rect.width - 4, 700);
+      var parent = canvas.parentElement;
+      var styles = window.getComputedStyle(parent);
+      var paddingL = parseFloat(styles.paddingLeft) || 0;
+      var paddingR = parseFloat(styles.paddingRight) || 0;
+      var contentW = parent.clientWidth - paddingL - paddingR;
+      var displayW = Math.min(contentW - 4, 700);
       var scale = displayW / W;
       canvas.style.width = displayW + 'px';
       canvas.style.height = (H * scale) + 'px';

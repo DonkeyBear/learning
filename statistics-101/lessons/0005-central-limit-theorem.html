@@ -12,6 +12,10 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
     onload="renderMathInElement(document.body);"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── RWD：LaTeX 公式橫向捲動 ── */
+  .math-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.25rem 0; }
+</style>
 </head>
 <body>
 
@@ -46,7 +50,7 @@
 <!-- ═══════════════ POPULATION VS SAMPLE ═══════════════ -->
 <h2>母體 vs 樣本：一個基本區分</h2>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
     <h4 style="margin: 0 0 0.3rem; color: var(--accent);">🌍 母體（Population）</h4>
     <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">你想研究的「全部對象」。<br>→ 全台灣 2300 萬人的投票意向</p>
@@ -72,7 +76,9 @@
 
 <div class="summary-box">
   <p style="margin-bottom: 0.5rem;">給定一個母體（<strong>任何分布</strong>），其平均數為 \(\mu\)，標準差為 \(\sigma\)。從中抽取大小為 \(n\) 的隨機樣本，計算樣本平均數 \(\bar{x}\)。當 \(n\) 夠大時：</p>
-  $$ \bar{x} \sim N\left(\mu, \frac{\sigma}{\sqrt{n}}\right) $$
+  <div class="math-scroll">
+    $$ \bar{x} \sim N\left(\mu, \frac{\sigma}{\sqrt{n}}\right) $$
+  </div>
   <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">換句話說：樣本平均數的分布會趨近<strong>常態分布</strong>，中心在真實母體平均 \(\mu\)，標準差為 \(\frac{\sigma}{\sqrt{n}}\)（稱為<strong>標準誤</strong>）。</p>
 </div>
 
@@ -125,7 +131,7 @@
   </div>
 
   <!-- Stats -->
-  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem;">
     <div class="card" style="margin: 0; text-align: center; padding: 0.6rem;">
       <p style="font-size: 0.75rem; color: var(--muted); margin: 0;">總抽樣次數</p>
       <p style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0;" id="statCount">0</p>

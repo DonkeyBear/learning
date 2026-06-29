@@ -31,7 +31,7 @@
   每天早上你打開氣象 App，看到「今日降雨機率 50%」。這句話到底在說什麼？
 </p>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
   <div class="card" style="margin: 0;">
     <p style="margin: 0; font-size: 0.9rem;"><strong style="color: var(--accent);">解讀 A：</strong>今天有一半的時間會下雨。</p>
   </div>
@@ -182,7 +182,7 @@ $$ P(A \mid B) = \frac{P(A \cap B)}{P(B)} $$
 
 <h3>🤔 直覺 vs 數學</h3>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
     <h4 style="margin: 0 0 0.3rem; color: var(--danger);">❌ 直覺答案：50/50</h4>
     <p style="margin: 0; font-size: 0.9rem;">剩下兩扇門，汽車在任一扇的機率各一半。換不換沒差。</p>
@@ -275,7 +275,7 @@ $$ P(A \mid B) = \frac{P(A \cap B)}{P(B)} $$
   </div>
 
   <!-- Stats -->
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1rem 0;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0;">
     <div class="card" style="margin: 0; text-align: center;">
       <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">🏠 不換策略</p>
       <p style="margin: 0.2rem 0;"><span id="stayWins" style="font-size: 1.3rem; font-weight: 700; color: var(--danger);">0</span><span style="color: var(--muted);"> 勝</span></p>

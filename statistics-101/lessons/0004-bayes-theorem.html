@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>L0004 貝氏定理與「幾乎不可能」——從信念更新到無限猴子</title>
 <link rel="stylesheet" href="../assets/style.css">
+<style>
+  /* ── RWD：LaTeX 公式橫向捲動 ── */
+  .math-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.25rem 0; }
+  /* ── RWD：表格強制不換行與滾動 ── */
+  .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-responsive th, .table-responsive td { white-space: nowrap; }
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
@@ -62,7 +69,9 @@
 
 <div class="summary-box">
   <h3>🧮 貝氏定理</h3>
-  $$ P(H \mid E) = \frac{P(E \mid H) \cdot P(H)}{P(E)} $$
+  <div class="math-scroll">
+    $$ P(H \mid E) = \frac{P(E \mid H) \cdot P(H)}{P(E)} $$
+  </div>
   <p style="margin-bottom: 0; font-size: 0.9rem;">
     其中分母 \(P(E) = P(E \mid H) \cdot P(H) + P(E \mid \neg H) \cdot P(\neg H)\)
   </p>
@@ -106,12 +115,14 @@
   </table>
 </div>
 
+<div class="math-scroll">
 $$ \begin{aligned}
 P(E) &= P(E \mid H) \cdot P(H) + P(E \mid \neg H) \cdot P(\neg H) \\
      &= 0.99 \times 0.001 + 0.01 \times 0.999 \\
      &= 0.00099 + 0.00999 = 0.01098 \\[8pt]
 P(H \mid E) &= \frac{0.99 \times 0.001}{0.01098} \approx 0.0902 \approx \mathbf{9\%}
 \end{aligned} $$
+</div>
 
 <p>
   即使檢驗是陽性，你真正患病的機率只有約 <strong>9%</strong>。原因是：在 1000 個健康的人當中，會有約 10 人被偽陽性誤判——而真正患病的人只有 1 個。所以<strong>陽性結果中，大部分其實是偽陽性</strong>。
@@ -129,7 +140,7 @@ P(H \mid E) &= \frac{0.99 \times 0.001}{0.01098} \approx 0.0902 \approx \mathbf{
 <p style="color: var(--muted); font-size: 0.9rem;">拖動滑桿改變參數，觀察「陽性結果真正代表患病的機率」如何變化。</p>
 
 <div class="card" style="border: 2px solid var(--accent);" id="bayesCalc">
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
     <div>
       <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem;">
         疾病盛行率（事前機率）：<span id="valPrior" style="color: var(--accent);">0.1%</span>
@@ -175,7 +186,9 @@ P(H \mid E) &= \frac{0.99 \times 0.001}{0.01098} \approx 0.0902 \approx \mathbf{
   想像一個完美的圓形飛鏢盤。你隨機射出一支飛鏢（均勻分布，每點機率相等）。飛鏢擊中<strong>恰好座標 (0.5, 0.5)</strong> 的機率是多少？
 </p>
 
+<div class="math-scroll">
 $$ P(\text{恰好擊中 } (0.5, 0.5)) = \frac{1}{\infty} = 0 $$
+</div>
 
 <p>
   機率是精確的 0——因為圓盤上有無限多個點，每個特定點的機率都是 0。但是，<strong>飛鏢確實擊中了某個點</strong>！一個機率為 0 的事件<strong>確實發生了</strong>。
@@ -183,16 +196,16 @@ $$ P(\text{恰好擊中 } (0.5, 0.5)) = \frac{1}{\infty} = 0 $$
 
 <div class="summary-box">
   <h3>📐 兩個關鍵術語</h3>
-  <table style="font-size: 0.9rem;">
-    <tr>
-      <td style="padding: 0.3rem 0.5rem; font-weight: 700; color: var(--accent); white-space: nowrap;">幾乎必然 (Almost Surely)</td>
-      <td style="padding: 0.3rem 0.5rem;">機率等於 1，但不保證一定發生。例如：從 [0,1] 隨機選一個數，「選到無理數」的機率是 1，但選到有理數仍有可能。</td>
-    </tr>
-    <tr>
-      <td style="padding: 0.3rem 0.5rem; font-weight: 700; color: var(--warning); white-space: nowrap;">幾乎不可能 (Almost Never)</td>
-      <td style="padding: 0.3rem 0.5rem;">機率等於 0，但仍有可能發生。例如：「從 [0,1] 隨機選到恰好 0.5」的機率是 0，但它確實可能發生。</td>
-    </tr>
-  </table>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.8rem; margin-top: 0.6rem;">
+    <div class="card" style="margin: 0; border-left: 4px solid var(--accent);">
+      <h4 style="margin: 0 0 0.4rem; color: var(--accent); font-size: 0.95rem;">幾乎必然 (Almost Surely)</h4>
+      <p style="margin: 0; font-size: 0.875rem; color: var(--text-dim);">機率等於 1，但不保證一定發生。<br>例如：從 [0,1] 隨機選一個數，「選到無理數」的機率是 1，但選到有理數仍有可能。</p>
+    </div>
+    <div class="card" style="margin: 0; border-left: 4px solid var(--warning);">
+      <h4 style="margin: 0 0 0.4rem; color: var(--warning); font-size: 0.95rem;">幾乎不可能 (Almost Never)</h4>
+      <p style="margin: 0; font-size: 0.875rem; color: var(--text-dim);">機率等於 0，但仍有可能發生。<br>例如：「從 [0,1] 隨機選到恰好 0.5」的機率是 0，但它確實可能發生。</p>
+    </div>
+  </div>
 </div>
 
 <p>
@@ -220,43 +233,45 @@ $$ P(\text{恰好擊中 } (0.5, 0.5)) = \frac{1}{\infty} = 0 $$
   假設打字機有 50 個按鍵（英文字母 + 空格 + 標點）。猴子每秒隨機敲一個鍵。打出一個特定字元的機率是 \(1/50\)。打出一個長度為 \(n\) 的特定字串的機率是 \((1/50)^n\)，期望時間（平均要等多久）是 \(50^n\) 秒。
 </p>
 
-<div class="card">
-  <table style="font-size: 0.85rem;">
-    <thead>
-      <tr style="border-bottom: 2px solid var(--border);">
-        <th style="padding: 0.4rem 0.5rem; text-align: left;">目標文本</th>
-        <th style="padding: 0.4rem 0.5rem; text-align: right;">長度</th>
-        <th style="padding: 0.4rem 0.5rem; text-align: right;">期望時間</th>
-        <th style="padding: 0.4rem 0.5rem; text-align: left;">比較</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding: 0.3rem 0.5rem;">"hi"</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">2</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 42 分鐘</td>
-        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">一頓午餐的時間</td>
-      </tr>
-      <tr>
-        <td style="padding: 0.3rem 0.5rem;">"hello"</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">5</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 9.9 萬年</td>
-        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">比人類文明史還長</td>
-      </tr>
-      <tr>
-        <td style="padding: 0.3rem 0.5rem;">"To be or not to be"</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">18</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 \(3.8 \times 10^{30}\) 年</td>
-        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">宇宙年齡的 \(10^{20}\) 倍</td>
-      </tr>
-      <tr>
-        <td style="padding: 0.3rem 0.5rem;">一首 14 行短詩（~500 字元）</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">500</td>
-        <td style="padding: 0.3rem 0.5rem; text-align: right;">約 \(50^{500}\) 年</td>
-        <td style="padding: 0.3rem 0.5rem; color: var(--text-dim);">一個難以想像的數字</td>
-      </tr>
-    </tbody>
-  </table>
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table style="font-size: 0.85rem; width: 100%;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border);">
+          <th style="padding: 0.4rem 0.8rem; text-align: left;">目標文本</th>
+          <th style="padding: 0.4rem 0.6rem; text-align: right;">長度</th>
+          <th style="padding: 0.4rem 0.6rem; text-align: right;">期望時間</th>
+          <th style="padding: 0.4rem 0.8rem; text-align: left;">比較</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 0.3rem 0.8rem;">"hi"</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">2</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">約 42 分鐘</td>
+          <td style="padding: 0.3rem 0.8rem; color: var(--text-dim);">一頓午餐的時間</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.3rem 0.8rem;">"hello"</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">5</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">約 9.9 萬年</td>
+          <td style="padding: 0.3rem 0.8rem; color: var(--text-dim);">比人類文明史還長</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.3rem 0.8rem;">"To be or not to be"</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">18</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">約 \(3.8 \times 10^{30}\) 年</td>
+          <td style="padding: 0.3rem 0.8rem; color: var(--text-dim);">宇宙年齡的 \(10^{20}\) 倍</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.3rem 0.8rem;">一首 14 行短詩（~500 字元）</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">500</td>
+          <td style="padding: 0.3rem 0.6rem; text-align: right;">約 \(50^{500}\) 年</td>
+          <td style="padding: 0.3rem 0.8rem; color: var(--text-dim);">一個難以想像的數字</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <div class="callout warn">

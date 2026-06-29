@@ -12,6 +12,13 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"
     onload="renderMathInElement(document.body);"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── RWD：LaTeX 公式橫向捲動 ── */
+  .math-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.25rem 0; }
+  /* ── RWD：表格強制不換行與滾動 ── */
+  .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-responsive th, .table-responsive td { white-space: nowrap; }
+</style>
 </head>
 <body>
 
@@ -68,7 +75,7 @@
 
 <p>費雪的核心洞見是：<strong>我們不直接證明「她有超能力」，我們先假設「她什麼都不會」——然後看數據是否足以推翻這個假設。</strong></p>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
     <h4 style="margin: 0 0 0.3rem; color: var(--danger);">H₀：虛無假設</h4>
     <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">「她是瞎猜的。」<br>她選對任何一杯的機率 = 1/2</p>
@@ -97,13 +104,15 @@
     從 8 杯中選 4 杯稱為「奶先」→ 總共有 \(C(8,4) = 70\) 種選法。<br>
     如果女士能正確分類 \(k\) 杯真正的「奶先」，數學式為：
   </p>
-  $$ P(\text{正確分類 } k \text{ 杯}) = \frac{C(4, k) \times C(4, 4-k)}{C(8, 4)} $$
+  <div class="math-scroll">
+    $$ P(\text{正確分類 } k \text{ 杯}) = \frac{C(4, k) \times C(4, 4-k)}{C(8, 4)} $$
+  </div>
 </div>
 
 <p>把所有可能的結果列出來：</p>
 
-<div style="overflow-x: auto;">
-<table style="font-size: 0.85rem;">
+<div class="table-responsive">
+<table style="font-size: 0.85rem; width: 100%;">
   <thead>
     <tr style="border-bottom: 2px solid var(--border);">
       <th style="padding: 0.4rem 0.6rem;">正確分類的杯數</th>
@@ -139,7 +148,7 @@
 
 <div class="card" style="border: 2px solid var(--accent);">
 
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: end;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; align-items: end;">
     <div>
       <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">
         🍵 女士正確分類的杯數：<span id="valCorrect" style="color: var(--accent); font-size: 1.1rem;">4</span>
@@ -186,7 +195,7 @@
 <!-- ═══════════════ TYPE I / II ERRORS ═══════════════ -->
 <h2>兩種錯誤：取捨的藝術</h2>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
   <div class="card" style="margin: 0; border-left: 4px solid var(--danger);">
     <h4 style="margin: 0 0 0.3rem; color: var(--danger);">🚨 型一錯誤 (Type I Error)</h4>
     <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">H₀ 其實是對的，但我們拒絕了它。<br><strong>→ 偽陽性：沒有效果卻宣稱有效果</strong><br>機率 = α（通常設為 0.05）</p>
