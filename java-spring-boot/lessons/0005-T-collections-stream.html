@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T03 — Java Collections 與 Stream API</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T03</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>Java Collections 與 Stream API</h1>
+
+<p>在 JS 中你用 <code>map/filter/reduce</code> 處理陣列，在 Python 中用 list comprehension。Java 的答案是 <strong>Stream API</strong>——它不僅是語法糖，更是一套完整的<strong>函數式資料處理管線</strong>。這堂課先補齊 Collections 框架的知識，再進入 Stream API 的核心。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 為什麼面試必考</span>
+  Stream API 是 Java 8 最重要的變革，也是後端日常開發中處理集合資料的主要手段。面試中常見的考法：「給一個 List&lt;Employee&gt;，找出薪水最高的前 5 個部門」——用 Stream 一行就能解決，用傳統 for 迴圈要寫十幾行。能熟練使用 Stream 是 Java 開發者的基本功。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. Collections 框架全景</h2>
+
+<p>Java 的集合框架圍繞四個核心介面。你已在 P02 用了 <code>List</code>，這裡補齊全貌：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>介面</th><th>特性</th><th>常用實作</th><th>JS/Python 對應</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>List&lt;T&gt;</code></td>
+      <td>有序、可重複、可 null</td>
+      <td><code>ArrayList</code>（查詢快）<br><code>LinkedList</code>（插入快）</td>
+      <td>JS <code>Array</code><br>Python <code>list</code></td>
+    </tr>
+    <tr>
+      <td><code>Set&lt;T&gt;</code></td>
+      <td>不重複、無序</td>
+      <td><code>HashSet</code>（O(1) 查詢）<br><code>TreeSet</code>（自動排序）</td>
+      <td>JS <code>Set</code><br>Python <code>set</code></td>
+    </tr>
+    <tr>
+      <td><code>Map&lt;K,V&gt;</code></td>
+      <td>鍵值對、鍵不重複</td>
+      <td><code>HashMap</code>（O(1) 查詢）<br><code>TreeMap</code>（鍵自動排序）</td>
+      <td>JS <code>Map</code> / Object<br>Python <code>dict</code></td>
+    </tr>
+    <tr>
+      <td><code>Queue&lt;T&gt;</code></td>
+      <td>FIFO / LIFO</td>
+      <td><code>LinkedList</code>（作為 Queue）<br><code>PriorityQueue</code></td>
+      <td>JS 無內建<br>Python <code>collections.deque</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>快速語法對照</h3>
+
+<pre><code class="language-java">// === List ===
+List&lt;String&gt; list = new ArrayList&lt;&gt;();
+list.add("a"); list.add("b"); list.add("a");
+list.size();                          // 3
+list.contains("a");                   // true
+list.remove("a");                     // 移除第一個 "a"
+
+// === Set ===
+Set&lt;String&gt; set = new HashSet&lt;&gt;();
+set.add("a"); set.add("b"); set.add("a");
+set.size();                           // 2（"a" 不重複）
+
+// === Map ===
+Map&lt;String, Integer&gt; map = new HashMap&lt;&gt;();
+map.put("apple", 3);
+map.put("banana", 5);
+map.get("apple");                     // 3
+map.getOrDefault("grape", 0);         // 0（key 不存在時的預設值）
+map.containsKey("apple");             // true
+
+// === Map 遍歷 ===
+for (var entry : map.entrySet()) {
+    System.out.println(entry.getKey() + " → " + entry.getValue());
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 Spring Boot 實務提示</span>
+  Spring Data JPA 的 <code>findAll()</code> 回傳 <code>List&lt;T&gt;</code>。<code>@Query</code> 的 IN 條件常用 <code>Set&lt;Long&gt;</code> 傳入 ID 集合。Controller 接收 JSON request body 中的巢狀物件通常對應到 <code>Map&lt;String, Object&gt;</code>。三者都常用，輪流登場。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. Stream API：Java 的 map/filter/reduce</h2>
+
+<p>Stream 不是資料結構——它是一條<strong>管線（pipeline）</strong>，資料從來源流過一連串操作，在終點匯聚成結果。</p>
+
+<h3>核心概念：中間操作 vs 終端操作</h3>
+
+<div class="grid-2">
+  <div class="card info">
+    <h3>🔹 中間操作（Intermediate）</h3>
+    <p style="margin-top:0.4rem">回傳一個新的 Stream，<strong>懶加載（lazy）</strong>——在終端操作觸發前不執行</p>
+    <ul>
+      <li><code>.map()</code></li>
+      <li><code>.filter()</code></li>
+      <li><code>.sorted()</code></li>
+      <li><code>.distinct()</code></li>
+      <li><code>.limit()</code> / <code>.skip()</code></li>
+    </ul>
+  </div>
+  <div class="card success">
+    <h3>🔸 終端操作（Terminal）</h3>
+    <p style="margin-top:0.4rem">觸發管線執行，<strong>結束 Stream</strong>（同一個 Stream 只能消費一次）</p>
+    <ul>
+      <li><code>.collect(Collectors.toList())</code></li>
+      <li><code>.forEach()</code></li>
+      <li><code>.reduce()</code></li>
+      <li><code>.count()</code></li>
+      <li><code>.findFirst()</code> / <code>.anyMatch()</code></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>3. 三語對照：map / filter / reduce</h2>
+
+<p>假設有一個數字列表，你要<b>過濾偶數 → 平方 → 加總</b>：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>Java Stream</th><th>JavaScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="white-space:pre-wrap"><code>List&lt;Integer&gt; nums =
+    List.of(1,2,3,4,5,6);
+
+int sum = nums.stream()
+    .filter(n -> n % 2 == 0)
+    .map(n -> n * n)
+    .reduce(0, Integer::sum);</code></td>
+      <td style="white-space:pre-wrap"><code>const nums = [1,2,3,4,5,6];
+
+const sum = nums
+    .filter(n => n % 2 === 0)
+    .map(n => n * n)
+    .reduce((a,b) => a+b, 0);</code></td>
+      <td style="white-space:pre-wrap"><code>nums = [1,2,3,4,5,6]
+
+squares = [n*n
+    for n in nums
+    if n % 2 == 0]
+total = sum(squares)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>語法比較</strong>：</p>
+<ul>
+  <li>JS arrow function <code>n => n * 2</code> → Java lambda <code>n -> n * 2</code>（箭頭方向不同！）</li>
+  <li>JS <code>filter(n => condition)</code> → Java <code>filter(n -> condition)</code>（完全對應）</li>
+  <li>JS <code>reduce((a,b) => a+b, 0)</code> → Java <code>reduce(0, (a,b) -> a+b)</code>（初始值位置不同）</li>
+  <li><code>Integer::sum</code> 是方法參考（method reference）—— <code>(a,b) -> a+b</code> 的簡寫</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>4. Stream 常用操作詳解</h2>
+
+<h3>filter — 過濾</h3>
+<pre><code class="language-java">var names = List.of("Alice", "Bob", "Charlie", "Anna");
+var aNames = names.stream()
+    .filter(name -> name.startsWith("A"))  // [Alice, Anna]
+    .toList();</code></pre>
+
+<h3>map — 轉換型別/值</h3>
+<pre><code class="language-java">// 取出員工姓名 → 轉大寫
+record Employee(String name, int salary) { }
+
+var employees = List.of(
+    new Employee("Alice", 70000),
+    new Employee("Bob", 50000)
+);
+
+var upperNames = employees.stream()
+    .map(Employee::name)              // 方法參考：等於 e -> e.name()
+    .map(String::toUpperCase)         // 等於 s -> s.toUpperCase()
+    .toList();                        // [ALICE, BOB]
+</code></pre>
+
+<h3>sorted — 排序</h3>
+<pre><code class="language-java">// 按薪水由高到低排序
+var sorted = employees.stream()
+    .sorted((a, b) -> Integer.compare(b.salary(), a.salary()))
+    .toList();
+
+// 或用 Comparator.comparing（更常見）
+var sorted2 = employees.stream()
+    .sorted(Comparator.comparing(Employee::salary).reversed())
+    .toList();
+</code></pre>
+
+<h3>collect — 匯集到不同容器</h3>
+<pre><code class="language-java">import java.util.stream.Collectors;
+
+// 收集成 List
+List&lt;String&gt; names = employees.stream()
+    .map(Employee::name)
+    .collect(Collectors.toList());
+
+// 收集成 Map（name → salary）
+Map&lt;String, Integer&gt; nameToSalary = employees.stream()
+    .collect(Collectors.toMap(
+        Employee::name,
+        Employee::salary
+    ));
+
+// 分組（groupingBy）
+Map&lt;Character, List&lt;Employee&gt;&gt; byFirstLetter = employees.stream()
+    .collect(Collectors.groupingBy(
+        e -> e.name().charAt(0)
+    ));
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試重點：groupingBy</span>
+  <code>Collectors.groupingBy()</code> 是 SQL 的 <code>GROUP BY</code> 在 Java 中的對應，面試極高頻。例如「把員工按部門分組，計算各部門的平均薪資」就會用到它搭配 <code>Collectors.averagingInt()</code>。
+</div>
+
+<h3>flatMap — 攤平巢狀結構</h3>
+<pre><code class="language-java">// 每個員工有多個技能，攤平成單一技能列表
+record Employee(String name, List&lt;String&gt; skills) { }
+
+var employees = List.of(
+    new Employee("Alice", List.of("Java", "SQL")),
+    new Employee("Bob",   List.of("Python", "Docker"))
+);
+
+var allSkills = employees.stream()
+    .flatMap(e -> e.skills().stream())  // 把多個 List 攤平成一個 Stream
+    .distinct()                          // 去重
+    .toList();                           // [Java, SQL, Python, Docker]
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>5. 常見 Stream 模式速查</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>需求</th><th>JS</th><th>Java Stream</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>取出欄位</td><td><code>arr.map(x => x.name)</code></td><td><code>list.stream().map(T::name)</code></td></tr>
+    <tr><td>過濾</td><td><code>arr.filter(x => x.age > 18)</code></td><td><code>list.stream().filter(x -> x.age() > 18)</code></td></tr>
+    <tr><td>找第一個</td><td><code>arr.find(x => ...)</code></td><td><code>list.stream().filter(...).findFirst()</code></td></tr>
+    <tr><td>是否任一符合</td><td><code>arr.some(x => ...)</code></td><td><code>list.stream().anyMatch(x -> ...)</code></td></tr>
+    <tr><td>是否全部符合</td><td><code>arr.every(x => ...)</code></td><td><code>list.stream().allMatch(x -> ...)</code></td></tr>
+    <tr><td>計數</td><td><code>arr.filter(...).length</code></td><td><code>list.stream().filter(...).count()</code></td></tr>
+    <tr><td>加總</td><td><code>arr.reduce((a,b)=>a+b, 0)</code></td><td><code>list.stream().reduce(0, Integer::sum)</code></td></tr>
+    <tr><td>轉 Map</td><td><code>Object.fromEntries(arr.map(...))</code></td><td><code>list.stream().collect(toMap(...))</code></td></tr>
+    <tr><td>分組</td><td>無內建，需 lodash</td><td><code>list.stream().collect(groupingBy(...))</code></td></tr>
+    <tr><td>攤平</td><td><code>arr.flatMap(...)</code></td><td><code>list.stream().flatMap(...)</code></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>6. 原始型別 Stream（效能優化）</h2>
+
+<p>因為 <code>List&lt;int&gt;</code> 在 Java 中不合法（泛型不能放 primitive），Java 提供了專用的原始型別 Stream，避免自動裝箱（autoboxing）的效能損耗：</p>
+
+<pre><code class="language-java">// ❌ 一般 Stream：每個 int 都要裝箱成 Integer，浪費效能
+int sum = List.of(1, 2, 3).stream().reduce(0, Integer::sum);
+
+// ✅ IntStream：直接操作原始 int，零裝箱
+int sum2 = IntStream.of(1, 2, 3).sum();
+int sum3 = IntStream.range(1, 101).sum();          // 1 加到 100
+int sum4 = IntStream.rangeClosed(1, 100).sum();    // 1 加到 100（含 100）
+</code></pre>
+
+<p>同理還有 <code>LongStream</code> 和 <code>DoubleStream</code>。Spring Boot 中處理大量資料（例如報表計算）時會用到。</p>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: Stream 的中間操作和終端操作有何本質差異？為什麼 Stream 只能消費一次？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>中間操作</strong>（map/filter/sorted）回傳新的 Stream，是懶加載的——在終端操作觸發前不會執行。<strong>終端操作</strong>（collect/reduce/forEach）觸發整個管線執行並結束 Stream。Stream 只能消費一次，因為它背後是對資料來源的迭代器（Iterator），用完就消耗完了。如果需要重複使用，必須從原始 Collection 重新建立 Stream。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: 用 Stream 將 <code>List&lt;String&gt;</code> 過濾掉空字串、轉大寫、收集到新的 List。寫出程式碼。</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">var result = list.stream()
+    .filter(s -> !s.isBlank())
+    .map(String::toUpperCase)
+    .toList();  // Java 16+，等於 collect(Collectors.toList())</code></pre>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: <code>flatMap</code> 和 <code>map</code> 的差別是什麼？什麼時候用 flatMap？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><code>map</code>：一對一轉換（T → R），每個元素轉成一個新元素。<code>flatMap</code>：一對多攤平（T → Stream&lt;R&gt;），每個元素轉成一個 Stream，再將所有 Stream 攤平成單一 Stream。當你的映射結果本身就是集合（例如：員工有多個技能、訂單有多個商品），想攤平成單一列表時用 flatMap。JS 的 <code>Array.flatMap()</code> 是一樣的概念。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>List / Set / Map</strong> 三本柱，Spring Boot 中輪流登場：List 查詢結果、Set 去重 ID、Map 快取/分組</li>
+    <li><strong>Stream = 管線</strong>：資料來源 → 中間操作（lazy）→ 終端操作（觸發執行）</li>
+    <li><strong>JS 的 map/filter/reduce 思考方式可直接套用到 Stream</strong>，注意箭頭方向（<code>-></code> vs <code>=></code>）和 <code>Integer::sum</code> 方法參考</li>
+    <li><strong><code>groupingBy</code></strong> 是 SQL GROUP BY 的對應，面試萬年考題</li>
+    <li><strong>Stream 只能消費一次</strong>——用完必須從原始 Collection 重建</li>
+    <li><strong><code>.toList()</code></strong>（Java 16+）是 <code>.collect(Collectors.toList())</code> 的簡寫</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P03：Stream API 實戰練習</strong>——你會拿到一份模擬的員工資料，用 Stream 完成過濾、分組、排序、統計等真實場景的資料處理任務。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://dev.java/learn/api/streams/" target="_blank" rel="noopener">Java 官方 Stream API 教學</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-8-streams" target="_blank" rel="noopener">Baeldung: Java 8 Stream API 完整指南</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-groupingby-collector" target="_blank" rel="noopener">Baeldung: groupingBy 深入教學</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>Stream 的 lambda 語法不熟？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">從 JS arrow function 到 Java lambda 只需要轉換肌肉記憶。如果你對某個 collector 或方法參考的寫法有疑問，直接問我。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0004-P-oop-modeling.html" class="nav-prev">← P02 OOP 建模練習</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0006-P-stream-practice.html" class="nav-next">P03 Stream 實戰練習 →</a>
+</nav>
+
+</body>
+</html>

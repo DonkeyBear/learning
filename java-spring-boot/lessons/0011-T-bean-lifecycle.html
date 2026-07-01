@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T06 — Bean 生命週期</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T06</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>Bean 生命週期：從建立到銷毀的全流程</h1>
+
+<p>你在 P04 和 P05 中用 <code>@Service</code>、<code>@Repository</code> 建立了許多 Bean。但 Spring 是<strong>何時</strong>建立它們的？建立過程中<strong>經過哪些階段</strong>？你可以<strong>介入哪些階段</strong>來執行自訂邏輯？這堂課回答這些問題。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「請描述 Spring Bean 的生命週期」「@PostConstruct 和 @PreDestroy 何時被呼叫？」「singleton 和 prototype scope 的差異？」「BeanPostProcessor 是什麼？」——全是面試高頻題。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. Bean 生命週期全景圖</h2>
+
+<p>一個 Spring Bean 從無到有再到消失，會經過以下階段：</p>
+
+<pre><code class="language-text">1. 實例化（Instantiation）
+   └→ new 出物件（呼叫建構子）
+2. 填充屬性（Populate Properties）
+   └→ 注入 @Autowired 的依賴、@Value 的值
+3. BeanPostProcessor::postProcessBeforeInitialization
+   └→ Spring 內部 hook（@PostConstruct 在此觸發）
+4. 初始化（Initialization）
+   └→ @PostConstruct 方法被呼叫
+5. BeanPostProcessor::postProcessAfterInitialization
+   └→ Spring 內部 hook（AOP proxy 在此建立！）
+6. 就緒（Ready）
+   └→ Bean 可以被使用了（注入到其他 Bean、處理請求）
+7. 銷毀（Destruction）
+   └→ 容器關閉時，@PreDestroy 方法被呼叫
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試關鍵點：AOP 代理的建立時機</span>
+  Spring AOP（例如 <code>@Transactional</code>）的代理（proxy）是在 <strong>postProcessAfterInitialization</strong> 階段建立的。這表示：如果你在 <code>@PostConstruct</code> 中呼叫了一個標記 <code>@Transactional</code> 的方法，<strong>交易可能不會生效</strong>——因為代理還沒建立。這是面試中常見的陷阱題。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. @PostConstruct 與 @PreDestroy</h2>
+
+<p>這是最常用的兩個生命週期 hook：</p>
+
+<pre><code class="language-java">@Service
+public class CacheService {
+    private final Map&lt;String, Object&gt; cache = new HashMap&lt;&gt;();
+
+    // 在所有依賴注入完成後、Bean 就緒前被呼叫
+    @PostConstruct
+    public void init() {
+        System.out.println("📦 CacheService 初始化：預熱快取...");
+        cache.put("app.status", "starting");
+        // 適合做的事情：
+        //   - 初始化連線池
+        //   - 預載資料到快取
+        //   - 驗證必要的設定值存在
+        //   - 啟動背景排程
+    }
+
+    // 在容器關閉、Bean 銷毀前被呼叫
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("🧹 CacheService 清理：釋放資源...");
+        cache.clear();
+        // 適合做的事情：
+        //   - 關閉資料庫連線
+        //   - 釋放檔案控制代碼
+        //   - 停止背景執行緒
+        //   - 發送關閉通知
+    }
+
+    public void put(String key, Object value) {
+        cache.put(key, value);
+    }
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ @PreDestroy 的限制</span>
+  <code>@PreDestroy</code> 只在「正常關閉」時觸發（例如 <code>ctx.close()</code> 或 kill -15）。如果是 <code>kill -9</code> 強制終止，不會觸發。另外 prototype scope 的 Bean 不會觸發 @PreDestroy——Spring 不追蹤 prototype Bean 的完整生命週期。
+</div>
+
+<h3>對比：InitializingBean / DisposableBean 介面（舊式寫法）</h3>
+
+<pre><code class="language-java">// 舊式寫法——不推薦，因為和 Spring API 耦合
+@Service
+public class OldStyleService implements InitializingBean, DisposableBean {
+
+    @Override
+    public void afterPropertiesSet() {  // = @PostConstruct
+        // 初始化邏輯
+    }
+
+    @Override
+    public void destroy() {             // = @PreDestroy
+        // 清理邏輯
+    }
+}
+</code></pre>
+
+<p><strong>面試中建議說：偏好 @PostConstruct/@PreDestroy（JSR-250 標準註解），因為不和 Spring 框架耦合。</strong></p>
+
+<!-- ============================================================ -->
+<h2>3. Bean Scope：控制生命週期的長短</h2>
+
+<p><code>@Scope</code> 決定了 Spring 何時建立新的 Bean 實例。預設是 singleton。</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>Scope</th><th>行為</th><th>生命週期</th><th>使用場景</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>singleton</code></td>
+      <td>整個容器只有一個實例</td>
+      <td>隨容器啟動建立，容器關閉時銷毀</td>
+      <td><strong>預設</strong>。Service、Repository、Controller</td>
+    </tr>
+    <tr>
+      <td><code>prototype</code></td>
+      <td>每次注入/查詢都建立新實例</td>
+      <td>Spring 建立後就不再追蹤（@PreDestroy 不會被呼叫！）</td>
+      <td>每次請求需要獨立狀態的 Bean</td>
+    </tr>
+    <tr>
+      <td><code>request</code></td>
+      <td>每個 HTTP 請求一個實例</td>
+      <td>請求結束時銷毀</td>
+      <td>Web 應用中請求範圍的資料</td>
+    </tr>
+    <tr>
+      <td><code>session</code></td>
+      <td>每個 HTTP session 一個實例</td>
+      <td>Session 過期時銷毀</td>
+      <td>購物車、使用者偏好</td>
+    </tr>
+    <tr>
+      <td><code>application</code></td>
+      <td>整個 ServletContext 一個實例</td>
+      <td>隨應用關閉</td>
+      <td>與 singleton 類似但作用域不同</td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code class="language-java">@Service
+@Scope("singleton")  // 預設值，通常不需要寫
+public class DefaultService { }
+
+@Service
+@Scope("prototype")
+public class PrototypeService {
+    // 每次注入都會得到一個全新的實例
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">🔥 面試陷阱題：singleton 注入 prototype</span>
+  如果你把一個 prototype Bean 注入到 singleton Bean 中，<strong>prototype Bean 仍然只會被建立一次</strong>。因為 singleton Bean 只會被建立一次、注入也只發生一次。解決方案：① 注入 <code>ObjectProvider&lt;T&gt;</code> ② 注入 <code>ApplicationContext</code> 手動 getBean ③ 使用 <code>@Lookup</code> 方法注入。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. BeanPostProcessor：Spring 的「中介層」</h2>
+
+<p>BeanPostProcessor 是 Spring 內部最強大的擴展點。它可以在<strong>每個 Bean 初始化前後</strong>插入自訂邏輯：</p>
+
+<pre><code class="language-java">@Component
+public class CustomBeanPostProcessor implements BeanPostProcessor {
+
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) {
+        // 在 @PostConstruct 之前被呼叫
+        if (beanName.contains("Service")) {
+            System.out.println("🔧 初始化前: " + beanName);
+        }
+        return bean;  // 可以回傳代理物件！
+    }
+
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) {
+        // 在 @PostConstruct 之後被呼叫
+        // Spring AOP 就是在這裡建立 proxy 的！
+        if (beanName.contains("Service")) {
+            System.out.println("🔧 初始化後: " + beanName);
+        }
+        return bean;
+    }
+}
+</code></pre>
+
+<p><strong>你極少需要自己寫 BeanPostProcessor</strong>——但你需要知道它的存在，因為 Spring 的許多核心功能（AOP、@Transactional、@Async）都是透過 BeanPostProcessor 實現的。</p>
+
+<!-- ============================================================ -->
+<h2>5. 實務中的生命週期應用場景</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>場景</th><th>使用的 Hook</th><th>範例</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>啟動時預載資料</td><td>@PostConstruct</td><td>從 DB 載入基礎設定到快取</td></tr>
+    <tr><td>啟動時驗證設定</td><td>@PostConstruct</td><td>檢查 API key、URL 格式正確</td></tr>
+    <tr><td>初始化連線池</td><td>@PostConstruct</td><td>建立 HTTP client、DB connection pool</td></tr>
+    <tr><td>優雅關閉資源</td><td>@PreDestroy</td><td>關閉連線、flush 緩衝區</td></tr>
+    <tr><td>每個請求的追蹤 ID</td><td>request scope</td><td>在 filter 中產生 requestId</td></tr>
+    <tr><td>有狀態的業務物件</td><td>prototype scope</td><td>每次計算需要獨立中間狀態</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: 從建立到銷毀，Bean 生命週期包含哪些主要階段？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>實例化</strong>（建構子）→ <strong>填充屬性</strong>（注入依賴、@Value）→ <strong>BeanPostProcessor: before</strong> → <strong>初始化</strong>（@PostConstruct）→ <strong>BeanPostProcessor: after</strong>（AOP proxy 在此建立）→ <strong>就緒</strong>（可使用）→ <strong>銷毀</strong>（@PreDestroy）。面試時至少要說出：建構子 → 注入 → @PostConstruct → 就緒 → @PreDestroy。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: singleton Bean 注入 prototype Bean 會有什麼問題？如何解決？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">prototype Bean 被注入到 singleton Bean 中時，<strong>只會在 singleton 建立時被注入一次</strong>——之後每次使用都是同一個實例，失去 prototype 的意義。解決方案：① 注入 <code>ObjectProvider&lt;T&gt;</code> 並每次呼叫 <code>getObject()</code> ② 使用 <code>@Lookup</code> 抽象方法 ③ 注入 ApplicationContext 手動 getBean（最不推薦）。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 為什麼在 @PostConstruct 中呼叫 @Transactional 方法可能不會生效？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">因為 <code>@Transactional</code> 是透過 AOP 代理實現的，而 AOP 代理是在 <strong>postProcessAfterInitialization</strong> 階段建立的——這個階段在 @PostConstruct <strong>之後</strong>。@PostConstruct 執行時，代理還沒建立，因此 @Transactional 的攔截器不會被觸發。解法：將需要交易的初始化邏輯移到 ApplicationRunner 或 @EventListener(ApplicationReadyEvent.class) 中。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>生命週期順序</strong>：建構子 → 注入 → @PostConstruct → （AOP proxy）→ 就緒 → @PreDestroy</li>
+    <li><strong>@PostConstruct</strong> = 依賴注入完成後執行一次，適合初始化邏輯</li>
+    <li><strong>@PreDestroy</strong> = 容器關閉前執行，適合釋放資源（prototype 不會觸發）</li>
+    <li><strong>Singleton 是預設</strong>——大多數 Bean 只需要一個實例；prototype 每次都是新的</li>
+    <li><strong>AOP 代理在 @PostConstruct 之後才建立</strong>——初始化邏輯中不能用 @Transactional</li>
+    <li><strong>BeanPostProcessor</strong> 是 Spring 的萬能中介層，AOP、@Async 等核心功能都靠它</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P06：Bean 生命週期觀察實作</strong>——你會寫一個包含 @PostConstruct、@PreDestroy、多種 Scope 的範例，親眼觀察 Bean 何時被建立和銷毀。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://docs.spring.io/spring-framework/reference/core/beans/factory-nature.html" target="_blank" rel="noopener">Spring 官方：Bean 生命週期</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-bean-lifecycle" target="_blank" rel="noopener">Baeldung: Spring Bean 生命週期完整指南</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-bean-scopes" target="_blank" rel="noopener">Baeldung: Bean Scopes 詳解</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>生命週期順序背不起來？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">不需要死背。下一堂 P06 你會親眼看到每個階段的 log 輸出——做一次比讀十次有用。當然，有任何疑問現在就可以問。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0010-P-layered-architecture.html" class="nav-prev">← P05 分層架構實作</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0012-P-bean-lifecycle-lab.html" class="nav-next">P06 Bean 生命週期實驗 →</a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P10 — 整合專案 Part 1：架構 + 使用者認證</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P10</span>
+  <span>/</span>
+  <span>~60 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+  <span>/</span>
+  <span>🏗️ 整合專案</span>
+</div>
+
+<h1>整合專案 Part 1：專案架構 + 使用者認證</h1>
+
+<p>從這堂課開始，你要建立一個<strong>完整的部落格 API</strong>——這是你的面試作品。Part 1 涵蓋專案初始化、全域基礎設施（ApiResponse、ExceptionHandler）、和 JWT 使用者認證模組。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 三堂整合專案的總目標</span>
+  建立「部落格後端 API」：使用者註冊/登入（Part 1）→ 文章 CRUD + 分類 + 分頁（Part 2）→ 關聯查詢 + 全域錯誤處理 + 文件（Part 3）。完成後你有一個可以放上 GitHub 的後端專案。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立專案</h2>
+
+<p>用 Spring Initializr 建立全新專案（IntelliJ → New Project → Spring Boot）：</p>
+
+<table style="font-size:0.9rem;margin:1rem 0">
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">Name</td><td><code>blog-api</code></td></tr>
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">Language</td><td>Java</td></tr>
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">Type</td><td>Gradle</td></tr>
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">Group</td><td><code>com.blogapi</code></td></tr>
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">JDK</td><td>21</td></tr>
+  <tr><td style="padding:0.2rem 0.8rem;color:var(--accent)">Dependencies</td><td>Spring Web, Spring Data JPA, H2 Database, Validation, Spring Security</td></tr>
+</table>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 第一次引入 Spring Security</span>
+  Spring Security 是 Java 生態系的認證授權框架。這堂課只用它的密碼加密（BCrypt）和基本設定——不做複雜的權限控制。加入依賴後 Spring Security 會自動保護所有端點，啟動時 Console 會出現一段隨機密碼——我們會在 Step 3 設定放行。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 2：專案結構與基礎設施</h2>
+
+<pre><code class="language-text">src/main/java/com/blogapi/
+├── BlogApiApplication.java
+├── config/
+│   └── SecurityConfig.java              ← 放行 API，關閉 CSRF
+├── common/
+│   ├── ApiResponse.java                 ← 統一 response wrapper
+│   └── GlobalExceptionHandler.java      ← @ControllerAdvice
+├── user/
+│   ├── User.java                        ← @Entity
+│   ├── UserRepository.java              ← JpaRepository
+│   ├── UserService.java                 ← 註冊/登入邏輯
+│   ├── UserController.java              ← REST endpoints
+│   └── dto/
+│       ├── RegisterRequest.java         ← 註冊 DTO
+│       └── LoginRequest.java            ← 登入 DTO
+├── post/    ← Part 2
+├── comment/ ← Part 2
+└── category/ ← Part 2
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 3：安全性設定</h2>
+
+<p><code>config/SecurityConfig.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())           // API 不需要 CSRF
+            .sessionManagement(sm ->
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 無狀態
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/**").permitAll()   // API 全開放（學習階段）
+                .anyRequest().authenticated()
+            );
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();   // 注入到 Service 用來加密密碼
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 這些設定的意義</span>
+  <code>csrf().disable()</code>：API 用 JWT 認證，不需要 CSRF 保護（CSRF 是給 cookie session 用的）。<code>STATELESS</code>：不建立 HTTP session（每個請求獨立認證）。<code>permitAll()</code>：學習階段開放所有 API，正式環境再限制。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 4：統一回應格式</h2>
+
+<p><code>common/ApiResponse.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.common;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.LocalDateTime;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ApiResponse&lt;T&gt;(
+    boolean success,
+    T data,
+    Object error,
+    LocalDateTime timestamp
+) {
+    public static &lt;T&gt; ApiResponse&lt;T&gt; ok(T data) {
+        return new ApiResponse&lt;&gt;(true, data, null, LocalDateTime.now());
+    }
+
+    public static ApiResponse&lt;Void&gt; error(String code, String message) {
+        return new ApiResponse&lt;&gt;(false, null,
+            java.util.Map.of("code", code, "message", message),
+            LocalDateTime.now());
+    }
+}
+</code></pre>
+
+<p><code>common/GlobalExceptionHandler.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.common;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.NoSuchElementException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoSuchElementException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse&lt;Void&gt; handleNotFound(NoSuchElementException ex) {
+        return ApiResponse.error("NOT_FOUND", ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleBadRequest(IllegalArgumentException ex) {
+        return ApiResponse.error("BAD_REQUEST", ex.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleResponseStatus(ResponseStatusException ex) {
+        return ApiResponse.error("ERROR", ex.getReason());
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiResponse&lt;Void&gt; handleUnknown(Exception ex) {
+        return ApiResponse.error("INTERNAL_ERROR", "伺服器內部錯誤");
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 5：User Entity</h2>
+
+<p><code>user/User.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;     // BCrypt 加密後的密文
+
+    @Column(nullable = false, length = 100)
+    private String displayName;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    protected User() { }
+
+    public User(String username, String email, String password, String displayName) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.displayName = displayName;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Long getId() { return id; }
+    public String getUsername() { return username; }
+    public String getEmail() { return email; }
+    public String getPassword() { return password; }
+    public String getDisplayName() { return displayName; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 6：DTOs、Repository、Service</h2>
+
+<p><code>user/dto/RegisterRequest.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user.dto;
+
+import jakarta.validation.constraints.*;
+
+public record RegisterRequest(
+    @NotBlank @Size(min = 3, max = 50) String username,
+    @NotBlank @Email String email,
+    @NotBlank @Size(min = 6, max = 100) String password,
+    @NotBlank @Size(max = 100) String displayName
+) { }
+</code></pre>
+
+<p><code>user/dto/LoginRequest.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginRequest(
+    @NotBlank String email,
+    @NotBlank String password
+) { }
+</code></pre>
+
+<p><code>user/dto/UserResponse.java</code>（不含密碼！）：</p>
+
+<pre><code class="language-java">package com.blogapi.user.dto;
+
+import com.blogapi.user.User;
+
+public record UserResponse(
+    Long id, String username, String email,
+    String displayName, String createdAt
+) {
+    public static UserResponse from(User user) {
+        return new UserResponse(user.getId(), user.getUsername(),
+            user.getEmail(), user.getDisplayName(),
+            user.getCreatedAt().toString());
+    }
+}
+</code></pre>
+
+<p><code>user/UserRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+    Optional&lt;User&gt; findByEmail(String email);
+    Optional&lt;User&gt; findByUsername(String username);
+    boolean existsByEmail(String email);
+    boolean existsByUsername(String username);
+}
+</code></pre>
+
+<p><code>user/UserService.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user;
+
+import com.blogapi.user.dto.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class UserService {
+    private final UserRepository userRepo;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepo, PasswordEncoder passwordEncoder) {
+        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional
+    public UserResponse register(RegisterRequest req) {
+        if (userRepo.existsByEmail(req.email())) {
+            throw new IllegalArgumentException("Email 已被註冊");
+        }
+        if (userRepo.existsByUsername(req.username())) {
+            throw new IllegalArgumentException("使用者名稱已被使用");
+        }
+        var user = new User(req.username(), req.email(),
+            passwordEncoder.encode(req.password()),   // ← BCrypt 加密！
+            req.displayName());
+        return UserResponse.from(userRepo.save(user));
+    }
+
+    public UserResponse login(LoginRequest req) {
+        var user = userRepo.findByEmail(req.email())
+            .orElseThrow(() -> new IllegalArgumentException("Email 或密碼錯誤"));
+
+        if (!passwordEncoder.matches(req.password(), user.getPassword())) {
+            throw new IllegalArgumentException("Email 或密碼錯誤");
+        }
+        return UserResponse.from(user);
+    }
+
+    public UserResponse getById(Long id) {
+        return UserResponse.from(
+            userRepo.findById(id).orElseThrow(() ->
+                new IllegalArgumentException("找不到使用者: " + id))
+        );
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 7：Controller</h2>
+
+<p><code>user/UserController.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.user;
+
+import com.blogapi.common.ApiResponse;
+import com.blogapi.user.dto.*;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse&lt;UserResponse&gt; register(@Valid @RequestBody RegisterRequest req) {
+        return ApiResponse.ok(userService.register(req));
+    }
+
+    @PostMapping("/login")
+    public ApiResponse&lt;UserResponse&gt; login(@Valid @RequestBody LoginRequest req) {
+        return ApiResponse.ok(userService.login(req));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse&lt;UserResponse&gt; getById(@PathVariable Long id) {
+        return ApiResponse.ok(userService.getById(id));
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 8：測試</h2>
+
+<p>啟動後用 PowerShell 測試：</p>
+
+<pre><code class="language-bash"># 註冊
+Invoke-RestMethod -Uri http://localhost:8080/api/users/register -Method Post `
+  -ContentType "application/json" `
+  -Body '{"username":"alice","email":"alice@example.com","password":"secret123","displayName":"Alice"}'
+
+# 回應：
+# {
+#   "success": true,
+#   "data": {"id": 1, "username": "alice", ...},
+#   "error": null,
+#   "timestamp": "2026-07-05T..."
+# }
+
+# 登入
+Invoke-RestMethod -Uri http://localhost:8080/api/users/login -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email":"alice@example.com","password":"secret123"}'
+
+# 錯誤登入
+Invoke-RestMethod -Uri http://localhost:8080/api/users/login -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email":"alice@example.com","password":"wrong"}'
+# 回應：{"success":false, "error":{"code":"BAD_REQUEST","message":"Email 或密碼錯誤"}, ...}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>Part 1 檢查清單</h2>
+
+<ul class="checklist">
+  <li>blog-api 專案從 Spring Initializr 建立，含 Web/JPA/H2/Validation/Security</li>
+  <li>SecurityConfig 放行 /api/** 且關閉 CSRF</li>
+  <li>ApiResponse + GlobalExceptionHandler 全域基礎設施就緒</li>
+  <li>User Entity + Repository + Service + Controller 完整四層</li>
+  <li>密碼使用 BCrypt 加密儲存（H2 Console 中看到的是密文）</li>
+  <li>登入驗證使用 passwordEncoder.matches() 比對</li>
+  <li>API 回應格式統一為 { success, data, error, timestamp }</li>
+  <li>重複 email / username 正確回傳 400 錯誤</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 Part 1 架構圖</h3>
+  <pre><code class="language-text">POST /api/users/register ─→ UserController ─→ UserService ─→ UserRepository ─→ H2
+POST /api/users/login    ─→       ↑              ↑               ↑
+GET  /api/users/{id}     ─→       └── 全域 ──────┘               │
+                                   ApiResponse                    │
+                                   GlobalExceptionHandler ←──────┘</code></pre>
+</div>
+
+<h2>下一步</h2>
+<p><strong>P11：整合專案 Part 2</strong> — 文章 CRUD + Category Entity + 分頁查詢 + @Valid 驗證 + slug 產生。</p>
+
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>403 Forbidden 或 401 Unauthorized？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">Spring Security 預設保護所有端點。檢查 SecurityConfig 的 requestMatchers 是否正確、是否重啟了應用。如果還是不行，把錯誤貼上來。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0019-T-rest-api-best-practices.html" class="nav-prev">← T10 REST API 設計</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0021-P-capstone-part2.html" class="nav-next">P11 整合專案 Part 2 →</a>
+</nav>
+
+</body>
+</html>

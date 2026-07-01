@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference: Java / TS / Python 語法速查表</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<h1>📋 Java / TS / Python 語法速查表</h1>
+
+<p>快速對照三種語言的常用語法。以你熟悉的 TS/Python 為錨點，對應到 Java 寫法。</p>
+
+<h2>變數與型別</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>變數宣告</td><td><code>String name = "a";</code><br><code>var name = "a";</code> (Java 10+)</td><td><code>let name: string = "a";</code></td><td><code>name: str = "a"</code></td></tr>
+    <tr><td>常數</td><td><code>final int MAX = 10;</code></td><td><code>const MAX = 10;</code></td><td><code>MAX = 10</code>（慣例大寫）</td></tr>
+    <tr><td>整數</td><td><code>int x = 42;</code><br><code>long big = 99L;</code></td><td><code>let x: number = 42;</code></td><td><code>x: int = 42</code></td></tr>
+    <tr><td>浮點數</td><td><code>double pi = 3.14;</code></td><td><code>let pi: number = 3.14;</code></td><td><code>pi: float = 3.14</code></td></tr>
+    <tr><td>布林值</td><td><code>boolean ok = true;</code></td><td><code>let ok: boolean = true;</code></td><td><code>ok: bool = True</code></td></tr>
+    <tr><td>空值</td><td><code>null</code>（物件）；primitive 不可 null</td><td><code>null</code> / <code>undefined</code></td><td><code>None</code></td></tr>
+  </tbody>
+</table>
+
+<h2>字串操作</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>字串長度</td><td><code>s.length()</code></td><td><code>s.length</code></td><td><code>len(s)</code></td></tr>
+    <tr><td>字串相加</td><td><code>"a" + "b"</code><br>或用 <code>StringBuilder</code></td><td><code>"a" + "b"</code><br>或用 template literal</td><td><code>"a" + "b"</code><br>或用 f-string</td></tr>
+    <tr><td>字串格式化</td><td><code>String.format("Hi %s", name)</code><br>或 <code>"Hi %s".formatted(name)</code></td><td><code>`Hi ${name}`</code></td><td><code>f"Hi {name}"</code></td></tr>
+    <tr><td>字串比較</td><td><code>s1.equals(s2)</code> ← 重要！</td><td><code>s1 === s2</code></td><td><code>s1 == s2</code></td></tr>
+  </tbody>
+</table>
+
+<h2>集合類型</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>動態陣列</td><td><code>List&lt;String&gt; list = new ArrayList&lt;&gt;();</code><br><code>list.add("a");</code><br><code>list.get(0);</code><br><code>list.size();</code></td><td><code>const list: string[] = [];</code><br><code>list.push("a");</code><br><code>list[0];</code><br><code>list.length;</code></td><td><code>list = []</code><br><code>list.append("a")</code><br><code>list[0]</code><br><code>len(list)</code></td></tr>
+    <tr><td>固定陣列</td><td><code>String[] arr = new String[3];</code></td><td><code>const arr = new Array(3);</code></td><td>N/A（list 即是動態）</td></tr>
+    <tr><td>Map/Dict</td><td><code>Map&lt;String, Integer&gt; m = new HashMap&lt;&gt;();</code><br><code>m.put("k", 1);</code><br><code>m.get("k");</code></td><td><code>const m = new Map&lt;string, number&gt;();</code><br>或用物件 <code>{k: 1}</code></td><td><code>d = {"k": 1}</code><br><code>d["k"]</code></td></tr>
+    <tr><td>Set</td><td><code>Set&lt;String&gt; s = new HashSet&lt;&gt;();</code></td><td><code>const s = new Set&lt;string&gt;();</code></td><td><code>s = set()</code></td></tr>
+  </tbody>
+</table>
+
+<h2>控制流程</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>If</td><td><code>if (x > 0) { } else { }</code></td><td><code>if (x > 0) { } else { }</code></td><td><code>if x > 0:</code>（縮排）</td></tr>
+    <tr><td>For-each</td><td><code>for (String s : list) { }</code></td><td><code>for (const s of list) { }</code></td><td><code>for s in list:</code></td></tr>
+    <tr><td>傳統 For</td><td><code>for (int i = 0; i &lt; n; i++) { }</code></td><td><code>for (let i = 0; i &lt; n; i++) { }</code></td><td><code>for i in range(n):</code></td></tr>
+    <tr><td>While</td><td><code>while (cond) { }</code></td><td><code>while (cond) { }</code></td><td><code>while cond:</code></td></tr>
+    <tr><td>Switch</td><td><code>switch (x) { case 1: ... break; }</code></td><td><code>switch (x) { case 1: ... break; }</code></td><td><code>match x: case 1: ...</code> (3.10+)</td></tr>
+  </tbody>
+</table>
+
+<h2>類別與方法</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>建構子</td><td><code>public ClassName() { }</code></td><td><code>constructor() { }</code></td><td><code>def __init__(self):</code></td></tr>
+    <tr><td>方法</td><td><code>public int getX() { return x; }</code></td><td><code>getX(): number { return this.x; }</code></td><td><code>def get_x(self) -> int:</code></td></tr>
+    <tr><td>無回傳值</td><td><code>void</code></td><td><code>void</code></td><td>隱含 <code>None</code></td></tr>
+    <tr><td>靜態方法</td><td><code>public static void foo() { }</code></td><td><code>static foo() { }</code></td><td><code>@staticmethod</code></td></tr>
+    <tr><td>介面/協定</td><td><code>interface Foo { void bar(); }</code></td><td><code>interface Foo { bar(): void; }</code></td><td><code>class Foo(ABC):</code> 或用 Protocol</td></tr>
+    <tr><td>繼承</td><td><code>class Dog extends Animal { }</code></td><td><code>class Dog extends Animal { }</code></td><td><code>class Dog(Animal):</code></td></tr>
+  </tbody>
+</table>
+
+<h2>常用操作</h2>
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>印出</td><td><code>System.out.println(x);</code></td><td><code>console.log(x);</code></td><td><code>print(x)</code></td></tr>
+    <tr><td>例外處理</td><td><code>try { ... } catch (Exception e) { }</code></td><td><code>try { ... } catch (e) { }</code></td><td><code>try: ... except Exception as e:</code></td></tr>
+    <tr><td>Lambda</td><td><code>x -> x * 2</code></td><td><code>x => x * 2</code></td><td><code>lambda x: x * 2</code></td></tr>
+    <tr><td>Stream / map</td><td><code>list.stream().map(x -> x*2).toList()</code></td><td><code>list.map(x => x * 2)</code></td><td><code>[x*2 for x in list]</code></td></tr>
+  </tbody>
+</table>
+
+<div class="lesson-nav">
+  <a href="../../index.html">← 回到課程索引</a>
+  &nbsp;|&nbsp;
+  <a href="../lessons/0001-T-java-syntax-overview.html">→ T01：Java 語法速覽</a>
+</div>
+
+</body>
+</html>

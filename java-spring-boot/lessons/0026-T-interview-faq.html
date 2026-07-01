@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>補充課 — Spring Boot 面試八股文 + Spring vs Spring Boot</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>補充課</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試萬用題</span>
+</div>
+
+<h1>Spring Boot 面試八股文 + Spring vs Spring Boot</h1>
+
+<p>後端面試中有一類問題不考程式碼，而是考你對框架「為什麼這樣設計」的理解。這堂課整理最高頻的 Spring Boot 八股題，每題附<strong>面試官想聽的答案</strong>和<strong>你自己在課程中對應的經驗</strong>。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的定位</span>
+  面試中回答「為什麼」比回答「是什麼」重要十倍。每題都附一個你在整合專案中的具體例子——讓面試官覺得你不是在背誦，是真的用過。
+</div>
+
+<!-- ============================================================ -->
+<h1>Part A：Spring Boot vs Spring Framework</h1>
+
+<!-- Q1 -->
+<div class="card" style="border-left:4px solid var(--accent)">
+  <h3 style="font-size:1rem;margin-top:0">Q: Spring Boot 和 Spring Framework 有什麼不同？</h3>
+  <p style="font-size:0.9rem;color:var(--text-dim)">
+    <strong>面試官想聽</strong>：不是單純列舉功能差異，而是說出「Spring Boot 解決了什麼痛點」。
+  </p>
+  <p style="font-size:0.9rem;margin-top:0.5rem">
+    <strong>標準回答</strong>：Spring Framework 是 Java 後端的核心 DI/AOP 框架，但使用它需要大量手動設定——XML 配置、Servlet 容器設定、依賴版本管理。Spring Boot 是建立在 Spring Framework 之上的<strong>自動化層</strong>，用三個核心機制解決了這些痛點：<strong>自動配置</strong>（Auto-configuration，根據 classpath 自動載入設定）、<strong>起步依賴</strong>（Starter，一組預先測試過相容版本的依賴包）、<strong>內嵌伺服器</strong>（Embedded Tomcat，一行 run() 就能啟動）。Spring Boot 不是取代 Spring，而是讓 Spring 更好用。
+  </p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th></th><th>Spring Framework</th><th>Spring Boot</th></tr></thead>
+  <tbody>
+    <tr><td>設定方式</td><td>XML / Java Config（手寫大量 @Bean）</td><td>Auto-configuration（零設定起手）</td></tr>
+    <tr><td>依賴管理</td><td>手動指定每個 library 版本</td><td>Starter 一鍵引入，版本統一管理</td></tr>
+    <tr><td>伺服器</td><td>需要外部 Tomcat，打成 WAR</td><td>內嵌 Tomcat/Jetty，直接 java -jar</td></tr>
+    <tr><td>啟動方式</td><td>部署到 Servlet 容器</td><td><code>SpringApplication.run()</code></td></tr>
+    <tr><td>監控</td><td>需手動整合</td><td>Actuator 內建 /health /metrics</td></tr>
+    <tr><td>入門時間</td><td>數天（讀文件、寫設定）</td><td>數分鐘（start.spring.io）</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-label">💡 加分說法</span>
+  「我之前用 Spring Initializr 建立專案，選 Spring Web + JPA 兩個 starter，一行設定都沒寫就能啟動 REST API——這就是 Spring Boot 的價值。但我也理解底層仍然是 Spring 的 IoC 容器和 AOP 在運作（T05/T06 學的），所以除錯時知道要去看 Bean 註冊和代理機制。」
+</div>
+
+<!-- Q2 -->
+<h2>Q2: @SpringBootApplication 做什麼？</h2>
+
+<pre><code class="language-java">// 你每天寫的：
+@SpringBootApplication
+public class BlogApiApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(BlogApiApplication.class, args);
+    }
+}
+
+// 實際上等於三個 annotation 的組合：
+@SpringBootConfiguration   // = @Configuration：這個 class 可以定義 @Bean
+@EnableAutoConfiguration   // 自動配置的核心：根據 classpath 猜你需要什麼
+@ComponentScan             // 掃描這個 package 以下的所有 @Component/@Service/@Controller
+public @interface SpringBootApplication { }
+</code></pre>
+
+<table class="compare-table">
+  <thead><tr><th>Annotation</th><th>作用</th><th>如果沒有會怎樣</th></tr></thead>
+  <tbody>
+    <tr><td><code>@SpringBootConfiguration</code></td><td>標記為設定類別</td><td>不能在此定義 @Bean</td></tr>
+    <tr><td><code>@EnableAutoConfiguration</code></td><td>自動設定 JPA、Web、Security...</td><td>必須手動寫所有設定（回到 Spring Framework 時代）</td></tr>
+    <tr><td><code>@ComponentScan</code></td><td>掃描 Bean</td><td>你的 @Service、@Controller 不會被註冊</td></tr>
+  </tbody>
+</table>
+
+<!-- Q3 -->
+<h2>Q3: Spring Boot 的自動配置（Auto-configuration）是怎麼運作的？</h2>
+
+<div class="card">
+  <p style="font-size:0.9rem"><strong>標準回答</strong>：Spring Boot 在 classpath 中尋找 <code>spring.factories</code> 檔案（Spring Boot 2.x）或 <code>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</code>（Spring Boot 3.x），裡面列出了所有自動配置類別。每個自動配置類別上都有 <code>@ConditionalOnClass</code>、<code>@ConditionalOnMissingBean</code> 等條件註解——只在你引入了對應依賴、且你沒有自己定義 Bean 時才會生效。</p>
+</div>
+
+<pre><code class="language-java">// 例如 DataSourceAutoConfiguration 的簡化邏輯：
+@AutoConfiguration
+@ConditionalOnClass({ DataSource.class, EmbeddedDatabaseType.class })
+// ↑ 只有 classpath 中有 DataSource 這個 class 時才生效（即引入了 JPA starter）
+public class DataSourceAutoConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean
+    // ↑ 只有你沒有自己定義 DataSource Bean 時才建立預設的
+    public DataSource dataSource() {
+        // 根據 application.properties 的 spring.datasource.* 建立 DataSource
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 你在專案中的經歷</span>
+  P07 中你引入 <code>spring-boot-starter-data-jpa</code> 後，<strong>一行資料庫連線設定都沒寫</strong>，Spring Boot 就自動建立了 H2 DataSource、EntityManagerFactory、TransactionManager——這就是自動配置。然後你在 application.properties 中加了 <code>spring.datasource.url=jdbc:h2:mem:taskdb</code>，自動配置就讀取你的設定並套用。
+</div>
+
+<!-- Q4 -->
+<h2>Q4: Spring Boot Starter 是什麼？常見的有哪些？</h2>
+
+<p><strong>標準回答</strong>：Starter 是一組<strong>預先測試過相容版本的依賴集合</strong>。例如 <code>spring-boot-starter-web</code> 包含了 Spring MVC、Jackson、內嵌 Tomcat——你不需要自己去找相容的版本號。</p>
+
+<table class="compare-table">
+  <thead><tr><th>Starter</th><th>包含什麼</th><th>你在哪堂課用的</th></tr></thead>
+  <tbody>
+    <tr><td><code>spring-boot-starter-web</code></td><td>Spring MVC + Jackson + Tomcat</td><td>P04（第一個 GET endpoint）</td></tr>
+    <tr><td><code>spring-boot-starter-data-jpa</code></td><td>Hibernate + Spring Data JPA + HikariCP</td><td>P07（JPA Entity CRUD）</td></tr>
+    <tr><td><code>spring-boot-starter-validation</code></td><td>Hibernate Validator</td><td>P10（@Valid 驗證）</td></tr>
+    <tr><td><code>spring-boot-starter-security</code></td><td>Spring Security + BCrypt</td><td>P10（SecurityConfig）</td></tr>
+    <tr><td><code>spring-boot-starter-test</code></td><td>JUnit 5 + Mockito + MockMvc</td><td>P09（測試）</td></tr>
+    <tr><td><code>spring-boot-starter-amqp</code></td><td>RabbitMQ client</td><td>MQ 補充課</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h1>Part B：Spring Boot 核心八股題</h1>
+
+<!-- Q5 -->
+<h2>Q5: application.properties vs application.yml？</h2>
+
+<pre><code class="language-properties"># application.properties（你課程中用的）
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.jpa.show-sql=true</code></pre>
+
+<pre><code class="language-yaml"># application.yml（結構化寫法，複雜設定更易讀）
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+  jpa:
+    show-sql: true</code></pre>
+
+<p><strong>標準回答</strong>：功能完全相同，都是 Spring Boot 的外部設定檔。properties 適合簡單的扁平設定，YAML 適合巢狀結構（如多資料來源、CORS 規則）。Spring Boot 啟動時自動載入兩者，如果同時存在，properties 優先。面試中說「團隊統一選一種，大部分用 YAML 因為支援多行字串和巢狀結構」即可。</p>
+
+<!-- Q6 -->
+<h2>Q6: Spring Boot 如何讀取外部設定？優先順序是什麼？</h2>
+
+<p><strong>標準回答</strong>：Spring Boot 支援 17 種設定來源，從高到低的優先順序：</p>
+
+<ol>
+  <li>命令列參數（<code>--server.port=9090</code>）——最高優先</li>
+  <li>作業系統環境變數（<code>SPRING_DATASOURCE_URL</code>）</li>
+  <li><code>application.properties</code>（在 jar 外）</li>
+  <li><code>application.properties</code>（在 jar 內）——最低優先</li>
+</ol>
+
+<p>實務上最重要的三種讀取方式：</p>
+
+<pre><code class="language-java">// 1. @Value（單一值）
+@Value("${spring.datasource.url}")
+private String dbUrl;
+
+// 2. @ConfigurationProperties（整組設定，型別安全）
+@ConfigurationProperties(prefix = "app.blog")
+public record BlogConfig(String title, int pageSize) { }
+
+// 3. Environment（程式化讀取）
+@Autowired Environment env;
+String port = env.getProperty("server.port");
+</code></pre>
+
+<!-- Q7 -->
+<h2>Q7: Spring Boot Actuator 是什麼？</h2>
+
+<p><strong>標準回答</strong>：Actuator 是 Spring Boot 內建的<strong>生產環境監控模組</strong>，提供開箱即用的端點來監控應用健康狀態、metrics、環境變數、日誌等級等。</p>
+
+<pre><code class="language-java">// build.gradle
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+// 常用端點：
+// GET /actuator/health      → {"status":"UP"}（負載均衡器用這個判斷服務是否活著）
+// GET /actuator/metrics     → JVM 記憶體、CPU、HTTP 請求統計
+// GET /actuator/env         → 所有環境變數和設定
+// GET /actuator/beans       → 列出 IoC 容器中的所有 Bean（你在 P04 做過！）
+// GET /actuator/mappings    → 列出所有註冊的 URL 映射
+</code></pre>
+
+<!-- Q8 -->
+<h2>Q8: 內嵌 Tomcat vs 外部 Servlet 容器？</h2>
+
+<p><strong>標準回答</strong>：Spring Boot 預設使用內嵌 Tomcat，直接 <code>java -jar</code> 就能啟動，不需要安裝設定獨立的 Tomcat。優點：部署簡單（一個 jar 搞定）、開發環境一致、適合容器化（Docker）。如果需要改用 Jetty 或 Undertow，排除 Tomcat 依賴、引入對應 starter 即可。</p>
+
+<pre><code class="language-java">// 改用 Jetty（build.gradle）
+configurations.all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-tomcat'
+}
+implementation 'org.springframework.boot:spring-boot-starter-jetty'
+</code></pre>
+
+<!-- ============================================================ -->
+<h1>Part C：快速搶答題</h1>
+
+<table class="compare-table">
+  <thead><tr><th>面試題</th><th>30 秒答案</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Spring Boot 如何排除特定的自動配置？</td>
+      <td><code>@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)</code> 或在 properties 中 <code>spring.autoconfigure.exclude=...</code></td>
+    </tr>
+    <tr>
+      <td>如何更換內嵌伺服器的 port？</td>
+      <td><code>server.port=9090</code>（properties）或 <code>--server.port=9090</code>（命令列）</td>
+    </tr>
+    <tr>
+      <td>什麼是 Spring Initializr？</td>
+      <td><a href="https://start.spring.io">start.spring.io</a>——線上產生 Spring Boot 專案骨架，選依賴、產生 ZIP</td>
+    </tr>
+    <tr>
+      <td>Spring Boot 支援哪些日誌框架？</td>
+      <td>預設 Logback，也支援 Log4j2、Java Util Logging。用 starter 自動排除衝突</td>
+    </tr>
+    <tr>
+      <td>如何定義多個 Bean 的初始化順序？</td>
+      <td><code>@DependsOn("otherBean")</code> 或讓建構子依賴自然排序</td>
+    </tr>
+    <tr>
+      <td>Spring Boot 的熱重載（hot reload）？</td>
+      <td>spring-boot-devtools：改程式碼後自動重啟（非熱部署，是快速重啟）</td>
+    </tr>
+    <tr>
+      <td>為什麼 main 方法在 Spring Boot 中不會結束？</td>
+      <td>因為內嵌 Tomcat 的非守護執行緒（non-daemon thread）持續執行，JVM 不會退出</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>Spring Boot vs Spring：面試一句話總結</h2>
+
+<div class="summary-box">
+  <p style="font-size:1rem;margin:0">「Spring Framework 是<strong>引擎</strong>（DI + AOP 核心），Spring Boot 是<strong>整車</strong>（自動配置 + Starter + 內嵌伺服器）。沒有 Spring Framework，Spring Boot 無法運作；沒有 Spring Boot，Spring Framework 需要大量手動設定才能上路。我在課程中用 Spring Initializr 建立專案、一行設定都沒寫就啟動了 REST API——這就是 Spring Boot 的價值。」</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: 面試官問「Spring Boot 和 Spring 有什麼不同」，你怎麼用一句話切入？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">Spring Boot 是 Spring Framework 的<strong>自動化層</strong>，用自動配置、Starter 依賴、內嵌伺服器三個機制，把 Spring 從「需要大量手動設定」變成「幾乎零設定」。它沒有取代 Spring，而是讓 Spring 的 IoC/AOP 開箱即用。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: @SpringBootApplication 背後是哪三個 annotation 的組合？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><code>@SpringBootConfiguration</code>（標記設定類別）+ <code>@EnableAutoConfiguration</code>（觸發自動配置）+ <code>@ComponentScan</code>（掃描 Bean）。三者缺一不可：缺自動配置你必須手寫所有 @Bean，缺 ComponentScan 你的 @Service 不會被發現。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 你在自己的 blog-api 專案中，哪裡直接體會到了 Spring Boot 自動配置的價值？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">P07 引入 <code>spring-boot-starter-data-jpa</code> 後，只定義了一個 JpaRepository interface，Spring Boot 自動建立了 DataSource、EntityManagerFactory、TransactionManager——我一行 SQL 連線設定都沒寫。P10 引入 Spring Security starter 後，密碼自動被 BCrypt 加密——我只需要注入 PasswordEncoder。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>有其他八股題想知道答案？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">例如 Spring MVC 的 DispatcherServlet 流程、Filter vs Interceptor 的差異、CORS 在 Spring Boot 中的設定⋯⋯直接跟我說，我幫你補。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0025-T-message-queue.html" class="nav-prev">← Message Queue</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0027-T-race-condition-deadlock.html" class="nav-next">Race Condition & Deadlock →</a>
+</nav>
+
+</body>
+</html>

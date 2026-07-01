@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P05 — 分層架構實作：Controller → Service → Repository</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P05</span>
+  <span>/</span>
+  <span>~60 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>分層架構實作：Controller → Service → Repository</h1>
+
+<p>P04 的 demo 只有兩層（Controller + Service），而且 Service 直接回傳字串。這堂課會把專案擴展為<strong>完整的三層架構</strong>，加入真正的資料層（Repository），並練習 <a href="0009-T-di-ioc-deep-dive.html">T05</a> 學到的 <code>@Qualifier</code> 多重實作。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  在 P04 的 demo 專案中建立一個「任務管理」REST API，含完整三層 + 介面/實作分離 + 兩種 Repository 實作（記憶體 vs 檔案），用 @Qualifier 切換。
+</div>
+
+<!-- ============================================================ -->
+<h2>專案結構預覽</h2>
+
+<pre><code class="language-text">src/main/java/com/example/demo/
+├── DemoApplication.java
+├── controller/
+│   └── TaskController.java          ← REST 端點
+├── service/
+│   ├── TaskService.java             ← 介面
+│   └── TaskServiceImpl.java         ← 實作（業務邏輯）
+├── repository/
+│   ├── TaskRepository.java          ← 介面（合約）
+│   ├── InMemoryTaskRepository.java  ← 實作 A：存在記憶體
+│   └── FileTaskRepository.java      ← 實作 B：存在檔案（@Qualifier 練習）
+└── model/
+    ├── Task.java                    ← 核心 domain model
+    └── TaskRequest.java             ← POST request body DTO
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立 Model</h2>
+
+<p>建立 <code>model/Task.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.model;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public class Task {
+    private final String id;
+    private String title;
+    private boolean completed;
+    private final LocalDateTime createdAt;
+
+    public Task(String title) {
+        this.id = UUID.randomUUID().toString().substring(0, 8);
+        this.title = title;
+        this.completed = false;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // === Getters ===
+    public String getId() { return id; }
+    public String getTitle() { return title; }
+    public boolean isCompleted() { return completed; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+
+    // === Setters（只有可變欄位） ===
+    public void setTitle(String title) { this.title = title; }
+    public void setCompleted(boolean completed) { this.completed = completed; }
+}
+</code></pre>
+
+<p>建立 <code>model/TaskRequest.java</code>（用 record —— T02 教的）：</p>
+
+<pre><code class="language-java">package com.example.demo.model;
+
+public record TaskRequest(String title) {
+    public TaskRequest {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("標題不能為空");
+        }
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：建立 Repository 層（介面 + 雙實作）</h2>
+
+<p>建立 <code>repository/TaskRepository.java</code>（介面）：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Task;
+import java.util.List;
+import java.util.Optional;
+
+public interface TaskRepository {
+    List&lt;Task&gt; findAll();
+    Optional&lt;Task&gt; findById(String id);
+    Task save(Task task);
+    void deleteById(String id);
+}
+</code></pre>
+
+<p>建立 <code>repository/InMemoryTaskRepository.java</code>（實作 A——主要使用）：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Task;
+import org.springframework.stereotype.Repository;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Repository
+@Primary  // ← 當有多個 TaskRepository Bean 時，這是預設選擇
+public class InMemoryTaskRepository implements TaskRepository {
+    private final Map&lt;String, Task&gt; store = new ConcurrentHashMap&lt;&gt;();
+
+    @Override
+    public List&lt;Task&gt; findAll() {
+        return List.copyOf(store.values());
+    }
+
+    @Override
+    public Optional&lt;Task&gt; findById(String id) {
+        return Optional.ofNullable(store.get(id));
+    }
+
+    @Override
+    public Task save(Task task) {
+        store.put(task.getId(), task);
+        return task;
+    }
+
+    @Override
+    public void deleteById(String id) {
+        store.remove(id);
+    }
+}
+</code></pre>
+
+<p>建立 <code>repository/FileTaskRepository.java</code>（實作 B——@Qualifier 練習用）：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Task;
+import org.springframework.stereotype.Repository;
+
+import java.util.*;
+
+@Repository("fileRepo")  // ← 給 Bean 命名，供 @Qualifier 使用
+public class FileTaskRepository implements TaskRepository {
+    // 簡化版：實際上應該讀寫檔案，這裡先當作「另一個實作」的佔位
+    private final Map&lt;String, Task&gt; store = new LinkedHashMap&lt;&gt;();
+
+    @Override
+    public List&lt;Task&gt; findAll() {
+        System.out.println("📁 [FileRepo] 從檔案讀取...");
+        return List.copyOf(store.values());
+    }
+
+    @Override
+    public Optional&lt;Task&gt; findById(String id) {
+        return Optional.ofNullable(store.get(id));
+    }
+
+    @Override
+    public Task save(Task task) {
+        System.out.println("📁 [FileRepo] 寫入檔案: " + task.getId());
+        store.put(task.getId(), task);
+        return task;
+    }
+
+    @Override
+    public void deleteById(String id) {
+        store.remove(id);
+    }
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ ConcurrentHashMap 說明</span>
+  為什麼 InMemoryTaskRepository 用 <code>ConcurrentHashMap</code> 而不是普通 <code>HashMap</code>？因為 Spring 的 Service/Repository 預設是 <strong>singleton</strong>——所有 HTTP 請求共享同一個實例。多個請求同時操作 HashMap 會導致資料不一致甚至死循環。ConcurrentHashMap 是執行緒安全的 Map 實作。這正是 T08 要深入的主題。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 3：建立 Service 層（介面 + 實作）</h2>
+
+<p>建立 <code>service/TaskService.java</code>（介面）：</p>
+
+<pre><code class="language-java">package com.example.demo.service;
+
+import com.example.demo.model.Task;
+import java.util.List;
+import java.util.Optional;
+
+public interface TaskService {
+    List&lt;Task&gt; getAllTasks();
+    Optional&lt;Task&gt; getTask(String id);
+    Task createTask(String title);
+    Task updateTask(String id, String title, Boolean completed);
+    void deleteTask(String id);
+}
+</code></pre>
+
+<p>建立 <code>service/TaskServiceImpl.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.service;
+
+import com.example.demo.model.Task;
+import com.example.demo.repository.TaskRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class TaskServiceImpl implements TaskService {
+    private final TaskRepository taskRepository;
+
+    // 建構子注入——Spring 會注入 @Primary 的實作（InMemoryTaskRepository）
+    public TaskServiceImpl(TaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
+
+    @Override
+    public List&lt;Task&gt; getAllTasks() {
+        return taskRepository.findAll();
+    }
+
+    @Override
+    public Optional&lt;Task&gt; getTask(String id) {
+        return taskRepository.findById(id);
+    }
+
+    @Override
+    public Task createTask(String title) {
+        var task = new Task(title);
+        return taskRepository.save(task);
+    }
+
+    @Override
+    public Task updateTask(String id, String title, Boolean completed) {
+        var task = taskRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Task not found: " + id));
+
+        if (title != null) task.setTitle(title);
+        if (completed != null) task.setCompleted(completed);
+
+        return taskRepository.save(task);
+    }
+
+    @Override
+    public void deleteTask(String id) {
+        taskRepository.deleteById(id);
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🎯 設計觀察</span>
+  Service <strong>不知道也不在乎</strong> TaskRepository 是存在記憶體還是檔案——它只依賴 <code>TaskRepository</code> 介面。這就是 T02 說的「針對介面寫程式」在 Spring Boot 中的威力：換 Repository 實作只需改一個 annotation，Service 一行都不用動。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 4：建立 Controller</h2>
+
+<p>建立 <code>controller/TaskController.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.controller;
+
+import com.example.demo.model.Task;
+import com.example.demo.model.TaskRequest;
+import com.example.demo.service.TaskService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/tasks")   // ← 所有端點的前綴
+public class TaskController {
+    private final TaskService taskService;
+
+    public TaskController(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    // GET /api/tasks
+    @GetMapping
+    public List&lt;Task&gt; getAll() {
+        return taskService.getAllTasks();
+    }
+
+    // GET /api/tasks/{id}
+    @GetMapping("/{id}")
+    public Task getOne(@PathVariable String id) {
+        return taskService.getTask(id)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "找不到任務: " + id
+            ));
+    }
+
+    // POST /api/tasks
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)  // 回傳 201 而非預設的 200
+    public Task create(@RequestBody TaskRequest request) {
+        return taskService.createTask(request.title());
+    }
+
+    // PUT /api/tasks/{id}
+    @PutMapping("/{id}")
+    public Task update(
+        @PathVariable String id,
+        @RequestBody TaskRequest request
+    ) {
+        return taskService.updateTask(id, request.title(), null);
+    }
+
+    // PATCH /api/tasks/{id}/complete
+    @PatchMapping("/{id}/complete")
+    public Task toggleComplete(@PathVariable String id) {
+        var task = taskService.getTask(id)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "找不到任務: " + id
+            ));
+        return taskService.updateTask(id, null, !task.isCompleted());
+    }
+
+    // DELETE /api/tasks/{id}
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)  // 204
+    public void delete(@PathVariable String id) {
+        taskService.deleteTask(id);
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 新的 Annotation 說明</span>
+  <table style="font-size:0.85rem;margin-top:0.3rem">
+    <tr><td><code>@RequestMapping("/api/tasks")</code></td><td>所有方法路徑的前綴</td></tr>
+    <tr><td><code>@PathVariable</code></td><td>從 URL 路徑取出變數（等於 FastAPI 的 <code>{id}</code>）</td></tr>
+    <tr><td><code>@PutMapping</code></td><td>完整更新資源</td></tr>
+    <tr><td><code>@PatchMapping</code></td><td>部分更新（這裡只用來切換完成狀態）</td></tr>
+    <tr><td><code>@DeleteMapping</code></td><td>刪除資源</td></tr>
+    <tr><td><code>@ResponseStatus</code></td><td>覆寫預設的 HTTP 狀態碼</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 5：啟動與測試</h2>
+
+<p>啟動 <code>DemoApplication</code>，確認沒有錯誤。然後用 PowerShell 或瀏覽器測試每一條 API：</p>
+
+<pre><code class="language-bash"># 1. 建立任務
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"學 Spring Boot"}' -ContentType "application/json"
+
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"準備面試"}' -ContentType "application/json"
+
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"整理筆記"}' -ContentType "application/json"
+
+# 2. 查詢全部
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks -Method Get
+
+# 3. 查詢單一（把 {id} 換成上面回傳的 id）
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks/{id} -Method Get
+
+# 4. 切換完成狀態
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks/{id}/complete -Method Patch
+
+# 5. 刪除
+Invoke-RestMethod -Uri http://localhost:8080/api/tasks/{id} -Method Delete
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Bonus：練習 @Qualifier 切換 Repository</h2>
+
+<p>建立一個新的 Controller 來測試 FileTaskRepository：</p>
+
+<pre><code class="language-java">package com.example.demo.controller;
+
+import com.example.demo.model.Task;
+import com.example.demo.repository.TaskRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/file-tasks")
+public class FileTaskController {
+
+    private final TaskRepository taskRepository;
+
+    // 指名使用 fileRepo，而非 @Primary 的 InMemoryTaskRepository
+    public FileTaskController(
+        @Qualifier("fileRepo") TaskRepository taskRepository
+    ) {
+        this.taskRepository = taskRepository;
+    }
+
+    @GetMapping
+    public List&lt;Task&gt; getAll() {
+        return taskRepository.findAll();
+    }
+
+    @PostMapping
+    public Task create(@RequestBody com.example.demo.model.TaskRequest req) {
+        var task = new Task(req.title());
+        return taskRepository.save(task);
+    }
+}
+</code></pre>
+
+<p>現在你有兩個 Controller，使用不同的 Repository 實作：</p>
+<ul>
+  <li><code>/api/tasks</code> → 使用 InMemoryTaskRepository（@Primary）</li>
+  <li><code>/api/file-tasks</code> → 使用 FileTaskRepository（@Qualifier）</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>Controller / Service / Repository 三層各自獨立，依賴方向正確</li>
+  <li>Service 和 Repository 都有對應的 interface + 實作</li>
+  <li>Controller 只透過 Service 介面互動，不直接碰 Repository</li>
+  <li>GET/POST/PUT/PATCH/DELETE 五條 API 都能正常運作</li>
+  <li>@Primary 的 InMemoryTaskRepository 是預設實作</li>
+  <li>@Qualifier("fileRepo") 能切換到另一個實作</li>
+  <li>了解 <code>@RequestMapping</code>、<code>@PathVariable</code>、<code>@ResponseStatus</code> 用法</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 標準三層架構速查</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Controller</td><td><code>@RestController</code> + <code>@RequestMapping</code><br>職責：HTTP 請求/回應，參數驗證，呼叫 Service<br><strong>不寫業務邏輯</strong></td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Service</td><td><code>interface</code> + <code>@Service</code> 實作<br>職責：業務邏輯、交易管理、協調多個 Repository<br><strong>不知道 HTTP 的存在</strong></td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Repository</td><td><code>interface</code> + <code>@Repository</code> 實作<br>職責：資料存取、查詢、持久化<br><strong>不知道業務邏輯的存在</strong></td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>🔥 T06：Bean 生命週期</strong>——你會學到 Bean 從建立、初始化、使用到銷毀的完整流程，以及 <code>@PostConstruct</code>、<code>@PreDestroy</code>、<code>@Scope</code> 等面試必考的生命週期控制機制。</p>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>API 回傳 404 或 500？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">檢查 Spring Boot 啟動時的 log 有沒有你的 Controller 和 Service 名稱——如果沒有，代表 package 不在掃描範圍內（必須在 DemoApplication 的 package 之下）。把錯誤訊息貼上來我幫你看。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0009-T-di-ioc-deep-dive.html" class="nav-prev">← T05 DI & IOC 深度解析</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0011-T-bean-lifecycle.html" class="nav-next">T06 Bean 生命週期 →</a>
+</nav>
+
+</body>
+</html>

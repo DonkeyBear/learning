@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P08 — 並行問題模擬與鎖機制實作</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P08</span>
+  <span>/</span>
+  <span>~50 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>並行問題模擬與鎖機制實作</h1>
+
+<p>這堂課會用經典的「超賣」場景（庫存扣減），親眼看到不加鎖時的 race condition，然後用 <a href="0015-T-thread-safety.html">T08</a> 學到的 @Version 和 @Lock 解決它。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  建立 Product Entity → 用平行請求模擬搶購 → 觀察庫存變成負數（race condition）→ 加入 @Version 樂觀鎖修復 → 改用 @Lock 悲觀鎖修復 → 感受兩者的行為差異。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立 Product Entity（無鎖版本）</h2>
+
+<p>在 demo 專案中建立 <code>model/Product.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private int stock;      // ← 庫存：這就是 race condition 的戰場
+
+    protected Product() { }
+
+    public Product(String name, int stock) {
+        this.name = name;
+        this.stock = stock;
+    }
+
+    // === Getters ===
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public int getStock() { return stock; }
+
+    // === 業務方法 ===
+    public void decreaseStock(int quantity) {
+        if (this.stock < quantity) {
+            throw new IllegalStateException("庫存不足！剩餘: " + this.stock);
+        }
+        this.stock -= quantity;
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：建立 Repository 和 Service（無鎖）</h2>
+
+<p><code>repository/ProductRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Product;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.*;
+import java.util.Optional;
+
+public interface ProductRepository extends JpaRepository&lt;Product, Long&gt; {
+
+    // 悲觀鎖版本（Step 5 用到）
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    Optional&lt;Product&gt; findByIdWithPessimisticLock(Long id);
+}
+</code></pre>
+
+<p><code>service/ProductService.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.service;
+
+import com.example.demo.model.Product;
+import com.example.demo.repository.ProductRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class ProductService {
+    private final ProductRepository productRepo;
+
+    public ProductService(ProductRepository productRepo) {
+        this.productRepo = productRepo;
+    }
+
+    @Transactional
+    public Product purchase(Long productId, int quantity) {
+        var product = productRepo.findById(productId)
+            .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        // 模擬思考時間（放大 race condition 的發生機率）
+        try { Thread.sleep(100); } catch (InterruptedException e) { }
+
+        product.decreaseStock(quantity);
+        return productRepo.save(product);
+    }
+
+    public Product getProduct(Long id) {
+        return productRepo.findById(id)
+            .orElseThrow(() -> new RuntimeException("Product not found"));
+    }
+
+    @Transactional
+    public Product createProduct(String name, int stock) {
+        return productRepo.save(new Product(name, stock));
+    }
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ Thread.sleep(100) 是故意的</span>
+  這個 sleep 模擬了真實場景中「讀取 → 檢查 → 寫入」之間的時間差。沒有這個延遲，race condition 還是會發生，但機率較低。加上 sleep 後幾乎每次都會重現超賣問題——這在面試中也是一個好話題（如何測試並行問題）。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 3：建立 Controller + 初始化資料</h2>
+
+<p><code>controller/ProductController.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.controller;
+
+import com.example.demo.model.Product;
+import com.example.demo.service.ProductService;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+    private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
+
+    @GetMapping("/{id}")
+    public Product get(@PathVariable Long id) {
+        return productService.getProduct(id);
+    }
+
+    // 購買端點：每次呼叫扣 1 個庫存
+    @PostMapping("/{id}/purchase")
+    public Product purchase(@PathVariable Long id) {
+        return productService.purchase(id, 1);
+    }
+}
+</code></pre>
+
+<p>在 <code>DemoApplication.java</code> 啟動時自動塞一筆測試資料：</p>
+
+<pre><code class="language-java">@SpringBootApplication
+public class DemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
+
+    // 啟動後自動執行
+    @Bean
+    CommandLineRunner initData(ProductRepository productRepo) {
+        return args -> {
+            if (productRepo.count() == 0) {
+                productRepo.save(new Product("熱門演唱會門票", 10));
+                System.out.println("✅ 初始化：10 張門票");
+            }
+        };
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 4：模擬並行搶購（觀察 Race Condition）</h2>
+
+<p>啟動應用後，打開 <strong>PowerShell</strong>，用以下腳本同時發出 15 個購買請求（庫存只有 10 張）：</p>
+
+<pre><code class="language-powershell"># 平行發送 15 個購買請求（$i 用 ForEach-Object -Parallel）
+1..15 | ForEach-Object -Parallel {
+    try {
+        $resp = Invoke-RestMethod -Uri "http://localhost:8080/api/products/1/purchase" -Method Post
+        Write-Host "✅ 購買成功: 剩餘 $($resp.stock)"
+    } catch {
+        Write-Host "❌ 購買失敗: $_"
+    }
+} -ThrottleLimit 15
+
+# 查看最終庫存
+Invoke-RestMethod http://localhost:8080/api/products/1
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 預期結果</span>
+  如果 15 個請求全部成功，最終庫存會是 <strong>-5</strong>（超賣了！）。你賣出了 15 張票但只有 10 張庫存。這就是 race condition——多個執行緒同時讀到 stock=10，各自判斷「還有庫存」，然後各自扣減寫回。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 5：加入 @Version 樂觀鎖</h2>
+
+<p>修改 <code>Product.java</code>，加入版本欄位：</p>
+
+<pre><code class="language-java">@Entity
+public class Product {
+    // ... 原有欄位 ...
+
+    @Version          // ← 只加這一行！
+    private Long version;
+
+    // getter（不需要 setter——JPA 自動管理）
+    public Long getVersion() { return version; }
+}
+</code></pre>
+
+<p>重啟應用，再次執行 Step 4 的平行測試腳本。</p>
+
+<div class="callout">
+  <span class="callout-label">🔍 預期結果（樂觀鎖）</span>
+  Console 中會看到 <code>OptimisticLockException</code>（或 <code>ObjectOptimisticLockingFailureException</code>）。部分請求成功（正好 10 個）、部分請求因版本衝突而失敗。最終庫存 = <strong>0</strong>，沒有超賣。<br><br>
+  但使用者會直接看到 500 錯誤——不優雅。下一步加入重試邏輯。
+</div>
+
+<h3>加上重試邏輯</h3>
+
+<p>修改 <code>ProductService.java</code> 的 purchase 方法：</p>
+
+<pre><code class="language-java">@Transactional
+public Product purchase(Long productId, int quantity) {
+    int maxRetries = 3;
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            var product = productRepo.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+            product.decreaseStock(quantity);
+            return productRepo.save(product);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            if (attempt == maxRetries - 1) throw e;
+            System.out.println("⚠️ 樂觀鎖衝突，重試第 " + (attempt + 1) + " 次...");
+            // 等待一小段隨機時間後重試
+            try { Thread.sleep((long)(Math.random() * 50)); }
+            catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+        }
+    }
+    throw new RuntimeException("重試次數耗盡");
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 6：改用 @Lock 悲觀鎖</h2>
+
+<p>建立一個新方法來對比悲觀鎖：</p>
+
+<pre><code class="language-java">// 在 ProductService 中新增
+@Transactional
+public Product purchaseWithPessimisticLock(Long productId, int quantity) {
+    var product = productRepo.findByIdWithPessimisticLock(productId)
+        .orElseThrow(() -> new RuntimeException("Product not found"));
+    // 悲觀鎖不需要重試——交易在讀取時就已鎖定該行
+    product.decreaseStock(quantity);
+    return productRepo.save(product);
+}
+</code></pre>
+
+<p>在 Controller 中加一個新端點：</p>
+
+<pre><code class="language-java">@PostMapping("/{id}/purchase-pessimistic")
+public Product purchasePessimistic(@PathVariable Long id) {
+    return productService.purchaseWithPessimisticLock(id, 1);
+}
+</code></pre>
+
+<p>重啟，把平行測試腳本的 URL 改為 <code>/api/products/1/purchase-pessimistic</code>。</p>
+
+<div class="callout">
+  <span class="callout-label">🔍 預期結果（悲觀鎖）</span>
+  只有一個執行緒能拿到鎖並成功扣減，其他執行緒<strong>排隊等待</strong>。Console 中會看到 Hibernate 產生的 <code>SELECT ... FOR UPDATE</code>。15 個請求會花較長時間（因為排隊），但最終庫存 = 0，沒有任何超賣。也不需要重試邏輯——鎖保證了序列化執行。
+</div>
+
+<!-- ============================================================ -->
+<h2>對比總結</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>場景</th><th>行為</th><th>最終庫存</th><th>使用者體驗</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>無鎖</td><td>15 個請求全部成功</td><td style="color:var(--danger)">-5（超賣）</td><td>全顯示成功（但不該成功）</td></tr>
+    <tr><td>@Version（無重試）</td><td>部分成功，部分 500 error</td><td style="color:var(--success)">0 ✅</td><td>有些用戶看到錯誤</td></tr>
+    <tr><td>@Version（加重試）</td><td>10 個成功，5 個最終拋異常</td><td style="color:var(--success)">0 ✅</td><td>較好，但仍有人失敗</td></tr>
+    <tr><td>@Lock(PESSIMISTIC)</td><td>序列化執行，無衝突</td><td style="color:var(--success)">0 ✅</td><td>等待時間較長</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>無鎖版本成功重現超賣（庫存變成負數）</li>
+  <li>@Version 加入後不再超賣，但出現 OptimisticLockException</li>
+  <li>加入重試邏輯，請求能自動重試</li>
+  <li>@Lock(PESSIMISTIC_WRITE) 產生 SELECT FOR UPDATE SQL</li>
+  <li>親眼觀察 Console 中的 Hibernate SQL 差異</li>
+  <li>能解釋樂觀鎖和悲觀鎖的行為差異（重試 vs 等待）</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 三種策略速查</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--danger)">無鎖</td><td>超賣、資料不一致——面試中描述問題時用來當反面案例</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--warning)">@Version 樂觀鎖</td><td>版本號比對 + 重試。適合衝突少的場景。需要自行寫重試邏輯</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--success)">@Lock 悲觀鎖</td><td>SELECT FOR UPDATE。適合高衝突場景。不需要重試，但有等待成本和 deadlock 風險</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T09：Spring Boot 測試策略概論</strong>——你會學到 JUnit、Mock、MockMvc 的分工，以及如何為三層架構各自寫出有效率的測試。</p>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>PowerShell -Parallel 報錯？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">需要 PowerShell 7+ 才支援 -Parallel。如果不行，開多個 PowerShell 視窗同時 curl，或用 JMeter。最簡單的方法：跟我說一聲，我給你替代方案。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0015-T-thread-safety.html" class="nav-prev">← T08 執行緒安全</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0017-T-testing-strategy.html" class="nav-next">T09 測試策略 →</a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P09 — JUnit + MockMvc 測試實作</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P09</span>
+  <span>/</span>
+  <span>~50 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>JUnit + MockMvc 測試實作</h1>
+
+<p>這堂課會為 P07 的 Task 系統寫出三層測試，覆蓋 <a href="0017-T-testing-strategy.html">T09</a> 學到的所有測試層級。你的 demo 專案已經有 <code>spring-boot-starter-test</code>（Gradle 建立時就自動包含了），不需要額外安裝。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  Service 單元測試（Mockito）→ Controller 測試（@WebMvcTest + MockMvc）→ Repository 測試（@DataJpaTest）→ 一則整合測試（@SpringBootTest）。全部用 IntelliJ 執行，看到綠色 ✓。
+</div>
+
+<!-- ============================================================ -->
+<h2>測試目錄結構</h2>
+
+<pre><code class="language-text">src/test/java/com/example/demo/
+├── service/
+│   └── TaskServiceTest.java        ← 單元測試（Mockito）
+├── controller/
+│   └── TaskControllerTest.java     ← Web 層測試（MockMvc）
+├── repository/
+│   └── TaskRepositoryTest.java     ← JPA 測試（@DataJpaTest）
+└── DemoApplicationTests.java       ← 整合測試（已存在，改寫它）
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 在 IntelliJ 中建立測試</span>
+  打開被測的 class（例如 TaskService.java）→ 按 <code>Ctrl+Shift+T</code> → Create New Test → 勾選你想測的方法 → OK。IntelliJ 會在對應的 test 目錄下自動建立測試骨架。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：Service 單元測試（Mockito）</h2>
+
+<p>建立 <code>src/test/java/.../service/TaskServiceTest.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.service;
+
+import com.example.demo.model.Task;
+import com.example.demo.repository.TaskRepository;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class TaskServiceTest {
+
+    @Mock
+    private TaskRepository taskRepo;
+
+    @InjectMocks
+    private TaskServiceImpl taskService;
+
+    // === getAllTasks ===
+    @Test
+    void shouldReturnAllTasks() {
+        var tasks = List.of(new Task("A"), new Task("B"));
+        when(taskRepo.findAll()).thenReturn(tasks);
+
+        var result = taskService.getAllTasks();
+
+        assertThat(result).hasSize(2);
+        verify(taskRepo).findAll();  // 確認有呼叫到
+    }
+
+    // === getTask ===
+    @Test
+    void shouldReturnTaskWhenExists() {
+        var task = new Task("Test");
+        when(taskRepo.findById(1L)).thenReturn(Optional.of(task));
+
+        var result = taskService.getTask(1L);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getTitle()).isEqualTo("Test");
+    }
+
+    @Test
+    void shouldReturnEmptyWhenNotFound() {
+        when(taskRepo.findById(999L)).thenReturn(Optional.empty());
+
+        var result = taskService.getTask(999L);
+
+        assertThat(result).isEmpty();
+    }
+
+    // === updateTask ===
+    @Test
+    void shouldUpdateTaskTitle() {
+        var task = new Task("Old");
+        when(taskRepo.findById(1L)).thenReturn(Optional.of(task));
+        when(taskRepo.save(any())).thenReturn(task);
+
+        var result = taskService.updateTask(1L, "New", null);
+
+        assertThat(result.getTitle()).isEqualTo("New");
+        verify(taskRepo).save(task);
+    }
+
+    // === deleteTask ===
+    @Test
+    void shouldDeleteTask() {
+        doNothing().when(taskRepo).deleteById(1L);
+
+        taskService.deleteTask(1L);
+
+        verify(taskRepo).deleteById(1L);
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 Mockito 快速對照</span>
+  <table style="font-size:0.85rem;margin-top:0.3rem">
+    <tr><td><code>when(x.y()).thenReturn(z)</code></td><td>設定 mock 的回傳值</td></tr>
+    <tr><td><code>verify(x).y()</code></td><td>驗證 mock 的方法有被呼叫</td></tr>
+    <tr><td><code>verify(x, never()).y()</code></td><td>驗證 mock 的方法從未被呼叫</td></tr>
+    <tr><td><code>any()</code> / <code>anyLong()</code></td><td>匹配任意參數</td></tr>
+    <tr><td><code>doNothing().when(x).y()</code></td><td>mock void 方法</td></tr>
+    <tr><td><code>doThrow(...).when(x).y()</code></td><td>mock 方法拋出例外</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 2：Controller 測試（@WebMvcTest）</h2>
+
+<p>建立 <code>controller/TaskControllerTest.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.controller;
+
+import com.example.demo.model.Task;
+import com.example.demo.service.TaskService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import java.util.*;
+
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(TaskController.class)
+class TaskControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean       // ← Spring Boot 3.4+（舊版用 @MockBean）
+    private TaskService taskService;
+
+    @Test
+    void shouldReturnAllTasks() throws Exception {
+        var tasks = List.of(new Task("A"), new Task("B"));
+        when(taskService.getAllTasks()).thenReturn(tasks);
+
+        mockMvc.perform(get("/api/tasks"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].title").value("A"));
+    }
+
+    @Test
+    void shouldReturn404WhenTaskNotFound() throws Exception {
+        when(taskService.getTask(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/tasks/999"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldCreateTask() throws Exception {
+        var task = new Task("New Task");
+        when(taskService.createTask(eq("New Task"), any()))
+            .thenReturn(task);
+
+        mockMvc.perform(post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"title":"New Task","category":"Work"}
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("New Task"));
+    }
+
+    @Test
+    void shouldRejectEmptyTitle() throws Exception {
+        mockMvc.perform(post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"title":"","category":"Work"}
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldDeleteTask() throws Exception {
+        doNothing().when(taskService).deleteTask(1L);
+
+        mockMvc.perform(delete("/api/tasks/1"))
+            .andExpect(status().isNoContent());
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 jsonPath 語法</span>
+  <code>$</code> = JSON 根物件<br>
+  <code>$.name</code> = 取 name 欄位<br>
+  <code>$[0]</code> = 陣列第一個元素<br>
+  <code>$.length()</code> = 陣列長度<br>
+  和 JS 的 <code>response.name</code> / <code>response[0]</code> 一樣的邏輯。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 3：Repository 測試（@DataJpaTest）</h2>
+
+<p>建立 <code>repository/TaskRepositoryTest.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Task;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import static org.assertj.core.api.Assertions.*;
+
+@DataJpaTest
+class TaskRepositoryTest {
+
+    @Autowired
+    private TaskRepository taskRepo;
+
+    @Test
+    void shouldSaveAndFindTask() {
+        var saved = taskRepo.save(new Task("Learn JPA"));
+
+        var found = taskRepo.findById(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getTitle()).isEqualTo("Learn JPA");
+    }
+
+    @Test
+    void shouldFindByCompletedFalse() {
+        taskRepo.save(new Task("Done"));
+        var undone = new Task("Still going");
+        undone.setCompleted(false);
+        taskRepo.save(undone);
+
+        var active = taskRepo.findByCompletedFalse();
+
+        assertThat(active).hasSize(2);  // 兩個都未完成（false 是預設值）
+    }
+
+    @Test
+    void shouldFindByTitleContaining() {
+        taskRepo.save(new Task("Spring Boot"));
+        taskRepo.save(new Task("Spring Data"));
+        taskRepo.save(new Task("Python"));
+
+        var result = taskRepo.findByTitleContainingIgnoreCaseOrderByCreatedAtDesc("Spring");
+
+        assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void shouldDeleteTask() {
+        var saved = taskRepo.save(new Task("Temp"));
+        taskRepo.deleteById(saved.getId());
+
+        assertThat(taskRepo.findById(saved.getId())).isEmpty();
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 4：整合測試（@SpringBootTest）</h2>
+
+<p>改寫已存在的 <code>DemoApplicationTests.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.*;
+import static org.assertj.core.api.Assertions.*;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class DemoApplicationTests {
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Test
+    void contextLoads() {
+        // 確認容器能正常啟動（Spring Initializr 預設的測試）
+    }
+
+    @Test
+    void shouldCreateAndGetTask() {
+        // Create
+        var request = new java.util.HashMap&lt;&gt;();
+        request.put("title", "Integration Test");
+        request.put("category", "Test");
+
+        var createResp = restTemplate.postForEntity(
+            "/api/tasks", request, String.class
+        );
+        assertThat(createResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // GetAll
+        var getAllResp = restTemplate.getForEntity("/api/tasks", String.class);
+        assertThat(getAllResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(getAllResp.getBody()).contains("Integration Test");
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 5：執行所有測試</h2>
+
+<p>在 IntelliJ 中：</p>
+<ul>
+  <li><strong>執行單一測試</strong>：點方法左側的綠色 ▶</li>
+  <li><strong>執行整個測試類別</strong>：點 class 名稱左側的 ▶</li>
+  <li><strong>執行全部測試</strong>：在專案根目錄按 <code>Ctrl+Shift+F10</code>，或終端機執行：</li>
+</ul>
+
+<pre><code class="language-bash"># 在專案根目錄（build.gradle 所在處）
+./gradlew test
+</code></pre>
+
+<p>全部綠色 ✓ 的話，你的測試覆蓋了三個層級。</p>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>TaskServiceTest 用 Mockito 測了查詢、更新、刪除（不啟動 Spring）</li>
+  <li>TaskControllerTest 用 @WebMvcTest + MockMvc 測了 200/404/201/400</li>
+  <li>TaskRepositoryTest 用 @DataJpaTest 測了衍生查詢方法</li>
+  <li>DemoApplicationTests 用 @SpringBootTest + TestRestTemplate 做整合測試</li>
+  <li>全部測試綠色（或在 Gradle 中看到 BUILD SUCCESSFUL）</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 四層測試速查</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Mockito 單元</td><td>@ExtendWith + @Mock + @InjectMocks<br>測 Service 邏輯，mock Repository</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">@WebMvcTest</td><td>MockMvc + @MockitoBean<br>測 Controller HTTP 層，mock Service</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">@DataJpaTest</td><td>自動 H2 + rollback<br>測 Repository 查詢，驗證衍生方法</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">@SpringBootTest</td><td>TestRestTemplate + RANDOM_PORT<br>測完整串接，少而精</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T10：REST API 設計最佳實踐</strong>——Phase 4 的開端。你會學到 RESTful 設計原則、HTTP 狀態碼語意、回應格式規範、以及對比你已有的 FastAPI 經驗。</p>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>測試紅字看不懂？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">把完整的錯誤訊息貼上來。JUnit 和 Mockito 的報錯訊息通常很清楚——哪個 expectation 沒被滿足、實際值是什麼。貼出來我幫你讀。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0017-T-testing-strategy.html" class="nav-prev">← T09 測試策略</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0019-T-rest-api-best-practices.html" class="nav-next">T10 REST API 設計 →</a>
+</nav>
+
+</body>
+</html>

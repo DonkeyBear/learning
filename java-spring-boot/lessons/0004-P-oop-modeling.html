@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P02 — OOP 建模練習：設計小型後端分層模型</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P02</span>
+  <span>/</span>
+  <span>~45 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>OOP 建模練習：設計小型後端分層模型</h1>
+
+<p>這堂實作課會把 <a href="0003-T-java-oop-core.html">T02</a> 學到的 class、abstract class、interface、record 全部串在一起，模擬一個 Spring Boot 後端常見的分層模型。<strong>還沒有用到 Spring</strong>——純 Java 練習，但架構和命名會刻意模仿 Spring Boot 專案的真實模樣。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 練習目標</span>
+  建立一個「圖書館管理系統」的模型層，包含：一個 <strong>record</strong>（DTO）、一個 <strong>abstract class</strong>（基底 Entity）、一個 <strong>interface</strong>（借閱合約）、兩個 <strong>concrete class</strong>（實體書/電子書）、和一個 <strong>Service class</strong>（業務邏輯）。
+</div>
+
+<!-- ============================================================ -->
+<h2>專案結構預覽</h2>
+
+<p>完成後的 <code>src/</code> 目錄會長這樣：</p>
+
+<pre><code class="language-text">src/
+├── Main.java                  ← 進入點，測試所有類別
+├── model/
+│   ├── BookDto.java           ← record（DTO）
+│   ├── BaseEntity.java        ← abstract class
+│   └── LibraryItem.java       ← interface
+├── entity/
+│   ├── PhysicalBook.java      ← extends BaseEntity implements LibraryItem
+│   └── EBook.java             ← extends BaseEntity implements LibraryItem
+└── service/
+    └── LibraryService.java    ← 管理借閱邏輯
+</code></pre>
+
+<p>這其實就是 Spring Boot 的標準目錄結構——<code>model/</code>、<code>entity/</code>、<code>service/</code>，只是現在還沒有 Spring 的 annotation。</p>
+
+<div class="callout tip">
+  <span class="callout-label">💡 建立 package 的方法</span>
+  在 IntelliJ 中，對 <code>src</code> 目錄按右鍵 → New → <strong>Package</strong> → 輸入 <code>model</code>。然後在 package 上按右鍵 → New → Java Class 來建立新檔案。Package 名稱全小寫，和目錄結構對應。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立 BookDto（Record）</h2>
+
+<p>這是對外傳輸用的 DTO，用 <strong>record</strong> 一行搞定。建立 <code>model/BookDto.java</code>：</p>
+
+<pre><code class="language-java">package model;
+
+public record BookDto(
+    String title,
+    String author,
+    String isbn,
+    int totalCopies
+) {
+    // record 可以加驗證邏輯（compact constructor）
+    public BookDto {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("書名不能為空");
+        }
+        if (totalCopies < 0) {
+            throw new IllegalArgumentException("數量不能為負數");
+        }
+    }
+
+    // record 也可以加自訂方法
+    public String displayName() {
+        return title + " — " + author;
+    }
+}
+</code></pre>
+
+<p><strong>執行測試</strong>：在 <code>Main.java</code> 加一段，確認 record 可用：</p>
+
+<pre><code class="language-java">import model.BookDto;
+
+public class Main {
+    public static void main(String[] args) {
+        // 測試 record
+        var book = new BookDto("Effective Java", "Joshua Bloch", "978-0134685991", 3);
+        System.out.println(book.displayName());
+        System.out.println(book);  // 自動產生的 toString()
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：建立 BaseEntity（Abstract Class）</h2>
+
+<p>所有 Entity 共用的 id 和時間戳記。這是 Spring Boot 專案中 <code>@MappedSuperclass</code> 的原始形態。建立 <code>model/BaseEntity.java</code>：</p>
+
+<pre><code class="language-java">package model;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public abstract class BaseEntity {
+    private final String id;
+    private final LocalDateTime createdAt;
+
+    // 建構子 —— 子類別透過 super() 呼叫
+    protected BaseEntity() {
+        this.id = UUID.randomUUID().toString();
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // 具體方法 —— 所有子類別直接繼承
+    public String getId() {
+        return id;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    // 抽象方法 —— 子類別必須實作
+    public abstract String getTypeLabel();
+
+    // final 方法 —— 子類別不能覆寫
+    public final String getEntityInfo() {
+        return "[" + getTypeLabel() + "] " + id + " (created: " + createdAt + ")";
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 為什麼用 protected 建構子？</span>
+  <code>protected</code> 表示只有子類別可以呼叫這個建構子（透過 <code>super()</code>）。外部程式碼不能直接 <code>new BaseEntity()</code>。這是 Java 中控制抽象類別實例化的標準做法。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 3：建立 LibraryItem（Interface）</h2>
+
+<p>定義「可被借閱」的合約。建立 <code>model/LibraryItem.java</code>：</p>
+
+<pre><code class="language-java">package model;
+
+public interface LibraryItem {
+    // 抽象方法 —— 實作類別必須提供
+    boolean borrow(String userId);
+    boolean returnItem(String userId);
+
+    // default 方法 —— 提供預設實作
+    default boolean isAvailable() {
+        return getAvailableCount() > 0;
+    }
+
+    // 另一個抽象方法
+    int getAvailableCount();
+
+    // static 方法 —— 工廠方法
+    static String formatDueDate(int days) {
+        return "到期日：" + java.time.LocalDate.now().plusDays(days);
+    }
+}
+</code></pre>
+
+<p>注意到 <code>isAvailable()</code> 是一個 default 方法——它依賴 <code>getAvailableCount()</code> 這個抽象方法。這就是 T02 提到的 interface default 方法的典型用法：<strong>用抽象方法組合出高階的具體方法</strong>。Spring Data JPA 正是這樣做的——它從你的方法名稱推斷查詢邏輯。</p>
+
+<!-- ============================================================ -->
+<h2>Step 4：建立 PhysicalBook 和 EBook</h2>
+
+<p>建立 <code>entity/PhysicalBook.java</code>：</p>
+
+<pre><code class="language-java">package entity;
+
+import model.BaseEntity;
+import model.LibraryItem;
+
+public class PhysicalBook extends BaseEntity implements LibraryItem {
+    private final String title;
+    private final String isbn;
+    private int totalCopies;      // 總館藏數
+    private int borrowedCopies;   // 已借出數
+
+    public PhysicalBook(String title, String isbn, int totalCopies) {
+        super();  // 呼叫 BaseEntity 建構子，產生 id 和 createdAt
+        this.title = title;
+        this.isbn = isbn;
+        this.totalCopies = totalCopies;
+        this.borrowedCopies = 0;
+    }
+
+    // === 實作 LibraryItem ===
+    @Override
+    public boolean borrow(String userId) {
+        if (borrowedCopies < totalCopies) {
+            borrowedCopies++;
+            System.out.println(userId + " 借了實體書：" + title);
+            return true;
+        }
+        System.out.println("實體書 " + title + " 已全數借出");
+        return false;
+    }
+
+    @Override
+    public boolean returnItem(String userId) {
+        if (borrowedCopies > 0) {
+            borrowedCopies--;
+            System.out.println(userId + " 歸還了實體書：" + title);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int getAvailableCount() {
+        return totalCopies - borrowedCopies;
+    }
+
+    // === 實作 BaseEntity 的抽象方法 ===
+    @Override
+    public String getTypeLabel() {
+        return "實體書";
+    }
+}
+</code></pre>
+
+<p>建立 <code>entity/EBook.java</code>：</p>
+
+<pre><code class="language-java">package entity;
+
+import model.BaseEntity;
+import model.LibraryItem;
+
+public class EBook extends BaseEntity implements LibraryItem {
+    private final String title;
+    private final double fileSizeMb;
+    private boolean isBorrowed;  // 電子書同一時間只能一人借
+
+    public EBook(String title, double fileSizeMb) {
+        super();
+        this.title = title;
+        this.fileSizeMb = fileSizeMb;
+        this.isBorrowed = false;
+    }
+
+    // === 實作 LibraryItem ===
+    @Override
+    public boolean borrow(String userId) {
+        if (!isBorrowed) {
+            isBorrowed = true;
+            System.out.println(userId + " 借了電子書：" + title + " (" + fileSizeMb + "MB)");
+            return true;
+        }
+        System.out.println("電子書 " + title + " 已被借出");
+        return false;
+    }
+
+    @Override
+    public boolean returnItem(String userId) {
+        if (isBorrowed) {
+            isBorrowed = false;
+            System.out.println(userId + " 歸還了電子書：" + title);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int getAvailableCount() {
+        return isBorrowed ? 0 : 1;
+    }
+
+    @Override
+    public String getTypeLabel() {
+        return "電子書";
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 5：建立 LibraryService</h2>
+
+<p>這是 Spring Boot 中 <code>@Service</code> 的原形。建立 <code>service/LibraryService.java</code>：</p>
+
+<pre><code class="language-java">package service;
+
+import entity.PhysicalBook;
+import entity.EBook;
+import model.LibraryItem;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class LibraryService {
+    // 針對介面寫程式（Program to Interface）
+    private final List&lt;LibraryItem&gt; items = new ArrayList&lt;&gt;();
+
+    // 方法多載（overloading）：兩種新增方式
+    public void addItem(PhysicalBook book) {
+        items.add(book);
+        System.out.println("新增實體書：" + book.getEntityInfo());
+    }
+
+    public void addItem(EBook book) {
+        items.add(book);
+        System.out.println("新增電子書：" + book.getEntityInfo());
+    }
+
+    public void borrowItem(int index, String userId) {
+        if (index < 0 || index >= items.size()) {
+            System.out.println("索引超出範圍");
+            return;
+        }
+        items.get(index).borrow(userId);
+    }
+
+    public void listAllItems() {
+        System.out.println("\n===== 館藏目錄 =====");
+        for (int i = 0; i < items.size(); i++) {
+            LibraryItem item = items.get(i);
+            System.out.println(
+                "[" + i + "] " +
+                item.getEntityInfo() +
+                " | 可借數量：" + item.getAvailableCount()
+            );
+        }
+        System.out.println("===== 總計 " + items.size() + " 筆 =====\n");
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🎯 觀察重點</span>
+  <code>List&lt;LibraryItem&gt;</code> —— 我們針對 <strong>interface</strong> 而非具體類別來寫邏輯。<code>listAllItems()</code> 完全不知道也不在乎它處理的是 PhysicalBook 還是 EBook，這就是「針對介面寫程式」的威力。Spring Boot 的 DI 容器正是建立在這個原則之上。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 6：在 Main.java 串起一切</h2>
+
+<p>把 <code>Main.java</code> 改寫為以下內容：</p>
+
+<pre><code class="language-java">import model.BookDto;
+import entity.PhysicalBook;
+import entity.EBook;
+import service.LibraryService;
+
+public class Main {
+    public static void main(String[] args) {
+        // === DTO 測試 ===
+        var dto = new BookDto("Clean Code", "Robert C. Martin", "978-0132350884", 5);
+        System.out.println("📖 " + dto.displayName());
+
+        // === 建立 Service ===
+        var library = new LibraryService();
+
+        // === 加入館藏（方法多載） ===
+        library.addItem(new PhysicalBook("Effective Java", "978-0134685991", 3));
+        library.addItem(new PhysicalBook("Design Patterns", "978-0201633610", 2));
+        library.addItem(new EBook("Spring in Action", 8.5));
+
+        // === 查看全部 ===
+        library.listAllItems();
+
+        // === 借閱測試 ===
+        System.out.println("\n--- 借閱操作 ---");
+        library.borrowItem(0, "user001");  // 借 Effective Java
+        library.borrowItem(0, "user002");  // 借 Effective Java（還有庫存）
+        library.borrowItem(0, "user003");  // 借 Effective Java（最後一本）
+        library.borrowItem(0, "user004");  // 借不到！
+        library.borrowItem(2, "user001");  // 借電子書
+
+        // === 再次查看 ===
+        library.listAllItems();
+
+        // === Interface default 方法測試 ===
+        System.out.println("到期日資訊：" +
+            model.LibraryItem.formatDueDate(14));
+    }
+}
+</code></pre>
+
+<p>預期輸出（id 和時間會不同）：</p>
+
+<pre><code class="language-text">📖 Clean Code — Robert C. Martin
+新增實體書：[實體書] a1b2c3... (created: 2026-07-01T...)
+新增實體書：[實體書] d4e5f6... (created: 2026-07-01T...)
+新增電子書：[電子書] g7h8i9... (created: 2026-07-01T...)
+
+===== 館藏目錄 =====
+[0] [實體書] a1b2c3... | 可借數量：3
+[1] [實體書] d4e5f6... | 可借數量：2
+[2] [電子書] g7h8i9... | 可借數量：1
+===== 總計 3 筆 =====
+
+--- 借閱操作 ---
+user001 借了實體書：Effective Java
+user002 借了實體書：Effective Java
+user003 借了實體書：Effective Java
+實體書 Effective Java 已全數借出
+user001 借了電子書：Spring in Action (8.5MB)
+
+===== 館藏目錄 =====
+[0] [實體書] a1b2c3... | 可借數量：0
+[1] [實體書] d4e5f6... | 可借數量：2
+[2] [電子書] g7h8i9... | 可借數量：0
+===== 總計 3 筆 =====
+
+到期日資訊：到期日：2026-07-15
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li><code>BookDto</code> record 成功建立，含驗證邏輯和自訂方法</li>
+  <li><code>BaseEntity</code> abstract class 含具體方法 + 抽象方法 + final 方法</li>
+  <li><code>LibraryItem</code> interface 含抽象方法 + default 方法 + static 方法</li>
+  <li>PhysicalBook / EBook 各自以不同邏輯實作 borrow/returnItem</li>
+  <li>LibraryService 使用 <code>List&lt;LibraryItem&gt;</code>（針對介面寫程式）</li>
+  <li>方法多載（addItem）正確區分不同參數型別</li>
+  <li>Main.java 執行後輸出符合預期</li>
+  <li>理解 package 目錄結構（model / entity / service）將來就是 Spring Boot 的分層</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 這堂課建立的 OOP 心智模型</h3>
+  <table style="font-size:0.9rem">
+    <tr><td style="padding:0.4rem 0.8rem;color:var(--accent)">record</td><td>→ 等於 Spring Boot 的 DTO / Request / Response</td></tr>
+    <tr><td style="padding:0.4rem 0.8rem;color:var(--accent)">abstract class</td><td>→ 等於 Spring Boot 的 @MappedSuperclass / BaseEntity</td></tr>
+    <tr><td style="padding:0.4rem 0.8rem;color:var(--accent)">interface</td><td>→ 等於 Spring Boot 的 Service interface / Repository</td></tr>
+    <tr><td style="padding:0.4rem 0.8rem;color:var(--accent)">List&lt;Interface&gt;</td><td>→ DI 容器的本質——針對介面而非實作寫程式</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T03：Java Collections 與 Stream API</strong>。我們會把今天用的 <code>List</code> 擴展到完整的 Java 集合框架（Map、Set、Queue），並學習 Stream API——這是面試必考的 Java 8+ 核心特性，也是你從 JS 的 <code>map/filter/reduce</code> 轉到 Java 的關鍵技能。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <a href="https://www.baeldung.com/java-record" target="_blank" rel="noopener">Baeldung: Java Record 深入指南</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-interfaces" target="_blank" rel="noopener">Baeldung: Interface 與 Abstract Class 選擇指南</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>編譯不過？輸出不對？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">把錯誤訊息貼到對話中，我幫你 debug。OOP 建模最容易卡在 import、package 和 override 語法上。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0003-T-java-oop-core.html" class="nav-prev">← T02 Java OOP 核心</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0005-T-collections-stream.html" class="nav-next">T03 Collections + Stream →</a>
+</nav>
+
+</body>
+</html>

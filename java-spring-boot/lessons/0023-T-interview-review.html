@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T11 — 面試重點總複習</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T11</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試總複習</span>
+</div>
+
+<h1>面試重點總複習</h1>
+
+<p>這堂課將 22 堂課中的面試關鍵知識濃縮為七大主題，每個主題附標準回答框架。適合面試前快速翻閱、在通勤時最後衝刺。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 使用方式</span>
+  每個主題包含：核心概念（30 秒版本）→ 面試常見追問 → 關鍵程式碼。先試著自己回答，再對照答案。
+</div>
+
+<!-- ============================================================ -->
+<h2>🔥 1. DI 與 IOC（T05）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「請解釋 IoC 和 DI」</h3>
+  <p style="font-size:0.9rem"><strong>標準回答：</strong>IoC（控制反轉）是設計原則——把物件建立和管理的控制權從程式碼移交給框架。DI（依賴注入）是實現 IoC 的具體手段——框架自動將依賴注入到需要的地方。Spring 的 ApplicationContext 在啟動時掃描所有 @Component/@Service/@Repository/@Controller，建立 singleton Bean 放入容器，並透過建構子注入自動組裝依賴圖。</p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>三種注入方式？</td><td>建構子注入（✅ final、易測試）、Setter 注入（選擇性依賴）、欄位注入（❌ 難測試）</td></tr>
+    <tr><td>同介面多實作？</td><td>@Primary 設預設 + @Qualifier("beanName") 指名</td></tr>
+    <tr><td>Spring 如何知道要注入什麼？</td><td>根據建構子參數的<b>型別</b>從容器中匹配，多個同型別時用 bean 名稱</td></tr>
+    <tr><td>FastAPI Depends 和 Spring DI 的差異？</td><td>FastAPI 是請求範圍（每次請求解析），Spring 是應用範圍（singleton 預建）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 2. Bean 生命週期（T06）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「描述 Spring Bean 的生命週期」</h3>
+  <p style="font-size:0.9rem"><strong>標準回答：</strong>實例化（建構子）→ 填充屬性（注入 @Autowired、@Value）→ BeanPostProcessor:before → @PostConstruct 初始化 → BeanPostProcessor:after（AOP proxy 在此建立）→ 就緒 → @PreDestroy 銷毀。關鍵點：AOP 代理在 @PostConstruct 之後才建立，所以 @PostConstruct 中呼叫 @Transactional 方法不會生效。</p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>Singleton vs Prototype？</td><td>Singleton 全容器一個實例（預設），Prototype 每次注入/查詢新建。Prototype 的 @PreDestroy 不會被呼叫</td></tr>
+    <tr><td>Singleton 注入 Prototype 的陷阱？</td><td>Prototype 只被注入一次（隨 singleton 建立時），之後都是同一個實例。解法：ObjectProvider 或 @Lookup</td></tr>
+    <tr><td>BeanPostProcessor 是什麼？</td><td>Spring 的萬能中介層，在每個 Bean 初始化前後插入邏輯。AOP、@Transactional、@Async 都是靠它實現</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 3. Java Stream API（T03）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「用 Stream 對 List&lt;Employee&gt; 找出各部門薪資最高的三人」</h3>
+  <p style="font-size:0.9rem"><strong>現場寫法：</strong></p>
+<pre style="margin-top:0.5rem"><code class="language-java">Map&lt;String, List&lt;Employee&gt;&gt; topByDept = employees.stream()
+    .collect(Collectors.groupingBy(Employee::department,
+        Collectors.collectingAndThen(Collectors.toList(),
+            list -> list.stream()
+                .sorted(Comparator.comparingInt(Employee::salary).reversed())
+                .limit(3).toList())));</code></pre>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>中間操作 vs 終端操作？</td><td>中間操作（filter/map/sorted）回傳 Stream，lazy；終端操作（collect/reduce/count）觸發執行並關閉 Stream</td></tr>
+    <tr><td>flatMap 做什麼？</td><td>攤平巢狀結構：把 Stream&lt;List&lt;T&gt;&gt; 變成 Stream&lt;T&gt;。例如攤平所有員工的所有技能</td></tr>
+    <tr><td>mapToInt 為什麼存在？</td><td>避免 int ↔ Integer 的自動裝箱，提升效能。MapToInt 回傳 IntStream，有 sum()/average()</td></tr>
+    <tr><td>Collectors.groupingBy？</td><td>等於 SQL GROUP BY。搭配 counting()/averagingInt()/mapping() 做聚合</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 4. 執行緒安全（T08）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「Spring Boot 的 Service 是執行緒安全的嗎？」</h3>
+  <p style="font-size:0.9rem"><strong>標準回答：</strong>預設 singleton 的 Service<strong>本身不是</strong>執行緒安全的——但可以藉由設計來保證安全。關鍵原則是<strong>無狀態（stateless）</strong>：Service 不持有可變的實例欄位。所有狀態存在資料庫或外部快取中。如果有必須持有的共享可變狀態，用 ConcurrentHashMap、AtomicInteger 等並行安全容器。Spring 本身不提供執行緒安全保證——這是開發者的責任。</p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>HashMap 在 singleton 中有什麼問題？</td><td>多執行緒同時 put 可能導致死循環（JDK 7）或資料遺失。用 ConcurrentHashMap</td></tr>
+    <tr><td>樂觀鎖 vs 悲觀鎖？</td><td>樂觀：@Version 版本號比對 + 重試，適合低衝突。悲觀：SELECT FOR UPDATE 鎖定行，適合高衝突（秒殺）</td></tr>
+    <tr><td>@Transactional 自呼叫為什麼失效？</td><td>AOP proxy 只攔截<b>外部</b>呼叫。同 class 內的 this.method() 繞過 proxy。解法：抽到另一個 Service</td></tr>
+    <tr><td>交易隔離級別？</td><td>READ_COMMITTED（預設，防 dirty read）。SERIALIZABLE（最安全但最慢）。面試說得出四級即可</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 5. JPA 與 N+1 問題（T07 + P12）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「什麼是 N+1 查詢問題？如何解決？」</h3>
+  <p style="font-size:0.9rem"><strong>標準回答：</strong>N+1 發生在 ORM 延遲載入（LAZY）時：先查主表（1 條 SQL），然後對每一筆結果的關聯欄位各發一條 SQL（N 條）。例如查 10 篇文章 → 1 條查文章 + 10 條查作者 = 11 條 SQL。解法：① @EntityGraph 指定要 JOIN 的關聯 ② JPQL 中用 JOIN FETCH ③ @NamedEntityGraph。核心思想：<strong>一條 SQL 載入所有需要的關聯</strong>。</p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>@OneToMany 和 @ManyToOne 的 fetch 預設？</td><td>@OneToMany LAZY（好）；@ManyToOne EAGER（不好，建議手動改 LAZY）</td></tr>
+    <tr><td>JPA / Hibernate / Spring Data JPA 關係？</td><td>JPA 是規格，Hibernate 是實作，Spring Data JPA 是便利層（自動 Repository）</td></tr>
+    <tr><td>衍生查詢方法？</td><td>findBy + 屬性 + 條件 + 排序。例如 findByEmailContainingOrderByCreatedAtDesc</td></tr>
+    <tr><td>Entity 和 DTO 為何分開？</td><td>Entity 對應資料表（含 JPA 註解），DTO 對應 API 傳輸（控制暴露欄位、不含密碼）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 6. 三層架構與 REST 設計（T04 + T10）</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">面試題：「描述 Spring Boot 的標準分層架構」</h3>
+  <p style="font-size:0.9rem"><strong>標準回答：</strong>Controller（@RestController）：接收 HTTP、參數驗證、回傳回應，<strong>不寫業務邏輯</strong>。Service（@Service）：業務邏輯、交易管理、協調 Repository，<strong>不知道 HTTP 存在</strong>。Repository（JpaRepository interface）：資料存取，<strong>Spring Data 自動產生實作</strong>。依賴方向是單向的：Controller → Service → Repository。</p>
+</div>
+
+<table class="compare-table">
+  <thead><tr><th>常見追問</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>為什麼需要 Service interface？</td><td>鬆耦合、易測試、易替換實作。小專案可直接用 class，但面試中推崇 interface</td></tr>
+    <tr><td>@ControllerAdvice 做什麼？</td><td>集中管理所有 Controller 的例外處理，統一錯誤格式</td></tr>
+    <tr><td>201 vs 200 vs 204？</td><td>200 一般成功、201 POST 建立成功、204 DELETE 成功無 body</td></tr>
+    <tr><td>如何處理 API 版本？</td><td>URL 前綴 /api/v1/（最常見）、Header（乾淨但隱晦）、Query param</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🔥 7. Java 基礎 — 高頻陷阱題</h2>
+
+<table class="compare-table">
+  <thead><tr><th>陷阱題</th><th>你的回答</th></tr></thead>
+  <tbody>
+    <tr><td>String 比較用 == 還是 equals？</td><td><strong>equals()</strong>。== 比較的是記憶體參考，不是內容</td></tr>
+    <tr><td>String 為什麼是 final？</td><td>安全性（不可變 = 執行緒安全）+ String pool 效能 + HashMap key 可靠性</td></tr>
+    <tr><td>ArrayList vs LinkedList？</td><td>ArrayList O(1) 隨機存取（動態陣列）；LinkedList O(1) 頭尾插入（雙向鏈結）。實務中 ArrayList 佔 95%</td></tr>
+    <tr><td>int vs Integer？</td><td>int 是 primitive（不可 null、效能高）；Integer 是 wrapper（可 null、可用於泛型）</td></tr>
+    <tr><td>Java record 是什麼？</td><td>JDK 14+，自動產生 constructor/getter/equals/hashCode/toString 的不可變資料載體。Spring Boot 中用作 DTO</td></tr>
+    <tr><td>final 的三種用法？</td><td>final 變數（不可重賦值）、final 方法（不可覆寫）、final class（不可繼承）</td></tr>
+    <tr><td>Checked vs Unchecked Exception？</td><td>Checked：編譯器強制 try-catch 或 throws（IOException）。Unchecked：RuntimeException 子類，不強制處理</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>🧪 白板題速練</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>白板 1：寫一個 Stream 管線，從 List&lt;Order&gt; 中篩出金額 > 1000、依日期排序、取前 5 筆、收集訂單 ID</p>
+    <details><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+<pre><code class="language-java">var ids = orders.stream()
+    .filter(o -> o.amount() > 1000)
+    .sorted(Comparator.comparing(Order::date))
+    .limit(5)
+    .map(Order::id)
+    .toList();</code></pre></details>
+  </div>
+
+  <div class="quiz-question">
+    <p>白板 2：用 @ControllerAdvice 處理 MethodArgumentNotValidException，回傳欄位名稱和錯誤訊息</p>
+    <details><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+<pre><code class="language-java">@ExceptionHandler(MethodArgumentNotValidException.class)
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public ApiResponse&lt;Void&gt; handle(MethodArgumentNotValidException ex) {
+    var errors = ex.getBindingResult().getFieldErrors().stream()
+        .map(e -> e.getField() + ": " + e.getDefaultMessage())
+        .toList();
+    return ApiResponse.error("VALIDATION", String.join("; ", errors));
+}</code></pre></details>
+  </div>
+
+  <div class="quiz-question">
+    <p>白板 3：寫一個 @EntityGraph 解決 Post 查詢時的 author + category N+1 問題</p>
+    <details><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+<pre><code class="language-java">@EntityGraph(attributePaths = {"author", "category"})
+Page&lt;Post&gt; findByStatus(PostStatus status, Pageable pageable);</code></pre></details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>🗺️ 課程回顧地圖</h2>
+
+<table style="font-size:0.85rem">
+  <thead><tr><th>Phase</th><th>課堂</th><th>核心技能</th></tr></thead>
+  <tbody>
+    <tr><td>1. Java 生存包</td><td>T01~P03</td><td>語法、OOP、Stream API</td></tr>
+    <tr><td>2. Spring Boot 核心</td><td>T04~P06</td><td>IoC/DI、分層架構、Bean 生命週期</td></tr>
+    <tr><td>3. 資料庫+並行</td><td>T07~P09</td><td>JPA、@Transactional、鎖、測試</td></tr>
+    <tr><td>4. 整合+面試</td><td>T10~T11</td><td>REST 設計、整合專案、面試複習</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>🏁 課程完成</h3>
+  <p>24 堂課、三大面試核心（DI/IOC、Bean 生命週期、執行緒安全）、一個完整 REST API 專案。你從「會寫 FastAPI 的前端工程師」變成「能獨立開發 Spring Boot 後端的全端工程師」。</p>
+  <p style="margin-top:0.8rem"><strong>下一步建議：</strong></p>
+  <ol>
+    <li>把 blog-api 專案 push 到 GitHub，寫好 README + Swagger 截圖</li>
+    <li>練習不看答案口頭回答這堂課的七個主題</li>
+    <li>面試中主動提到整合專案的技術選型和架構決策</li>
+    <li>繼續學習：Spring Security JWT、Docker 部署、CI/CD</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <a href="https://www.baeldung.com/spring-boot-interview-questions" target="_blank" rel="noopener">Baeldung: Spring Boot 面試題合集</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-interview-questions" target="_blank" rel="noopener">Baeldung: Java 面試題合集</a></li>
+</ul>
+
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>面試模擬練習？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">跟我說一聲，我可以扮演面試官對你進行模擬面試——追問 DI、生命週期、Stream、並行安全等任何主題。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0022-P-capstone-part3.html" class="nav-prev">← P12 整合專案 Part 3</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0024-T-solid-design-patterns.html" class="nav-next">SOLID + Design Patterns →</a>
+</nav>
+
+</body>
+</html>

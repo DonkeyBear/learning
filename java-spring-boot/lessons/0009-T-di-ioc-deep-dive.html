@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T05 — DI 與 IOC 深度解析</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T05</span>
+  <span>/</span>
+  <span>~35 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>DI 與 IOC 深度解析：面試必考核心</h1>
+
+<p>這是整個課程最重要的理論課。IoC 和 DI 不只是面試萬年考題，更是理解 Spring Boot 一切行為的鑰匙。<strong>不理解 IoC 容器，就無法真正理解 Spring Boot。</strong></p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「請解釋什麼是 IoC 和 DI？」「Spring 中有哪些注入方式？各有什麼優缺點？」「IoC 容器是怎麼管理 Bean 的？」——這三題是後端面試的入場券。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. IoC 到底是什麼？用生活例子理解</h2>
+
+<h3>沒有 IoC 的世界（傳統做法）</h3>
+
+<p>你需要一把螺絲起子，所以你<strong>自己去五金行買材料、自己打造</strong>一把：</p>
+
+<pre><code class="language-java">// 你控制一切：建立物件、管理依賴
+public class Mechanic {
+    public void fixCar() {
+        var tool = new Screwdriver();    // 你自己 new
+        var parts = new SpareParts();    // 你自己 new
+        tool.use();
+        parts.install();
+    }
+}
+</code></pre>
+
+<h3>有 IoC 的世界（Spring 的做法）</h3>
+
+<p>你只需要說「我需要一把螺絲起子」，<strong>工具箱（IoC 容器）會自動遞給你</strong>：</p>
+
+<pre><code class="language-java">// 框架控制一切：你只管宣告需求，框架負責提供
+@Component
+public class Screwdriver { ... }
+
+@Component
+public class SpareParts { ... }
+
+@Component
+public class Mechanic {
+    private final Screwdriver tool;
+    private final SpareParts parts;
+
+    // 你只宣告你需要什麼，框架自動傳入
+    public Mechanic(Screwdriver tool, SpareParts parts) {
+        this.tool = tool;
+        this.parts = parts;
+    }
+}
+</code></pre>
+
+<p><strong>控制反轉（IoC）= 把「建立和管理物件」的控制權從你的程式碼轉移到框架</strong>。你的程式不再主動「做」事，而是被動「宣告需求」，由框架來滿足。</p>
+
+<div class="callout tip">
+  <span class="callout-label">💡 IoC ≠ DI</span>
+  IoC（控制反轉）是<strong>原則</strong>——一種設計理念。DI（依賴注入）是<strong>實作 IoC 的具體手段</strong>。還有其他實作 IoC 的方式（例如 Service Locator 模式），但 DI 是最主流、Spring 採用的方案。面試中問「IoC 和 DI 的關係」就是在考你有沒有搞懂這個層次。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 三種依賴注入方式</h2>
+
+<p>Spring 提供三種注入方式。面試中常問「你推薦用哪一種？為什麼？」</p>
+
+<h3>方式一：建構子注入（Constructor Injection）✅ 推薦</h3>
+
+<pre><code class="language-java">@RestController
+public class UserController {
+    private final UserService userService;
+
+    // Spring 自動從容器中找 UserService 傳入
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+}
+</code></pre>
+
+<p>優點：</p>
+<ul>
+  <li><strong>欄位可以宣告為 final</strong> → 不可變，執行緒安全</li>
+  <li><strong>強制依賴</strong>：沒有傳入就不能建立物件 → 不會忘記設定</li>
+  <li><strong>純 Java</strong>：不依賴 Spring annotation（方便單元測試）</li>
+  <li><strong>Spring 官方推薦</strong></li>
+</ul>
+
+<h3>方式二：Setter 注入（Setter Injection）⚠️ 特定場景</h3>
+
+<pre><code class="language-java">@RestController
+public class UserController {
+    private UserService userService;
+
+    @Autowired   // ← 必須加 @Autowired
+    public void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+}
+</code></pre>
+
+<p>缺點：欄位不能 final，可能被中途修改（mutable）。僅在「依賴是選擇性的」（可有可無）時使用。</p>
+
+<h3>方式三：欄位注入（Field Injection）❌ 不推薦</h3>
+
+<pre><code class="language-java">@RestController
+public class UserController {
+    @Autowired
+    private UserService userService;  // ← 直接寫在欄位上
+}
+</code></pre>
+
+<p>為什麼不推薦：</p>
+<ul>
+  <li>欄位不能 final → 不可變性被破壞</li>
+  <li>難以單元測試——你需要反射來注入 mock</li>
+  <li>隱藏了依賴數量——建構子參數太多會提醒你重構</li>
+  <li><strong>面試中說「我推薦建構子注入」會加分</strong>，說「我常用 @Autowired 欄位」會扣分</li>
+</ul>
+
+<div class="callout warn">
+  <span class="callout-label">🔥 面試標準答案</span>
+  <strong>Q: 你推薦哪種注入方式？</strong><br>
+  A: 建構子注入。原因：① 欄位可用 final 確保不可變性與執行緒安全 ② 強制依賴不為 null ③ 純 Java 不依賴 Spring annotation 容易測試 ④ 當建構子參數過多時自然提醒你這個 class 做了太多事（SRP）。唯一例外是選擇性依賴時用 setter 注入。Spring 4.3+ 後只有一個建構子時甚至不用加 @Autowired。
+</div>
+
+<!-- ============================================================ -->
+<h2>3. Spring IoC 容器的內部結構</h2>
+
+<p>Spring 的 IoC 容器本質上是一個巨大的 <strong>Map</strong>：</p>
+
+<pre><code class="language-java">// IoC 容器的概念模型（簡化版）
+Map&lt;String, Object&gt; container = new HashMap&lt;&gt;();
+// key   = bean 名稱（預設是 class 名的小駝峰）
+// value = bean 實例（singleton 預設只會有一個）
+
+// 當你寫 @Service + 建構子注入，Spring 等於做了：
+container.put("userService", new UserService(userRepo));
+container.put("userController", new UserController(
+    (UserService) container.get("userService")
+));
+</code></pre>
+
+<h3>BeanFactory vs ApplicationContext</h3>
+
+<table class="compare-table">
+  <thead>
+    <tr><th></th><th>BeanFactory</th><th>ApplicationContext</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>定位</td><td>低階容器介面</td><td>高階容器介面（繼承 BeanFactory）</td></tr>
+    <tr><td>Bean 實例化</td><td>懶加載（用到才建立）</td><td>預載（啟動時就建立 singleton Bean）</td></tr>
+    <tr><td>功能</td><td>只有 DI</td><td>DI + AOP + 國際化 + 事件發布 + ...</td></tr>
+    <tr><td>實際使用</td><td>幾乎不直接用</td><td><strong>Spring Boot 預設</strong></td></tr>
+  </tbody>
+</table>
+
+<pre><code class="language-java">// Spring Boot 啟動時你拿到的就是 ApplicationContext
+var ctx = SpringApplication.run(DemoApplication.class, args);
+// ctx 的實際型別是 AnnotationConfigApplicationContext（ApplicationContext 的子類）
+</code></pre>
+
+<p>P04 中你印出了所有的 Bean 名稱——那就是 ApplicationContext 的內容。你看到的 <code>helloController</code>、<code>greetingService</code> 和幾十個 Spring 內建 Bean 都住在那個 Map 裡。</p>
+
+<!-- ============================================================ -->
+<h2>4. FastAPI Depends() vs Spring DI：同一個概念，兩種實現</h2>
+
+<p>把兩邊的程式碼並排來看，你會發現它們解決的是同一個問題，只是機制不同：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th></th><th>FastAPI</th><th>Spring Boot</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>宣告依賴</td><td><code>Depends(get_service)</code></td><td>建構子參數 + <code>@Service</code></td></tr>
+    <tr><td>解析機制</td><td>函式呼叫鏈（每次請求時解析）</td><td>IoC 容器預先建立（啟動時就組裝好）</td></tr>
+    <tr><td>生命週期</td><td>預設每個請求建立一次</td><td>預設 singleton（整個應用只有一個）</td></tr>
+    <tr><td>覆蓋/替換</td><td><code>app.dependency_overrides</code></td><td><code>@Primary</code> / <code>@Qualifier</code> / profile</td></tr>
+    <tr><td>適用場景</td><td>中小型後端、微服務</td><td>大型企業應用、複雜依賴圖</td></tr>
+  </tbody>
+</table>
+
+<pre><code class="language-python"># FastAPI：每個請求時解析依賴
+def get_user_service():
+    return UserService()
+
+@app.get("/users")
+def get_users(svc: UserService = Depends(get_user_service)):
+    return svc.get_all()
+</code></pre>
+
+<pre><code class="language-java">// Spring Boot：啟動時就建好整個依賴圖
+@Service
+public class UserService {
+    public List&lt;UserDto&gt; getAll() { ... }
+}
+
+@RestController
+public class UserController {
+    private final UserService svc;
+    public UserController(UserService svc) { this.svc = svc; }
+
+    @GetMapping("/users")
+    public List&lt;UserDto&gt; getUsers() { return svc.getAll(); }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🎯 關鍵差異</span>
+  FastAPI 的依賴是<strong>請求範圍</strong>的——每個 HTTP request 都可能建立新的 Service 實例。Spring 的依賴預設是<strong>應用範圍</strong>的——singleton，整個應用只有一個實例，所有請求共享。這對執行緒安全有重大影響（T08 會深入）。
+</div>
+
+<!-- ============================================================ -->
+<h2>5. @Qualifier：當同一個介面有多個實作</h2>
+
+<p>這是實務中常遇到的情境：</p>
+
+<pre><code class="language-java">public interface PaymentService {
+    void pay(double amount);
+}
+
+@Service("creditCard")  // ← 給 Bean 一個名稱
+public class CreditCardPaymentService implements PaymentService {
+    public void pay(double amount) { /* 信用卡 */ }
+}
+
+@Service("paypal")
+public class PayPalPaymentService implements PaymentService {
+    public void pay(double amount) { /* PayPal */ }
+}
+</code></pre>
+
+<p>如果你的 Controller 需要某個特定實作：</p>
+
+<pre><code class="language-java">@RestController
+public class CheckoutController {
+    private final PaymentService paymentService;
+
+    public CheckoutController(
+        @Qualifier("creditCard") PaymentService paymentService  // ← 指名要哪個
+    ) {
+        this.paymentService = paymentService;
+    }
+}
+</code></pre>
+
+<p>或者用 <code>@Primary</code> 指定預設值：</p>
+
+<pre><code class="language-java">@Service
+@Primary   // ← 當有多個 PaymentService 時，這個是預設選擇
+public class CreditCardPaymentService implements PaymentService { ... }
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>6. IoC 容器的優缺點（面試加分題）</h2>
+
+<div class="grid-2">
+  <div class="card success">
+    <h3>✅ 優點</h3>
+    <ul style="font-size:0.9rem">
+      <li>鬆耦合：依賴由容器管理，換實作只需改 annotation</li>
+      <li>易測試：可注入 mock 而不需改程式碼</li>
+      <li>集中管理：所有物件的生命週期統一由容器控制</li>
+      <li>減少 boilerplate：不用手寫工廠、singleton 模式</li>
+    </ul>
+  </div>
+  <div class="card danger">
+    <h3>⚠️ 缺點</h3>
+    <ul style="font-size:0.9rem">
+      <li>學習曲線：新手需要時間理解「框架在背後做了什麼」</li>
+      <li>除錯難度：依賴圖複雜時，追蹤問題需要了解容器狀態</li>
+      <li>啟動成本：大型應用容器初始化可能需要數十秒</li>
+      <li>過度使用：把所有東西都變成 Bean 反而增加複雜度</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: IOC 和 DI 分別是什麼？它們的關係是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>IoC（控制反轉）</strong>是一種設計原則——把建立和管理物件的控制權從程式碼轉移到框架。你不再自己 new 物件，而是由容器來建立和組裝。<strong>DI（依賴注入）</strong>是實作 IoC 的具體手段——容器在建立物件時，自動將其依賴的物件「注入」進去。IoC 是理念，DI 是方法。Spring 的 DI 主要透過建構子注入來實現。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: Spring 的三種注入方式各是什麼？為什麼推薦建構子注入？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">① <strong>建構子注入</strong>（推薦）：透過建構子參數，欄位可設 final，強制依賴不為 null，純 Java 易測試。② <strong>Setter 注入</strong>：透過 setter + @Autowired，適用於選擇性依賴。③ <strong>欄位注入</strong>（不推薦）：@Autowired 直接加在欄位上，無法 final、難以測試、隱藏依賴數量。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 當同一個 interface 有多個 @Service 實作時，Spring 如何決定注入哪一個？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">Spring 遇到多個同型別的 Bean 時會拋出 <code>NoUniqueBeanDefinitionException</code>。解決方式有三種：① <strong>@Primary</strong>：標記一個預設實作 ② <strong>@Qualifier("beanName")</strong>：在注入點指名要哪一個 ③ 使用 <code>@Resource(name="...")</code>（JSR-250 標準）。實務中最常用 @Primary 設定預設 + @Qualifier 處理例外。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 面試用一句話總結</h3>
+  <p style="font-size:1.05rem">「IoC 是把物件建立的控制權交給框架；DI 是框架自動把依賴注入到你宣告的地方。Spring 透過 ApplicationContext（一個巨大的 Map）在啟動時預先建立所有 singleton Bean，並用建構子注入自動組裝依賴圖。」</p>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P05：分層架構實作 — Controller → Service → Repository</strong>。你會把 P04 的 demo 專案擴展為標準三層架構，並練習 <code>@Qualifier</code> 和多重實作的情境。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://docs.spring.io/spring-framework/reference/core/beans/introduction.html" target="_blank" rel="noopener">Spring 官方：IoC 容器介紹</a></li>
+  <li>📖 <a href="https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring" target="_blank" rel="noopener">Baeldung: IoC 與 DI 詳解</a></li>
+  <li>📖 <a href="https://www.baeldung.com/constructor-injection-in-spring" target="_blank" rel="noopener">Baeldung: 為什麼推薦建構子注入</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>面試情境題想練習？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">我可以扮演面試官追問 DI/IoC 的各種變形問題。跟我說一聲就好。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0008-P-first-spring-boot-app.html" class="nav-prev">← P04 第一個 Spring Boot 應用</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0010-P-layered-architecture.html" class="nav-next">P05 分層架構實作 →</a>
+</nav>
+
+</body>
+</html>

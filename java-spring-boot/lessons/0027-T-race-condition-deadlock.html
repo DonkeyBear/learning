@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>補充課 — Race Condition 與 Deadlock 深度解析</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontFamily: 'Inter, "Noto Sans TC", system-ui, sans-serif'
+    }
+  });
+</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>補充課</span>
+  <span>/</span>
+  <span>~50 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>Race Condition 與 Deadlock 深度解析</h1>
+
+<p>T08 學了執行緒安全的基礎和 @Transactional 的樂觀/悲觀鎖。這堂課更深入——當鎖定無法避免時，如何正確使用 Java 的並行工具？Race condition 有哪些變形？Deadlock 如何產生、如何預防？<strong>當應用部署到多台伺服器時，JVM 層的鎖為什麼失效？分散式環境需要什麼新的工具？</strong>這些是後端面試中區分「會用框架」和「懂底層」的分水嶺。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課與 T08 的關係</span>
+  T08 偏向<strong>資料庫層</strong>的並行控制（@Transactional、@Version、@Lock）。這堂課 Part A/B/C 聚焦<strong>JVM 層</strong>的並行控制（synchronized、Lock、Atomic、ThreadLocal）和死鎖問題。Part D 進一步擴展到<strong>分散式環境</strong>——當應用部署在多台伺服器上時的並行挑戰與解方。四者互補，面試中都會被問到。
+</div>
+
+<!-- ============================================================ -->
+<h1>Part A：Race Condition 的六種解法</h1>
+
+<h2>1. 問題回顧：race condition 的本質</h2>
+
+<p>任何 <strong>讀-改-寫</strong>（read-modify-write）在沒有同步保護的情況下，都是 race condition 的溫床：</p>
+
+<pre><code class="language-java">// ❌ 經典 race condition：++ 不是原子操作
+public class UnsafeCounter {
+    private int count = 0;
+    public void increment() { count++; }
+    // count++ 實際上是三步：讀取值 → 加 1 → 寫回
+    // 兩個 thread 可能同時讀到 5，都寫回 6 → 遺失一次遞增
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>解法 1：synchronized — Java 最基礎的鎖</h2>
+
+<pre><code class="language-java">public class SyncCounter {
+    private int count = 0;
+
+    // 方法層級：鎖住整個 this 物件
+    public synchronized void increment() {
+        count++;
+    }
+
+    // 區塊層級：只鎖關鍵區段（更精細、效能更好）
+    public void incrementBetter() {
+        // ... 可以在這裡做不用鎖的事情 ...
+        synchronized (this) {
+            count++;
+        }
+    }
+
+    // 靜態方法層級：鎖住 Class 物件（全 JVM 一把鎖）
+    public static synchronized void staticMethod() { }
+}
+</code></pre>
+
+<div class="card info">
+  <h3 style="font-size:1rem;margin-top:0">synchronized 的底層原理（面試加分）</h3>
+  <p style="font-size:0.9rem">每個 Java 物件都有一個 <strong>monitor 鎖</strong>。synchronized 進入時獲取 monitor（monitorenter 指令）、離開時釋放（monitorexit）。Java 6 之後做了大量優化：<strong>偏向鎖 → 輕量級鎖 → 重量級鎖</strong>的逐步升級，稱為鎖膨脹（lock inflation）。大部分情況下的 synchronized 效能已經不輸 ReentrantLock。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>解法 2：ReentrantLock — 更靈活的鎖</h2>
+
+<pre><code class="language-java">import java.util.concurrent.locks.ReentrantLock;
+
+public class LockCounter {
+    private int count = 0;
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public void increment() {
+        lock.lock();
+        try {
+            count++;
+        } finally {
+            lock.unlock();  // ← 必須在 finally 中解鎖！
+        }
+    }
+
+    // synchronized 沒有的功能：
+    public void tryIncrement() {
+        if (lock.tryLock()) {  // ← 嘗試獲取鎖，拿不到就放棄（不阻塞）
+            try { count++; }
+            finally { lock.unlock(); }
+        }
+    }
+
+    public void safeIncrement() throws InterruptedException {
+        // 等待最多 1 秒，拿不到就放棄
+        if (lock.tryLock(1, java.util.concurrent.TimeUnit.SECONDS)) {
+            try { count++; }
+            finally { lock.unlock(); }
+        }
+    }
+}
+</code></pre>
+
+<table class="compare-table">
+  <thead><tr><th>特性</th><th>synchronized</th><th>ReentrantLock</th></tr></thead>
+  <tbody>
+    <tr><td>語法</td><td>關鍵字，Java 內建</td><td>API，需要 finally 解鎖</td></tr>
+    <tr><td>tryLock（非阻塞）</td><td>❌</td><td>✅</td></tr>
+    <tr><td>公平鎖</td><td>❌（非公平）</td><td>✅ <code>new ReentrantLock(true)</code></td></tr>
+    <tr><td>可中斷等待</td><td>❌</td><td>✅ <code>lockInterruptibly()</code></td></tr>
+    <tr><td>Condition（多條件）</td><td>❌（只有 wait/notify）</td><td>✅ <code>lock.newCondition()</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試題：synchronized vs ReentrantLock 何時用哪個？</span>
+  <strong>一般場景用 synchronized</strong>——語法簡單、不易出錯、JVM 自動優化。<strong>需要 tryLock、公平鎖、或 Condition 時用 ReentrantLock</strong>。Spring 內部兩者都有使用，但對開發者暴露的 API（如 @Transactional）都是 synchronized-free 的。
+</div>
+
+<!-- ============================================================ -->
+<h2>解法 3：Atomic 類別 — 無鎖並行（CAS）</h2>
+
+<pre><code class="language-java">import java.util.concurrent.atomic.*;
+
+public class AtomicCounter {
+    private final AtomicInteger count = new AtomicInteger(0);
+    private final AtomicLong seq = new AtomicLong(0);
+    private final AtomicReference&lt;String&gt; lastUser = new AtomicReference&lt;&gt;("none");
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+
+    // 原子遞增（底層用 CAS：Compare-And-Swap）
+    public int next() { return count.incrementAndGet(); }
+
+    // CAS 更新：只有目前值是 5 時才改成 10
+    public boolean tryUpdate() { return count.compareAndSet(5, 10); }
+
+    // 只初始化一次（類似 singleton）
+    public void initOnce() {
+        if (initialized.compareAndSet(false, true)) {
+            System.out.println("執行一次性初始化");
+        }
+    }
+
+    // AtomicReference 的 CAS 更新
+    public void updateUser(String newUser) {
+        lastUser.updateAndGet(current ->
+            current.equals("none") ? newUser : current);
+    }
+}
+</code></pre>
+
+<div class="card">
+  <h3 style="font-size:1rem;margin-top:0">CAS（Compare-And-Swap）原理</h3>
+  <p style="font-size:0.9rem">CAS 是 CPU 指令層級的原子操作：<strong>比較記憶體中的值是否等於預期值，如果是就寫入新值，如果不是就什麼都不做</strong>。這是無鎖並行的基石——沒有鎖的 overhead，沒有 deadlock 風險。缺點：① ABA 問題（用 AtomicStampedReference 解決）② 高競爭下 CAS 自旋次數過多。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>解法 4：volatile — 可見性保證（不是原子性！）</h2>
+
+<pre><code class="language-java">public class VolatileExample {
+    // volatile 保證：① 寫入立即對所有 thread 可見 ② 禁止指令重排
+    private volatile boolean running = true;
+
+    // ✅ volatile 適合的場景：單一 thread 寫、多 thread 讀的 flag
+    public void stop() {
+        running = false;  // Thread-1 寫入
+    }
+    public void work() {
+        while (running) {  // Thread-2 讀取——保證看到最新值
+            // do work
+        }
+    }
+
+    // ❌ volatile 不夠的場景：複合操作
+    // private volatile int count = 0;
+    // count++;  ← 仍然是 race condition！volatile 只保證可見性，不保證原子性
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 面試陷阱</span>
+  volatile 保證<strong>可見性</strong>（一個 thread 改了，其他 thread 看得到）但不保證<strong>原子性</strong>（count++ 仍然不安全）。面試官常問「volatile 能解決 race condition 嗎？」→ <strong>不能，只能解決可見性問題</strong>。
+</div>
+
+<!-- ============================================================ -->
+<h2>解法 5：ThreadLocal — 每個 Thread 自己的副本</h2>
+
+<pre><code class="language-java">public class RequestContext {
+    // 每個 thread 有自己的 requestId，完全隔離
+    private static final ThreadLocal&lt;String&gt; requestId = new ThreadLocal&lt;&gt;();
+
+    public static void setRequestId(String id) { requestId.set(id); }
+    public static String getRequestId() { return requestId.get(); }
+    public static void clear() { requestId.remove(); }  // ← 必須清理！避免記憶體洩漏
+}
+
+// Spring 的 RequestContextHolder 就是用 ThreadLocal
+// 你在 Controller 中不需要傳遞 request，但框架知道目前是哪個 request
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>解法 6：不可變物件（Immutable）— 最根本的解法</h2>
+
+<pre><code class="language-java">// 不可變 = 絕對執行緒安全，因為沒有寫操作
+public final class ImmutableUser {  // ← final class
+    private final String name;      // ← final fields
+    private final int age;
+
+    public ImmutableUser(String name, int age) {
+        this.name = name;
+        this.age = age;             // 建構後永不改變
+    }
+
+    public String getName() { return name; }  // 只有 getter，沒有 setter
+}
+
+// Java String、Integer、LocalDateTime 都是不可變的
+// record 也是不可變的！
+public record UserDto(String name, int age) { }
+</code></pre>
+
+<table class="compare-table">
+  <thead><tr><th>解法</th><th>適用場景</th><th>效能</th><th>複雜度</th></tr></thead>
+  <tbody>
+    <tr><td>synchronized</td><td>簡單互斥、少量競爭</td><td>中</td><td>低</td></tr>
+    <tr><td>ReentrantLock</td><td>需要 tryLock、公平鎖</td><td>中</td><td>中</td></tr>
+    <tr><td>Atomic（CAS）</td><td>單一變數原子操作</td><td>高</td><td>低</td></tr>
+    <tr><td>volatile</td><td>讀多寫少的 flag</td><td>最高</td><td>低</td></tr>
+    <tr><td>ThreadLocal</td><td>Thread 範圍的隔離資料</td><td>高</td><td>中</td></tr>
+    <tr><td>Immutable</td><td>不需要改的資料</td><td>最高</td><td>最低</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h1>Part B：Deadlock 死鎖</h1>
+
+<h2>Q: 什麼是 Deadlock？</h2>
+
+<div class="card">
+  <p style="font-size:0.9rem">兩個（或更多）Thread 各自持有對方需要的鎖，<strong>互相等待</strong>，永遠無法繼續執行。</p>
+</div>
+
+<pre><code class="language-java">// 🔴 經典死鎖範例：兩個 Thread 交叉獲取兩把鎖
+public class DeadlockDemo {
+    private final Object lockA = new Object();
+    private final Object lockB = new Object();
+
+    public void method1() {
+        synchronized (lockA) {                     // Thread-1 拿到 lockA
+            sleep(100);
+            synchronized (lockB) {                 // Thread-1 等待 lockB...
+                System.out.println("method1");     // ← 永遠不會執行
+            }
+        }
+    }
+
+    public void method2() {
+        synchronized (lockB) {                     // Thread-2 拿到 lockB
+            sleep(100);
+            synchronized (lockA) {                 // Thread-2 等待 lockA...
+                System.out.println("method2");     // ← 永遠不會執行
+            }
+        }
+    }
+    // Thread-1: 持有 lockA，等待 lockB
+    // Thread-2: 持有 lockB，等待 lockA
+    // → 死鎖！兩者永遠無法繼續
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>死鎖的四個必要條件（面試必背）</h2>
+
+<div class="card">
+  <table style="font-size:0.9rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">1. 互斥（Mutual Exclusion）</td><td>資源一次只能被一個 thread 持有</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">2. 持有並等待（Hold and Wait）</td><td>持有資源的同時等待其他資源</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">3. 不可搶佔（No Preemption）</td><td>資源不能被強行奪走，只能自願釋放</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">4. 循環等待（Circular Wait）</td><td>形成封閉的資源依賴環</td></tr>
+  </table>
+</div>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試關鍵</span>
+  <strong>打破任一條件即可預防死鎖</strong>。實務中最容易打破的是<strong>條件 4</strong>（循環等待）——只要你規定所有 thread 獲取鎖的順序一致（例如都先拿 lockA 再拿 lockB），就不會形成循環。這就是<strong>鎖定順序（Lock Ordering）</strong>策略。
+</div>
+
+<!-- ============================================================ -->
+<h2>死鎖的檢測與預防</h2>
+
+<h3>預防策略 1：固定鎖定順序</h3>
+
+<pre><code class="language-java">// ✅ 所有人按相同順序獲取鎖
+public void safeMethod(Account from, Account to) {
+    // 用 id 決定鎖定順序，避免交叉
+    var first = from.getId() &lt; to.getId() ? from : to;
+    var second = from.getId() &lt; to.getId() ? to : from;
+
+    synchronized (first) {
+        synchronized (second) {
+            // 轉帳邏輯
+        }
+    }
+}
+</code></pre>
+
+<h3>預防策略 2：tryLock + 逾時 + 放棄</h3>
+
+<pre><code class="language-java">public boolean safeTransfer(Account from, Account to, int amount) {
+    var lock1 = from.getLock();
+    var lock2 = to.getLock();
+
+    while (true) {
+        try {
+            if (lock1.tryLock(100, TimeUnit.MILLISECONDS)) {
+                try {
+                    if (lock2.tryLock(100, TimeUnit.MILLISECONDS)) {
+                        try {
+                            from.debit(amount);
+                            to.credit(amount);
+                            return true;
+                        } finally { lock2.unlock(); }
+                    }
+                } finally { lock1.unlock(); }
+            }
+        } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
+        // 沒拿到兩把鎖，短暫等待後重試（避免 livelock）
+        sleep(10);
+    }
+}
+</code></pre>
+
+<h3>檢測：用 jstack 診斷死鎖</h3>
+
+<pre><code class="language-bash"># 用 jstack 查看 thread dump，JVM 會自動偵測死鎖
+jstack &lt;pid&gt;
+# 輸出末尾會有：
+# Found one Java-level deadlock:
+# "Thread-1": waiting to lock ... which is held by "Thread-2"
+# "Thread-2": waiting to lock ... which is held by "Thread-1"
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Livelock（活鎖）— 死鎖的狡猾表親</h2>
+
+<p>面試進階題：兩個 thread 不斷「禮讓」對方，都在動、但都沒進展。</p>
+
+<pre><code class="language-java">// 活鎖：兩人不斷互相禮讓，誰都過不了門
+public void passDoor(Person other) {
+    while (true) {
+        if (other.isInMyWay()) {
+            Thread.yield();  // 「你先過」
+            continue;
+        }
+        break;  // 終於過了
+    }
+}
+// 兩個人同時 yield → 同時回來 → 同時再 yield → 無限循環
+</code></pre>
+
+<!-- ============================================================ -->
+<h1>Part C：Spring Boot 中的並行工具</h1>
+
+<h2>@Async — 讓方法非同步執行</h2>
+
+<pre><code class="language-java">@Configuration
+@EnableAsync  // ← 啟用非同步
+public class AsyncConfig { }
+
+@Service
+public class NotificationService {
+
+    @Async  // ← 這個方法會在獨立 thread 中執行
+    public void sendWelcomeEmail(String email) {
+        // 發送 Email（不阻塞呼叫者）
+        System.out.println("📧 發送中... " + Thread.currentThread().getName());
+    }
+}
+
+// 呼叫時：
+notificationService.sendWelcomeEmail("alice@example.com");
+// 主 thread 立即繼續執行，不等待 Email 發完
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ @Async 的陷阱</span>
+  ① 自呼叫無效（和 @Transactional 一樣——繞過 proxy）。② 預設使用 SimpleAsyncTaskExecutor（每次新建 thread，不適合生產環境）——務必自訂 ThreadPoolTaskExecutor。③ 例外不會傳播到呼叫者，必須用 AsyncUncaughtExceptionHandler 處理。
+</div>
+
+<h2>自訂 Thread Pool</h2>
+
+<pre><code class="language-java">@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    @Bean("emailExecutor")
+    public Executor emailExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);        // 核心 thread 數
+        executor.setMaxPoolSize(5);         // 最大 thread 數
+        executor.setQueueCapacity(100);     // 等待 Queue 容量
+        executor.setRejectedExecutionHandler(
+            new ThreadPoolExecutor.CallerRunsPolicy()  // Queue 滿時由呼叫者 thread 執行
+        );
+        executor.setThreadNamePrefix("email-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+// 使用特定 thread pool：
+@Async("emailExecutor")
+public void sendEmail(String email) { ... }
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>並行工具三劍客：CountDownLatch / CyclicBarrier / Semaphore</h2>
+
+<pre><code class="language-java">// CountDownLatch：等待 N 個任務完成（一次性）
+var latch = new CountDownLatch(3);
+for (int i = 0; i < 3; i++) {
+    new Thread(() -> {
+        doWork();
+        latch.countDown();  // 「我完成了」
+    }).start();
+}
+latch.await();  // 等到 3 個 countDown 為止
+System.out.println("全部完成");
+
+// Semaphore：限制同時存取數量（連接池的本質）
+var semaphore = new Semaphore(3);  // 最多 3 個 thread 同時執行
+semaphore.acquire();  // 獲取許可（許可不足時阻塞）
+try { doLimitedWork(); }
+finally { semaphore.release(); }  // 歸還許可
+
+// CyclicBarrier：等待所有 thread 到達同一點（可重複使用）
+var barrier = new CyclicBarrier(3, () ->
+    System.out.println("所有人都到了，開始下一階段！"));
+// 三個 thread 各自工作到 barrier.await() → 全部到達後觸發 callback → 繼續
+</code></pre>
+
+<!-- ============================================================ -->
+<h1>Part D：分散式環境中的並行挑戰</h1>
+
+<div class="callout warn">
+  <span class="callout-label">🚨 核心問題：為什麼 JVM 層的鎖在分散式環境中失效？</span>
+  Part A/B/C 學的所有工具（synchronized、ReentrantLock、Atomic、volatile）都是<strong>單一 JVM 內部</strong>的鎖。當你把 blog-api 部署到 3 台伺服器，前面放一個 Load Balancer，<strong>每台伺服器有自己的 JVM、自己的鎖</strong>——伺服器 A 的 synchronized 完全管不到伺服器 B 的 thread。這就是分散式並行問題的本質。
+</div>
+
+<pre class="mermaid">
+flowchart TB
+    User["👤 使用者請求"]
+    LB["🔀 Load Balancer<br/>Nginx / HAProxy"]
+
+    User --> LB
+
+    LB --> ServerA["🖥️ Server A<br/>JVM-1"]
+    LB --> ServerB["🖥️ Server B<br/>JVM-2"]
+    LB --> ServerC["🖥️ Server C<br/>JVM-3"]
+
+    ServerA --> LockA["🔒 synchronized / Lock"]
+    ServerB --> LockB["🔒 synchronized / Lock"]
+    ServerC --> LockC["🔒 synchronized / Lock"]
+
+    LockA -.->|"互不相通！"| LockB
+    LockB -.->|"互不相通！"| LockC
+
+    ServerA --> DB
+    ServerB --> DB
+    ServerC --> DB
+
+    DB["🗄️ Database<br/>唯一的共享點"]
+</pre>
+
+<!-- ============================================================ -->
+<h2>D-1. 分散式鎖（Distributed Lock）</h2>
+
+<div class="card">
+  <p style="font-size:0.9rem"><strong>核心思想</strong>：把鎖從 JVM 記憶體移到一個<strong>所有伺服器都能存取的外部儲存</strong>上。最常見的實作是 Redis 和 ZooKeeper。</p>
+</div>
+
+<h3>方案一：Redis + Redisson（最常見）</h3>
+
+<pre><code class="language-java">// build.gradle
+implementation 'org.redisson:redisson-spring-boot-starter:3.34.0'
+
+// application.properties
+spring.redis.host=localhost
+spring.redis.port=6379
+
+// 使用 Redisson 分散式鎖
+@Service
+public class InventoryService {
+    private final RedissonClient redisson;
+
+    public InventoryService(RedissonClient redisson) {
+        this.redisson = redisson;
+    }
+
+    public boolean deductStock(Long productId, int quantity) {
+        RLock lock = redisson.getLock("product:lock:" + productId);
+        try {
+            // 嘗試獲取鎖：最多等 3 秒，鎖定後 10 秒自動釋放（防止 deadlock）
+            if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
+                var product = productRepo.findByIdWithPessimisticLock(productId)
+                    .orElseThrow();
+                product.decreaseStock(quantity);
+                productRepo.save(product);
+                return true;
+            }
+            return false;  // 拿不到鎖（庫存被搶完或系統繁忙）
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 Redisson 的 Watchdog 機制（面試加分）</span>
+  你有注意到鎖定時間設為 10 秒嗎？如果業務邏輯實際花了 15 秒呢？Redisson 的 <strong>Watchdog</strong> 會自動續期——每 1/3 鎖定時間自動檢查，如果業務還在執行就自動延長鎖定時間。這解決了「鎖定時間設太短業務中斷、設太長 deadlock 風險高」的兩難。
+</div>
+
+<h3>方案二：ZooKeeper（強一致性場景）</h3>
+
+<pre><code class="language-java">// 使用 Curator（ZooKeeper 的 Java client）
+// ZooKeeper 利用 ephemeral sequential node 實現鎖定：
+// 1. 每個 client 在 /lock 下建立一個 ephemeral + sequential 節點
+// 2. 序號最小的節點獲得鎖
+// 3. 沒有拿到鎖的 client watch 前一個節點
+// 4. 前一個節點刪除時，下一個自動獲得鎖（公平排隊）
+
+// 優勢：強一致性（CP），不會有 Redis cluster 的腦裂問題
+// 劣勢：效能比 Redis 低，運維較複雜
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試題：Redis vs ZooKeeper 分散式鎖</span>
+  <strong>Redis（Redisson）</strong>：AP 模型（高可用），效能高，適合大多數場景。但有極小機率在 Redis sentinel 切換時兩個 client 同時拿到鎖（RedLock 演算法可緩解）。<strong>ZooKeeper</strong>：CP 模型（強一致），透過 ephemeral node + watch 機制實現公平排隊。適合對一致性要求極高的場景。中小型專案用 Redis Redisson 就夠了。
+</div>
+
+<!-- ============================================================ -->
+<h2>D-2. 分散式交易（Distributed Transaction）</h2>
+
+<p>當一個業務操作需要<strong>跨多個服務</strong>且必須全部成功或全部失敗：</p>
+
+<pre><code class="language-java">// 😰 分散式交易場景：下訂單需要三個服務都成功
+// OrderService  → 建立訂單（自己的 DB）
+// InventoryService → 扣庫存（自己的 DB）
+// PaymentService   → 扣款（外部金流）
+
+// 如果扣款失敗，必須 rollback 訂單和庫存——但各自在不同的 DB！
+// @Transactional 只管理一個 DataSource，跨服務無能為力
+</code></pre>
+
+<h3>解法：Saga 模式（補償交易）</h3>
+
+<pre><code class="language-java">// Saga：每個步驟有對應的「反向操作」
+// 訂單建立        ←→  訂單取消（補償）
+// 庫存扣減        ←→  庫存歸還（補償）
+// 付款扣款        ←→  退款（補償）
+
+// 實作有兩種：
+// 1. Choreography（編排式）：每個服務做完後發事件，下一個服務監聽
+// 2. Orchestration（指揮式）：一個 Saga Orchestrator 指揮所有步驟
+
+// Orchestrator 範例（簡化）：
+@Service
+public class OrderSagaOrchestrator {
+
+    public void execute(CreateOrderRequest req) {
+        try {
+            var order = orderService.create(req);    // Step 1
+            inventoryService.deduct(req.items());     // Step 2（失敗時補償 Step 1）
+            paymentService.charge(req.payment());     // Step 3（失敗時補償 Step 1+2）
+            orderService.confirm(order.getId());      // Step 4：全部成功
+        } catch (Exception e) {
+            compensate(req);  // 依序執行所有已成功步驟的補償操作
+            throw e;
+        }
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 面試加分：2PC vs Saga</span>
+  <strong>2PC（Two-Phase Commit）</strong>：資料庫層的分散式交易協議（XA transaction）。強一致性，但效能差、blocking、單點故障風險高——現代微服務幾乎不用。<strong>Saga</strong>：應用層的分散式交易，透過補償操作實現最終一致性。Spring 生態系的 Saga 實作有 Axon Framework、Camunda、或自行用 MQ + 事件實現。
+</div>
+
+<!-- ============================================================ -->
+<h2>D-3. 冪等性（Idempotency）</h2>
+
+<p><strong>在分散式環境中，同一個請求可能被重複執行</strong>——MQ 重送、使用者 double-click、Load Balancer 重試、網路 timeout 後 client 重發。</p>
+
+<pre><code class="language-java">// ❌ 沒有冪等性保護：同一個請求執行兩次 = 扣兩次款
+@PostMapping("/orders")
+public ApiResponse&lt;OrderResponse&gt; create(@RequestBody CreateOrderRequest req) {
+    return ApiResponse.ok(orderService.create(req));
+}
+
+// ✅ 加入冪等性保護：用 idempotency key
+@PostMapping("/orders")
+public ApiResponse&lt;OrderResponse&gt; create(
+    @RequestHeader("Idempotency-Key") String idempotencyKey,  // client 端產生 UUID
+    @RequestBody CreateOrderRequest req
+) {
+    // 檢查是否已經處理過這個 key
+    var existing = orderRepo.findByIdempotencyKey(idempotencyKey);
+    if (existing.isPresent()) {
+        return ApiResponse.ok(existing.get());  // 回傳之前的結果，不重複執行
+    }
+    var order = orderService.create(req, idempotencyKey);
+    return ApiResponse.ok(order);
+}
+
+// MQ Consumer 的冪等性：用 messageId 做去重
+@RabbitListener(queues = "email-queue")
+public void handleEmail(UserRegisteredEvent event) {
+    if (processedMessageRepo.existsById(event.messageId())) {
+        return;  // 已處理過，跳過
+    }
+    emailService.send(event.email());
+    processedMessageRepo.save(new ProcessedMessage(event.messageId()));
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>D-4. Spring Boot 中的分散式鎖實戰</h2>
+
+<p>用 Spring AOP 包裝分散式鎖——讓業務程式碼完全不碰鎖的細節：</p>
+
+<pre><code class="language-java">// 自訂 annotation
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DistributedLock {
+    String key();       // Redis key 的 SpEL 表達式，如 "'product:' + #productId"
+    long waitTime() default 3;
+    long leaseTime() default 10;
+}
+
+// AOP aspect
+@Aspect
+@Component
+public class DistributedLockAspect {
+    private final RedissonClient redisson;
+
+    @Around("@annotation(lock)")
+    public Object around(ProceedingJoinPoint joinPoint, DistributedLock lock) throws Throwable {
+        String key = /* 解析 SpEL */;
+        RLock rLock = redisson.getLock(key);
+        if (rLock.tryLock(lock.waitTime(), lock.leaseTime(), TimeUnit.SECONDS)) {
+            try { return joinPoint.proceed(); }
+            finally {
+                if (rLock.isHeldByCurrentThread()) rLock.unlock();
+            }
+        }
+        throw new RuntimeException("無法獲取分散式鎖: " + key);
+    }
+}
+
+// 使用——業務程式碼完全不知道鎖的存在！
+@Service
+public class InventoryService {
+    @DistributedLock(key = "'product:' + #productId")
+    public boolean deduct(Long productId, int qty) {
+        // 純業務邏輯，鎖由 AOP 處理
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>D-5. 分散式環境決策表</h2>
+
+<table class="compare-table">
+  <thead><tr><th>場景</th><th>解決方案</th><th>工具</th></tr></thead>
+  <tbody>
+    <tr><td>跨 JVM 的互斥操作</td><td>分散式鎖</td><td>Redis Redisson / ZooKeeper Curator</td></tr>
+    <tr><td>跨服務的交易一致性</td><td>Saga 模式</td><td>MQ 事件 / Axon / Camunda</td></tr>
+    <tr><td>重複請求的防護</td><td>冪等性設計</td><td>Idempotency-Key + DB 去重表</td></tr>
+    <tr><td>跨服務的資料同步</td><td>事件驅動（Eventual Consistency）</td><td>Kafka / RabbitMQ + CDC</td></tr>
+    <tr><td>分散式唯一 ID</td><td>Snowflake / UUID v7</td><td>Twitter Snowflake / UUID</td></tr>
+    <tr><td>設定中心（跨伺服器統一設定）</td><td>Config Server</td><td>Spring Cloud Config / Consul</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: synchronized 和 ReentrantLock 各有什麼對方沒有的功能？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">synchronized：語法簡單、JVM 自動解鎖（不會忘記）、偏向鎖優化。ReentrantLock：<strong>tryLock</strong>（非阻塞嘗試）、<strong>公平鎖</strong>（先到先得）、<strong>可中斷等待</strong>（lockInterruptibly）、<strong>Condition</strong>（多個等待條件）。一般場景用 synchronized，需要這些進階功能時用 ReentrantLock。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: Deadlock 的四個必要條件是什麼？最實務上如何預防？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">① 互斥 ② 持有並等待 ③ 不可搶佔 ④ <strong>循環等待</strong>。最實務的預防是打破條件 ④——固定鎖定順序（Lock Ordering）：所有 thread 按相同順序獲取鎖。例如轉帳時依帳號 ID 決定先鎖哪個帳戶。也可以用 tryLock + 逾時來打破條件 ②。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: volatile 能解決 count++ 的 race condition 嗎？為什麼？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><strong>不能。</strong>volatile 只保證<strong>可見性</strong>（一個 thread 改了後其他 thread 能看到），不保證<strong>原子性</strong>。count++ 是讀-改-寫三步驟，兩個 thread 仍然可以同時讀到相同值、各自加 1、寫回相同結果（遺失一次遞增）。volatile 適合單一 thread 寫入、多 thread 讀取的 flag 場景。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q4: 為什麼 synchronized 在分散式環境（多台伺服器）中無法防止 race condition？用什麼替代？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">synchronized 只能鎖住<strong>同一個 JVM 內的 thread</strong>。當應用部署到多台伺服器時，每台有自己的 JVM 和獨立的鎖——伺服器 A 的 synchronized 管不到伺服器 B。替代方案：<strong>分散式鎖</strong>——把鎖移到所有伺服器共享的外部儲存。最常見是用 <strong>Redis + Redisson</strong>（高效能、Watchdog 自動續期），對強一致性要求高的場景用 <strong>ZooKeeper</strong>（ephemeral node + 公平排隊）。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q5: Saga 模式和 2PC 有什麼不同？現代微服務為什麼偏好 Saga？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><strong>2PC</strong> 是資料庫層的強一致性協議——coordinator 要求所有參與者 prepare，全部 OK 才 commit。缺點：blocking（等待最慢的參與者）、單點故障（coordinator 掛了全部卡住）、效能差。現代微服務幾乎不用。<strong>Saga</strong> 是應用層的最終一致性方案——每個步驟有對應的補償操作，失敗時反向執行已完成的步驟。非 blocking、無單點瓶頸、適合長時間跨服務業務流程。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 決策樹：遇到 race condition 時用什麼？</h3>
+  <pre style="font-size:0.82rem"><code>只在單一 JVM 內？
+├─ Yes → 能改成 Immutable？
+│   ├─ Yes → 用 record / final fields（根本解法）
+│   └─ No → 只有單一變數原子操作？
+│       ├─ Yes → AtomicInteger / AtomicReference（CAS，效能最高）
+│       └─ No → 讀多寫少的 flag？
+│           ├─ Yes → volatile
+│           └─ No → Thread 範圍隔離？
+│               ├─ Yes → ThreadLocal（記得 remove）
+│               └─ No → 簡單互斥？
+│                   ├─ Yes → synchronized
+│                   └─ No → ReentrantLock
+└─ No（跨多台伺服器）→
+    ├─ 跨 JVM 互斥 → Redis Redisson / ZooKeeper 分散式鎖
+    ├─ 跨服務交易 → Saga（補償交易）
+    ├─ 重複請求防護 → Idempotency-Key + 去重表
+    └─ 跨服務資料同步 → MQ 事件 + 最終一致性</code></pre>
+</div>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>想看實際的死鎖範例在 IntelliJ 中跑起來？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">我可以帶你寫一個死鎖 demo，然後用 jstack 診斷。或是想深入 CompletableFuture、ForkJoinPool、Redis 分散式鎖實戰，直接跟我說。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0026-T-interview-faq.html" class="nav-prev">← 面試八股文</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+</nav>
+
+</body>
+</html>

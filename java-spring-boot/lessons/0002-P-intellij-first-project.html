@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P01 — IntelliJ 環境設定 + 第一個 Java 專案</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P01</span>
+  <span>/</span>
+  <span>~40 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>IntelliJ 環境設定 + 第一個 Java 專案</h1>
+
+<p>這堂課會帶你從零開始安裝 IntelliJ Community Edition，建立第一個 Java 專案，並實際跑一次 <a href="0001-T-java-syntax-overview.html">T01</a> 教過的語法。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  不是寫出什麼厲害的程式，而是<b>讓你的開發環境就緒</b>。後續每一堂實作課都會在這個基礎上疊加，所以確保每一步都走完。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 安裝 IntelliJ IDEA Community Edition</h2>
+
+<div class="card info">
+  <p style="margin:0">ℹ️ <strong>Community Edition 是完全免費的</strong>，不需要付費授權。它對 Spring Boot 開發完全夠用。付費的 Ultimate 版多了內建 Spring 支援，但我們會用手動設定來達成相同效果。</p>
+</div>
+
+<h3>步驟</h3>
+
+<ol>
+  <li>前往 <a href="https://www.jetbrains.com/idea/download/" target="_blank" rel="noopener">JetBrains 官網下載頁</a></li>
+  <li>選擇 <strong>IntelliJ IDEA Community Edition</strong>（不是 Ultimate）</li>
+  <li>下載 Windows <code>.exe</code> 安裝檔</li>
+  <li>執行安裝程式：
+    <ul>
+      <li>全部用預設選項即可</li>
+      <li>「Create Desktop Shortcut」→ 建議勾選</li>
+      <li>「Add "Open Folder as Project"」→ 建議勾選</li>
+      <li>「Add bin to PATH」→ 可選（讓終端機可以直接用 <code>idea</code> 指令開啟）</li>
+    </ul>
+  </li>
+  <li>安裝完成後啟動 IntelliJ</li>
+</ol>
+
+<div class="callout tip">
+  <span class="callout-label">💡 順帶一提：Toolbox App</span>
+  JetBrains 也有提供 <a href="https://www.jetbrains.com/toolbox-app/" target="_blank" rel="noopener">Toolbox App</a>，可以統一管理所有 JetBrains IDE 的版本更新。如果你預計未來也會用 WebStorm、DataGrip 等工具，推薦安裝。對本課程而言直接用 standalone 安裝就夠了。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 建立第一個 Java 專案</h2>
+
+<p>啟動 IntelliJ 後：</p>
+
+<ol>
+  <li>點擊 <strong>New Project</strong></li>
+  <li>設定以下選項：
+    <ul>
+      <li><strong>Name</strong>：<code>java-practice</code></li>
+      <li><strong>Location</strong>：選一個你方便找到的資料夾</li>
+      <li><strong>Language</strong>：Java</li>
+      <li><strong>Build system</strong>：IntelliJ（先不用 Gradle 或 Maven，下一堂再來）</li>
+      <li><strong>JDK</strong>：如果顯示 "No SDK"，點擊下拉選單 → <strong>Download JDK</strong> → 選 <strong>Amazon Corretto 21</strong>（或 Oracle OpenJDK 21）→ Download</li>
+    </ul>
+  </li>
+  <li>點擊 <strong>Create</strong></li>
+</ol>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ JDK 版本說明</span>
+  建議選 <strong>JDK 21</strong>（LTS，長期支援版本）。Spring Boot 3.x 最低要求 JDK 17，選 21 可以涵蓋你未來所有 Spring Boot 開發需求。Corretto 是 Amazon 維護的免費 OpenJDK 發行版，穩定且無授權問題。
+</div>
+
+<p>建立完成後，你會看到這樣的專案結構：</p>
+
+<pre><code class="language-text">java-practice/
+├── .idea/            ← IntelliJ 設定檔（不要手動修改）
+├── src/
+│   └── Main.java     ← IntelliJ 自動產生的主程式
+└── java-practice.iml  ← 模組設定檔
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>3. 你的第一支 Java 程式</h2>
+
+<p>IntelliJ 可能已經幫你產生了一個 <code>Main.java</code>。確認內容如下（如果沒有，在 <code>src</code> 資料夾上按右鍵 → New → Java Class → 命名為 <code>Main</code>）：</p>
+
+<pre><code class="language-java">public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, Spring Boot!");
+    }
+}
+</code></pre>
+
+<p>按一下 <code>main</code> 方法左側的 <span style="color:var(--success)">▶ 綠色三角形</span>，選擇 <strong>Run 'Main.main()'</strong>。</p>
+
+<p>下方的 <strong>Run 視窗</strong> 應該顯示：</p>
+
+<pre><code class="language-text">Hello, Spring Boot!
+
+Process finished with exit code 0
+</code></pre>
+
+<p>🎉 <strong>恭喜！你的 Java 環境就緒了。</strong></p>
+
+<div class="callout tip">
+  <span class="callout-label">💡 IntelliJ 快速鍵備忘</span>
+  <table style="font-size:0.85rem;margin-top:0.5rem">
+    <tr><td><code>Alt+Enter</code></td><td>萬能修復鍵（import、修正錯誤、建議）</td></tr>
+    <tr><td><code>Ctrl+Shift+F10</code></td><td>執行目前檔案</td></tr>
+    <tr><td><code>Shift+F10</code></td><td>重新執行上一次的 Run</td></tr>
+    <tr><td><code>Ctrl+Space</code></td><td>自動完成</td></tr>
+    <tr><td><code>Ctrl+/</code></td><td>單行註解切換</td></tr>
+    <tr><td><code>psvm</code> + Tab</td><td>快速產生 <code>public static void main</code></td></tr>
+    <tr><td><code>sout</code> + Tab</td><td>快速產生 <code>System.out.println()</code></td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 動手練習：複習 T01 的語法</h2>
+
+<p>把 <code>Main.java</code> 的內容<b>全部換掉</b>，改寫成以下程式，實際跑一次 T01 學到的語法：</p>
+
+<pre><code class="language-java">import java.util.List;
+import java.util.ArrayList;
+
+public class Main {
+
+    // 練習 1：基本型別與物件型別
+    public static void main(String[] args) {
+        // 基本型別（小寫）
+        int score = 85;
+        double price = 29.99;
+        boolean isActive = true;
+
+        // 物件型別（大寫）
+        String playerName = "Alice";
+        Integer wrappedScore = score;  // int 自動裝箱成 Integer
+
+        // 練習 2：動態列表（List）
+        List&lt;String&gt; inventory = new ArrayList&lt;&gt;();
+        inventory.add("Potion");
+        inventory.add("Elixir");
+        inventory.add("Phoenix Down");
+
+        // 練習 3：for-each 迴圈
+        System.out.println("=== 背包內容 ===");
+        for (String item : inventory) {
+            System.out.println("- " + item);
+        }
+
+        // 練習 4：字串比較（用 equals，不是 ==）
+        String answer = "yes";
+        if (answer.equals("yes")) {
+            System.out.println("你選擇了 yes");
+        }
+
+        // 練習 5：基本輸出
+        System.out.println("玩家：" + playerName);
+        System.out.println("分數：" + score);
+        System.out.println("背包大小：" + inventory.size());
+    }
+}
+</code></pre>
+
+<p>按 <code>Ctrl+Shift+F10</code>（或點綠色 ▶）執行。你應該看到：</p>
+
+<pre><code class="language-text">=== 背包內容 ===
+- Potion
+- Elixir
+- Phoenix Down
+你選擇了 yes
+玩家：Alice
+分數：85
+背包大小：3
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 如果看到紅色波浪線</span>
+  把游標移到紅字上，按 <code>Alt+Enter</code>，IntelliJ 會建議 <strong>Import class</strong>。選擇它，IntelliJ 就會自動在檔案頂部加上 <code>import java.util.List;</code> 等必要的 import 陳述式。<b>這是你在 Java 開發中最常用的快捷鍵，沒有之一。</b>
+</div>
+
+<!-- ============================================================ -->
+<h2>5. IntelliJ 基礎操作練習</h2>
+
+<p>花 5 分鐘熟悉以下操作，它們會在你每天的開發中反覆出現：</p>
+
+<ol>
+  <li><strong>建立新 class</strong>：在 <code>src</code> 目錄上按右鍵 → New → Java Class → 輸入 <code>Item</code></li>
+  <li>在 <code>Item.java</code> 中寫入以下內容：</li>
+</ol>
+
+<pre><code class="language-java">public class Item {
+    private String name;
+    private int quantity;
+
+    // 建構子
+    public Item(String name, int quantity) {
+        this.name = name;
+        this.quantity = quantity;
+    }
+
+    // Getter（Alt+Insert 可以自動產生）
+    public String getName() {
+        return name;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+}
+</code></pre>
+
+<ol start="3">
+  <li>回到 <code>Main.java</code>，在 <code>main</code> 方法中加入：</li>
+</ol>
+
+<pre><code class="language-java">// 使用自訂的 Item class
+List&lt;Item&gt; shopItems = new ArrayList&lt;&gt;();
+shopItems.add(new Item("Sword", 1));
+shopItems.add(new Item("Shield", 2));
+
+for (Item item : shopItems) {
+    System.out.println(item.getName() + " x" + item.getQuantity());
+}
+</code></pre>
+
+<ol start="4">
+  <li>執行，確認輸出：</li>
+</ol>
+
+<pre><code class="language-text">Sword x1
+Shield x2
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 Getter/Setter 自動產生</span>
+  <ol style="margin:0.3rem 0 0 0">
+    <li>在 class 內的空白處按 <code>Alt+Insert</code></li>
+    <li>選擇 <strong>Getter</strong>（或 Setter）</li>
+    <li>勾選你要的屬性 → OK</li>
+  </ol>
+  IntelliJ 會自動產生正確的 getter/setter 方法。Spring Boot 大量依賴 getter/setter，記住這個快捷鍵會省下大量時間。
+</div>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>IntelliJ Community Edition 安裝完成</li>
+  <li>JDK 21 已下載並在 IntelliJ 中設定</li>
+  <li>成功建立 <code>java-practice</code> 專案</li>
+  <li>Main.java 可以正常執行並輸出文字</li>
+  <li>會用 <code>Alt+Enter</code> 自動 import</li>
+  <li>會用 <code>Alt+Insert</code> 自動產生 getter</li>
+  <li>成功建立 <code>Item</code> class 並在 Main 中使用</li>
+  <li>理解 <code>List&lt;Item&gt;</code> + for-each 的用法</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- NEXT -->
+<div class="summary-box">
+  <h3>📌 你今天學到的</h3>
+  <ol>
+    <li><strong>IntelliJ</strong> 是 Java 開發的事實標準 IDE，Community 版對 Spring Boot 完全夠用</li>
+    <li><strong>JDK 21</strong> 是你專案的 Java 執行環境，Spring Boot 3.x 需要 JDK 17+</li>
+    <li><strong><code>psvm</code> + <code>sout</code></strong> 是兩個最重要的 live template</li>
+    <li><strong><code>Alt+Enter</code></strong> 是萬能快速鍵——import、修錯、建議全靠它</li>
+    <li><strong><code>Alt+Insert</code></strong> 自動產生 getter/setter/constructor</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T02：Java OOP 核心 — class、interface、繼承、record</strong>。我們會深入 Java 物件導向的細節，並對比你熟悉的 TypeScript OOP 模式。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <a href="https://www.jetbrains.com/help/idea/getting-started.html" target="_blank" rel="noopener">IntelliJ IDEA 官方入門指南</a></li>
+  <li>📖 <a href="https://www.jetbrains.com/help/idea/mastering-keyboard-shortcuts.html" target="_blank" rel="noopener">IntelliJ 快捷鍵速查</a>（也可以直接在 IDE 中按 <code>Ctrl+Shift+A</code> 搜尋任何指令）</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>卡住了？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">環境安裝是最容易卡關的一步。如果 JDK 下載失敗、IntelliJ 報錯、或是執行時出現看不懂的錯誤訊息，直接在對話中貼上來，我幫你解。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-T-java-syntax-overview.html" class="nav-prev">← T01 Java 語法速覽</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0003-T-java-oop-core.html" class="nav-next">T02 Java OOP 核心 →</a>
+</nav>
+
+</body>
+</html>

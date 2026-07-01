@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>補充課 — SOLID 原則與常見 Design Patterns</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>補充課</span>
+  <span>/</span>
+  <span>~35 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>SOLID 原則與常見 Design Patterns</h1>
+
+<p>SOLID 和 Design Patterns 是後端面試的必考題——而且面試官通常會追問「你在 Spring Boot 中哪裡用過這個」。這堂課把每個原則和模式<b>對應到你已經在這門課中寫過的程式碼</b>，讓你能用實例回答，而非背誦定義。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的定位</span>
+  將分散在 24 堂課中的設計原則和模式<b>系統化整理</b>。你已經用過大部分的 pattern——只是當時沒叫出它們的名字。這堂課把名字和程式碼對齊。
+</div>
+
+<!-- ============================================================ -->
+<h1>Part A：SOLID 原則</h1>
+
+<!-- S -->
+<h2>S — 單一職責原則（Single Responsibility）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>定義</strong>：一個 class 應該只有一個改變的理由。</p>
+</div>
+
+<p><strong>你已經在用的地方</strong>：整個課程的三層架構就是 SRP 的體現——Controller 只處理 HTTP、Service 只處理業務邏輯、Repository 只處理資料存取。</p>
+
+<pre><code class="language-java">// ❌ 違反 SRP：這個 class 同時處理 HTTP、業務、資料存取
+@RestController
+public class TaskController {
+    @Autowired EntityManager em;  // 直接操作資料庫
+
+    @GetMapping("/tasks")
+    public List&lt;Task&gt; list() {
+        // Controller 不應該知道 EntityManager 的存在
+        return em.createQuery("SELECT t FROM Task t").getResultList();
+    }
+}
+
+// ✅ 符合 SRP：各層各司其職
+@RestController  // ← 只負責 HTTP
+public class TaskController {
+    private final TaskService service;  // ← 業務邏輯委派給 Service
+}
+@Service        // ← 只負責業務邏輯
+public class TaskService {
+    private final TaskRepository repo;   // ← 資料存取委派給 Repository
+}
+
+// 💡 額外例子：P11 的 PostService 不直接碰 CategoryRepository
+// 而是透過 CategoryService.getOrCreate()——每個 Service 只管自己的領域
+</code></pre>
+
+<!-- O -->
+<h2>O — 開閉原則（Open/Closed）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>定義</strong>：對擴展開放、對修改關閉。新增功能時不應修改既有程式碼。</p>
+</div>
+
+<p><strong>你已經在用的地方</strong>：Interface + @Primary/@Qualifier 切換實作、BeanPostProcessor 擴展點、@ControllerAdvice 新增例外處理。</p>
+
+<pre><code class="language-java">// ✅ OCP：新增付款方式不需要改 CheckoutService
+public interface PaymentService {
+    void pay(double amount);
+}
+
+@Service("creditCard")
+public class CreditCardPayment implements PaymentService { ... }
+
+// 新增 PayPay 付款——只需加一個 class，不改任何既有程式碼！
+@Service("paypay")
+public class PayPayPayment implements PaymentService { ... }
+
+// CheckoutService 完全不需修改
+@Service
+public class CheckoutService {
+    private final PaymentService payment; // 注入新實作即可
+}
+
+// 💡 Spring 本身就是 OCP 的極致：BeanPostProcessor、@ControllerAdvice
+// 都是「加新 class 就能擴展行為」而不用改框架原始碼
+</code></pre>
+
+<!-- L -->
+<h2>L — 里氏替換原則（Liskov Substitution）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>定義</strong>：子類別必須能完全替換父類別，而不破壞程式的正確性。</p>
+</div>
+
+<p><strong>你已經在用的地方</strong>：P02 的 BaseEntity abstract class、P05 的 TaskRepository interface。</p>
+
+<pre><code class="language-java">// ✅ LSP：InMemoryTaskRepository 和 FileTaskRepository 都能替換 TaskRepository
+public interface TaskRepository {
+    List&lt;Task&gt; findAll();
+    Optional&lt;Task&gt; findById(String id);
+}
+
+// 任何使用 TaskRepository 的程式碼不應該知道（也不在乎）
+// 底層是 InMemory 還是 File 實作
+@Service
+public class TaskService {
+    private final TaskRepository repo;
+    // ↑ 傳入任何符合介面合約的實作，行為都正確
+}
+
+// ❌ 違反 LSP：子類別改變了父類別方法的語意
+public class BrokenRepository implements TaskRepository {
+    public List&lt;Task&gt; findAll() {
+        throw new UnsupportedOperationException();  // ← 破壞合約！
+    }
+}
+</code></pre>
+
+<!-- I -->
+<h2>I — 介面隔離原則（Interface Segregation）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>定義</strong>：不該強迫 client 依賴它不需要的方法。大介面應拆成多個小介面。</p>
+</div>
+
+<p><strong>你已經在用的地方</strong>：P05 的 TaskRepository 只有 4 個方法（小而專注）、JpaRepository 繼承多層小介面（CrudRepository → PagingAndSortingRepository → JpaRepository）。</p>
+
+<pre><code class="language-java">// ❌ 違反 ISP：肥介面強迫所有人都要實作不需要的方法
+public interface MegaRepository&lt;T&gt; {
+    T save(T entity);
+    List&lt;T&gt; findAll();
+    void sendEmail(T entity);    // ← 只有部分實作需要
+    void exportToPdf(T entity);  // ← 只有部分實作需要
+    void backupToCloud(T entity);// ← 只有部分實作需要
+}
+
+// ✅ 符合 ISP：拆成專注的小介面
+public interface CrudRepository&lt;T&gt; { T save(T e); List&lt;T&gt; findAll(); }
+public interface EmailNotifier&lt;T&gt; { void sendEmail(T e); }
+public interface PdfExporter&lt;T&gt; { void exportToPdf(T e); }
+
+// 需要什麼就 implements 什麼
+public class TaskRepo implements CrudRepository&lt;Task&gt;, EmailNotifier&lt;Task&gt; { }
+public class LogRepo implements CrudRepository&lt;Log&gt; { }  // 不需要 Email
+</code></pre>
+
+<!-- D -->
+<h2>D — 依賴反轉原則（Dependency Inversion）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>定義</strong>：高層模組不該依賴低層模組，兩者都應依賴抽象（interface）。</p>
+</div>
+
+<p><strong>你已經在用的地方</strong>：<strong>整個 Spring DI 就是 DIP 的實現。</strong>Controller 不依賴具體的 Service 實作，只依賴 Service interface（或至少依賴型別而非具體 class）。</p>
+
+<pre><code class="language-java">// ❌ 違反 DIP：Controller 直接依賴具體實作
+@RestController
+public class UserController {
+    private final UserServiceImpl service;  // 依賴具體 class
+    // ↑ 換實作就要改 Controller
+}
+
+// ✅ 符合 DIP：Controller 依賴抽象（interface 或型別）
+@RestController
+public class UserController {
+    private final UserService service;  // 依賴 interface
+    // ↑ Spring 注入任何實作，Controller 不需修改
+}
+
+// 💡 這就是 T05 學的「針對介面寫程式」
+// Spring 的 IoC 容器本身就是 DIP 的超級實現
+</code></pre>
+
+<!-- ============================================================ -->
+<h1>Part B：常見 Design Patterns（在 Spring Boot 中的應用）</h1>
+
+<!-- 1. Singleton -->
+<h2>1. Singleton（單例模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：確保一個 class 只有一個實例，並提供全域存取點。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：所有 @Service、@Repository、@Controller 的<strong>預設 scope 就是 singleton</strong>。你在 P06 學過——Spring 的 ApplicationContext 保證每個 Bean 只有一個實例。</p>
+
+<pre><code class="language-java">// 傳統手寫 Singleton（你不需要這樣做了）
+public class ManualSingleton {
+    private static ManualSingleton instance;
+    private ManualSingleton() { }
+    public static ManualSingleton getInstance() { ... }
+}
+
+// Spring 的 Singleton（自動）
+@Service  // ← Spring 自動保證只有一個實例，不需要任何手寫程式碼
+public class MyService { }
+</code></pre>
+
+<!-- 2. Factory Method -->
+<h2>2. Factory Method（工廠方法）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：將物件的建立邏輯封裝起來，client 不用知道具體的建立細節。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：BeanFactory、ApplicationContext.getBean()、以及你 P10 中 CategoryService.getOrCreate()。</p>
+
+<pre><code class="language-java">// Spring 的 BeanFactory 就是一個巨大的工廠
+var ctx = SpringApplication.run(DemoApplication.class, args);
+var service = ctx.getBean(UserService.class);  // 工廠幫你建立
+
+// 你自己寫的工廠方法（P11）
+public Category getOrCreate(String name) {
+    return categoryRepo.findByName(name)
+        .orElseGet(() -> categoryRepo.save(new Category(name, toSlug(name))));
+    // ↑ 找不到就建立——封裝了「如何建立 Category」的邏輯
+}
+</code></pre>
+
+<!-- 3. Proxy -->
+<h2>3. Proxy（代理模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：提供一個代理物件來控制對原始物件的存取。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：<strong>AOP（@Transactional、@Async、@Cacheable）</strong>——這是你在 T06 和 T08 學過的核心機制。Spring 為你的 Service 建立一個 proxy，在方法呼叫前後插入橫切邏輯。</p>
+
+<pre><code class="language-java">// 當你寫：
+@Service
+public class UserService {
+    @Transactional
+    public void transfer() { ... }
+}
+
+// Spring 實際上建立了：
+// UserServiceProxy extends UserService {
+//     public void transfer() {
+//         tx.begin();           ← proxy 加入的交易管理
+//         super.transfer();     ← 你的原始邏輯
+//         tx.commit();          ← proxy 加入的交易管理
+//     }
+// }
+
+// 這就是為什麼 T08 自呼叫 @Transactional 會失效——
+// this.transfer() 跳過了 proxy
+</code></pre>
+
+<!-- 4. Template Method -->
+<h2>4. Template Method（模板方法）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：定義演算法骨架，將步驟延遲到子類別實作。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：JdbcTemplate、RestTemplate、JpaRepository 的實作。</p>
+
+<pre><code class="language-java">// JdbcTemplate 幫你處理：連線管理、關閉資源、例外轉譯
+// 你只需要提供 SQL 和參數
+@Autowired JdbcTemplate jdbc;
+List&lt;User&gt; users = jdbc.query("SELECT * FROM users", rowMapper);
+// ↑ Template 管理了 boilerplate，你只填變化部分
+
+// P02 的 BaseEntity 也是一種 Template Method
+public abstract class BaseEntity {
+    public final String getEntityInfo() {  // ← final：骨架固定
+        return "[" + getTypeLabel() + "] " + id;  // getTypeLabel() 由子類別填
+    }
+    public abstract String getTypeLabel(); // ← 子類別實作
+}
+</code></pre>
+
+<!-- 5. Strategy -->
+<h2>5. Strategy（策略模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：定義一系列可互換的演算法，讓 client 可以在執行期選擇。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：<strong>@Qualifier 切換實作</strong>（P05、T05）、Spring Security 的 PasswordEncoder。</p>
+
+<pre><code class="language-java">// 同一介面，多種策略
+public interface PaymentStrategy {
+    void pay(double amount);
+}
+
+@Service("creditCard")  // 策略 A
+public class CreditCardPayment implements PaymentStrategy { ... }
+
+@Service("paypal")      // 策略 B
+public class PayPalPayment implements PaymentStrategy { ... }
+
+// 執行期選擇策略
+@RestController
+public class CheckoutController {
+    private final Map&lt;String, PaymentStrategy&gt; strategies;  // Spring 自動注入所有實作
+
+    public CheckoutController(Map&lt;String, PaymentStrategy&gt; strategies) {
+        this.strategies = strategies;
+    }
+
+    @PostMapping("/checkout")
+    public void checkout(@RequestParam String method, @RequestParam double amount) {
+        strategies.get(method).pay(amount);  // 執行期選擇策略
+    }
+}
+
+// 💡 這就是 P05 中 @Qualifier("fileRepo") 的本質——策略模式的 Spring 實現
+</code></pre>
+
+<!-- 6. Observer -->
+<h2>6. Observer（觀察者模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：當一個物件狀態改變時，自動通知所有依賴它的物件。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：Spring Events（ApplicationEvent + @EventListener）。</p>
+
+<pre><code class="language-java">// 定義事件
+public record PostPublishedEvent(Long postId, String title) { }
+
+// 發佈者（Publisher）
+@Service
+public class PostService {
+    private final ApplicationEventPublisher publisher;
+
+    public void publish(Long postId) {
+        // ... 發佈文章 ...
+        publisher.publishEvent(new PostPublishedEvent(postId, post.getTitle()));
+        // ↑ 不須知道誰在聽
+    }
+}
+
+// 觀察者 1：發送通知
+@Component
+public class NotificationListener {
+    @EventListener
+    public void onPostPublished(PostPublishedEvent event) {
+        System.out.println("🔔 新文章發佈通知：" + event.title());
+    }
+}
+
+// 觀察者 2：更新搜尋索引（未來新增，完全不影響 PostService）
+@Component
+public class SearchIndexListener {
+    @EventListener
+    public void onPostPublished(PostPublishedEvent event) {
+        System.out.println("📇 更新搜尋索引：" + event.postId());
+    }
+}
+</code></pre>
+
+<!-- 7. Builder -->
+<h2>7. Builder（建造者模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：將複雜物件的建構過程分步進行，避免建構子參數過多。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：UriComponentsBuilder、Spring Security 的 HttpSecurity 設定鏈、PageRequest.of()。</p>
+
+<pre><code class="language-java">// Spring Security 的流暢 API 就是 Builder 模式（P10）
+http
+    .csrf(csrf -> csrf.disable())
+    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    .authorizeHttpRequests(auth -> auth.requestMatchers("/api/**").permitAll());
+
+// PageRequest（P11）
+PageRequest.of(0, 20, Sort.by("createdAt").descending());
+
+// UriComponentsBuilder
+var uri = UriComponentsBuilder.fromPath("/api/posts/{id}")
+    .queryParam("lang", "zh")
+    .buildAndExpand(postId);
+</code></pre>
+
+<!-- 8. Decorator -->
+<h2>8. Decorator（裝飾者模式）</h2>
+
+<div class="card">
+  <p style="margin:0"><strong>意圖</strong>：動態地為物件添加額外職責，而不影響其他物件。</p>
+</div>
+
+<p><strong>Spring 中的應用</strong>：BeanPostProcessor（你在 P06 寫過！）就是 Decorator——它可以在每個 Bean 初始化前後包裹額外行為。</p>
+
+<pre><code class="language-java">// P06 中你寫的 LifecycleLogger 就是 Decorator 的體現
+@Component
+public class LifecycleLogger implements BeanPostProcessor {
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) {
+        // 為每個 Bean 裝飾上額外的 logging 行為
+        if (beanName.contains("Service")) {
+            System.out.println("Bean '" + beanName + "' 已就緒");
+        }
+        return bean;  // 可以回傳一個包裝過的 proxy！
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>模式速查：面試一句話總結</h2>
+
+<table class="compare-table">
+  <thead><tr><th>模式</th><th>一句話</th><th>Spring Boot 中的實例</th></tr></thead>
+  <tbody>
+    <tr><td>Singleton</td><td>全應用只有一個實例</td><td>@Service 的預設 scope</td></tr>
+    <tr><td>Factory Method</td><td>封裝物件建立邏輯</td><td>ApplicationContext.getBean()</td></tr>
+    <tr><td>Proxy</td><td>代理控制對原始物件的存取</td><td>@Transactional AOP 代理</td></tr>
+    <tr><td>Template Method</td><td>固定骨架，子類別填細節</td><td>JdbcTemplate、RestTemplate</td></tr>
+    <tr><td>Strategy</td><td>可互換的演算法家族</td><td>@Qualifier 切換實作</td></tr>
+    <tr><td>Observer</td><td>狀態改變時自動通知</td><td>@EventListener + ApplicationEvent</td></tr>
+    <tr><td>Builder</td><td>分步建構複雜物件</td><td>HttpSecurity 設定鏈</td></tr>
+    <tr><td>Decorator</td><td>動態添加額外職責</td><td>BeanPostProcessor</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: SOLID 中哪一個原則直接對應到 Spring 的 DI 容器？為什麼？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><strong>D — 依賴反轉原則（DIP）。</strong>高層模組（Controller）不依賴低層模組（具體 Service 實作），兩者都依賴抽象（Service interface）。Spring 的 IoC 容器負責在執行期注入具體實作，讓高層模組完全不需要知道低層的細節。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: @Transactional 背後用了哪個設計模式？為什麼自呼叫會失效？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><strong>Proxy 模式。</strong>Spring 為你的 Service 建立一個 proxy 物件，在方法前後加入 begin/commit/rollback。外部呼叫透過 proxy → 攔截器觸發。內部 <code>this.method()</code> 繞過 proxy 直接呼叫原始物件 → 攔截器不觸發。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 用 @Qualifier 切換不同 Repository 實作是用了哪個模式？和 OCP（開閉原則）有何關聯？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem"><strong>Strategy 模式。</strong>每個 Repository 實作是一種策略。和 OCP 的關聯：當你需要新的持久化策略（例如從 InMemory 換成 Redis），只需新增一個 @Repository class，不需修改 Service 或 Controller——這正是「對擴展開放、對修改關閉」。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 面試黃金連結</h3>
+  <p>面試官問「你在 Spring Boot 中用過哪些設計模式」時，<strong>不要背誦定義</strong>。直接說：</p>
+  <p style="font-size:0.95rem;margin-top:0.5rem"><em>「Spring Boot 本身就是設計模式的集合。IoC 容器實現了 DIP 和 Singleton；AOP 用 Proxy 實現 @Transactional；@Qualifier 切換實作是 Strategy 模式；BeanPostProcessor 是 Decorator；Spring Events 是 Observer。我在整合專案中全部都用到了。」</em></p>
+</div>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>想深入某個模式？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">我可以為任何一個原則或模式提供更多範例、或是扮演面試官追問細節。跟我說一聲就好。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0023-T-interview-review.html" class="nav-prev">← T11 面試總複習</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0025-T-message-queue.html" class="nav-next">Message Queue →</a>
+</nav>
+
+</body>
+</html>

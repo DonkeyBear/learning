@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T04 — Spring Boot 概論：從 FastAPI 到 Spring Boot 的思維轉換</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T04</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🚀 進入 Spring Boot</span>
+</div>
+
+<h1>Spring Boot 概論：從 FastAPI 到 Spring Boot 的思維轉換</h1>
+
+<p>你寫過 FastAPI 後端。你知道什麼是路由、什麼是 request body、什麼是 middleware。現在讓我們把這些概念映射到 Spring Boot，並理解 Spring Boot 底層最核心的設計理念——<strong>IoC 容器</strong>。</p>
+
+<!-- ============================================================ -->
+<h2>1. Spring Boot 是什麼？</h2>
+
+<p>一句話：<strong>Spring Boot 是 Java 生態系中建立後端應用的事實標準框架</strong>。它幫你處理了 Java web 開發中 90% 的 boilerplate（伺服器啟動、設定載入、依賴管理），讓你專注寫業務邏輯。</p>
+
+<p>但 Spring Boot 和 FastAPI 有一個根本的差異——不是語法層面，而是<strong>程式執行的主控權在誰手上</strong>。</p>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 最重要的心態轉換</span>
+  在 FastAPI 中，<strong>你</strong>建立 app、<strong>你</strong>註冊路由、<strong>你</strong>控制啟動。你是程式的主控者。<br><br>
+  在 Spring Boot 中，框架啟動一個巨大的 <strong>IoC 容器</strong>，掃描你的程式碼，自動建立你宣告的物件，並把它們注入到需要的地方。<strong>框架是主控者，你只需要「宣告你需要什麼」。</strong><br><br>
+  這個反轉稱為 <strong>Inversion of Control（IoC，控制反轉）</strong>。這是整個 Spring 生態系的基石，也是下一堂課（T05）的主題。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 兩個世界的對照：同一個 API，兩種寫法</h2>
+
+<p>假設你要做一個「查詢用戶」的 GET endpoint：</p>
+
+<h3>FastAPI 寫法（你熟悉的）</h3>
+<pre><code class="language-python"># main.py
+from fastapi import FastAPI, Depends
+
+app = FastAPI()                    # 你手動建立 app
+
+class UserService:
+    def get_user(self, user_id: int):
+        return {"id": user_id, "name": "Alice"}
+
+@app.get("/users/{user_id}")       # 你手動註冊路由
+def get_user(user_id: int, svc: UserService = Depends()):
+    return svc.get_user(user_id)
+
+# 啟動：uvicorn main:app
+</code></pre>
+
+<h3>Spring Boot 寫法（即將學的）</h3>
+<pre><code class="language-java">// UserController.java
+@RestController                    // ← 告訴 Spring：「這是一個 Controller」
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {  // ← Spring 自動傳入！
+        this.userService = userService;
+    }
+
+    @GetMapping("/users/{userId}")  // ← 告訴 Spring：「這是一個 GET 路由」
+    public UserDto getUser(@PathVariable Long userId) {
+        return userService.getUser(userId);
+    }
+}
+
+// UserService.java
+@Service                           // ← 告訴 Spring：「這是一個 Service bean」
+public class UserService {
+    public UserDto getUser(Long userId) {
+        return new UserDto(userId, "Alice");
+    }
+}
+
+// 啟動：main 方法一行 run()，Spring 自動掃描並組裝一切
+</code></pre>
+
+<p>核心差異：</p>
+<ul>
+  <li>FastAPI 的 <code>@app.get()</code> 是<strong>你自己建立 app 實例並手動加路由</strong></li>
+  <li>Spring Boot 的 <code>@GetMapping</code> 是<strong>宣告意圖，框架自動發現並註冊</strong></li>
+  <li>FastAPI 的 <code>Depends()</code> 是<strong>你手動宣告依賴</strong></li>
+  <li>Spring Boot 的建構子參數是<strong>框架自動解析並注入</strong></li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>3. Spring Boot 的三層架構</h2>
+
+<p>Spring Boot 專案幾乎都遵循同一套分層模式。你在 P02 練習的目錄結構就是它的雛形：</p>
+
+<pre><code class="language-text">src/main/java/com/example/demo/
+├── DemoApplication.java          ← Spring Boot 進入點
+├── controller/
+│   └── UserController.java       ← 接收 HTTP 請求，回傳回應
+├── service/
+│   ├── UserService.java          ← 介面（合約）
+│   └── UserServiceImpl.java      ← 實作（業務邏輯）
+├── repository/
+│   └── UserRepository.java       ← 資料庫存取（JPA）
+├── model/
+│   ├── User.java                 ← Entity（對應資料表）
+│   └── UserDto.java              ← DTO（傳輸物件）
+└── config/
+    └── SecurityConfig.java       ← 設定類別
+</code></pre>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>🟢 Controller 層</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">職責：接收 HTTP 請求、參數驗證、回傳 HTTP 回應。<strong>不寫業務邏輯。</strong></p>
+    <p style="font-size:0.85rem;color:var(--muted)">對應 FastAPI 的路由函式</p>
+    <p style="font-size:0.85rem;color:var(--accent)">Annotation: <code>@RestController</code><br><code>@GetMapping</code> / <code>@PostMapping</code></p>
+  </div>
+  <div class="card">
+    <h3>🟡 Service 層</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">職責：業務邏輯、交易管理、協調多個 Repository。<strong>不知道 HTTP 的存在。</strong></p>
+    <p style="font-size:0.85rem;color:var(--muted)">對應 FastAPI 中被 Depends() 注入的類別</p>
+    <p style="font-size:0.85rem;color:var(--accent)">Annotation: <code>@Service</code></p>
+  </div>
+  <div class="card">
+    <h3>🔵 Repository 層</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">職責：資料庫 CRUD。Spring Data JPA 會幫你<strong>自動產生實作</strong>。</p>
+    <p style="font-size:0.85rem;color:var(--muted)">對應 FastAPI 的 SQLAlchemy session / ORM</p>
+    <p style="font-size:0.85rem;color:var(--accent)">Annotation: <code>@Repository</code> 或繼承 <code>JpaRepository</code></p>
+  </div>
+  <div class="card">
+    <h3>🟣 Model / DTO</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">職責：定義資料形狀。Entity 對應資料表，DTO 對外傳輸。</p>
+    <p style="font-size:0.85rem;color:var(--muted)">對應 FastAPI 的 Pydantic models</p>
+    <p style="font-size:0.85rem;color:var(--accent)">Annotation: <code>@Entity</code> / Java record</p>
+  </div>
+</div>
+
+<div class="callout">
+  <span class="callout-label">🎯 關鍵規則：依賴方向</span>
+  Controller → Service → Repository（單向！）<br>
+  Controller 可以呼叫 Service，Service 可以呼叫 Repository。但 <strong>Repository 永遠不該知道 Service 的存在，Service 永遠不該知道 Controller 的存在</strong>。這確保了業務邏輯獨立於 HTTP 層，可以單獨測試。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. Annotation 驅動：宣告取代命令</h2>
+
+<p>Spring Boot 大量使用 annotation（就是 <code>@</code> 開頭的東西）來讓框架「發現」你的程式碼。你可以把它們想像成 FastAPI 的 decorator，但作用更深層：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>Spring Boot Annotation</th><th>作用</th><th>FastAPI 對應</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@SpringBootApplication</code></td><td>標記啟動類別，觸發自動掃描</td><td>無（你手動建立 FastAPI()）</td></tr>
+    <tr><td><code>@RestController</code></td><td>標記 HTTP Controller，自動註冊路由</td><td>無（你手動 <code>@app.get()</code>）</td></tr>
+    <tr><td><code>@GetMapping("/path")</code></td><td>註冊 GET 路由</td><td><code>@app.get("/path")</code></td></tr>
+    <tr><td><code>@PostMapping("/path")</code></td><td>註冊 POST 路由</td><td><code>@app.post("/path")</code></td></tr>
+    <tr><td><code>@Service</code></td><td>標記 Service，納入 IoC 容器管理</td><td>無（你手動 new 或 Depends）</td></tr>
+    <tr><td><code>@Repository</code></td><td>標記資料存取層</td><td>無（你手動管理 session）</td></tr>
+    <tr><td><code>@Autowired</code></td><td>要求框架注入依賴</td><td><code>Depends()</code></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>5. 啟動流程：Spring Boot 在背後做了什麼</h2>
+
+<p>當你執行 <code>SpringApplication.run()</code> 時，Spring Boot 依序做以下事情：</p>
+
+<ol>
+  <li><strong>掃描</strong>：從 <code>@SpringBootApplication</code> 所在的 package 開始，往下掃描所有 class</li>
+  <li><strong>註冊 Bean</strong>：找到所有帶 <code>@Component</code> / <code>@Service</code> / <code>@Repository</code> / <code>@Controller</code> 的 class，把它們實例化並放入 IoC 容器</li>
+  <li><strong>注入依賴</strong>：檢查每個 Bean 的建構子需要什麼參數，從容器中找出對應的 Bean 傳入（這就是 DI——Dependency Injection）</li>
+  <li><strong>自動配置</strong>：根據 classpath 中的 jar 和你的設定檔（<code>application.properties</code>），自動配置資料庫連線、內嵌伺服器等</li>
+  <li><strong>啟動內嵌 Tomcat</strong>：Spring Boot 內建一個 Tomcat 伺服器，不需要另外安裝</li>
+  <li><strong>就緒</strong>：應用程式可以接收 HTTP 請求</li>
+</ol>
+
+<div class="callout tip">
+  <span class="callout-label">💡 對比 FastAPI 的啟動</span>
+  FastAPI 的啟動：你寫好 Python 檔 → <code>uvicorn main:app</code> → 就緒。簡單直接。<br>
+  Spring Boot 的啟動：多了一個 <strong>IoC 容器組裝</strong>的步驟。這一步在開發時感覺多餘，但在大型專案中是 Spring 最大的優勢——你不需要手動管理物件之間複雜的依賴關係，框架幫你處理。<br>
+  P04 實作時你會親眼看到這個過程。
+</div>
+
+<!-- ============================================================ -->
+<h2>6. Convention over Configuration</h2>
+
+<p>Spring Boot 的哲學是「約定大於配置」——只要你照著慣例放檔案、命名，框架就自動幫你處理好。不需要寫一大串 XML 或 JSON 設定檔。</p>
+
+<p>舉例：</p>
+<ul>
+  <li>你把 Controller 放在 <code>controller/</code> package 下 → Spring 自動發現</li>
+  <li>你把 <code>application.properties</code> 放在 <code>src/main/resources/</code> → Spring 自動載入</li>
+  <li>你定義一個 <code>JpaRepository</code> interface → Spring Data 自動產生 SQL</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: Spring Boot 和 FastAPI 最根本的「主控權」差異是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">在 FastAPI 中，<strong>你</strong>是主控者——你建立 app、註冊路由、管理依賴。在 Spring Boot 中，<strong>框架</strong>是主控者——它啟動 IoC 容器，掃描你的 class，自動建立並注入物件。你只需要用 annotation 宣告「我需要什麼」。這個反轉就是 IoC（控制反轉）。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: Spring Boot 的三層架構中，各層的 annotation 和職責是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>Controller</strong>（<code>@RestController</code>）：接收 HTTP 請求、回傳回應，不寫業務邏輯。<strong>Service</strong>（<code>@Service</code>）：業務邏輯、交易管理，不知道 HTTP 的存在。<strong>Repository</strong>（<code>@Repository</code> 或 <code>JpaRepository</code>）：資料庫存取，Spring Data 自動產生實作。依賴方向是單向的：Controller → Service → Repository。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: <code>@Service</code> 和 <code>Depends()</code> 的核心差異是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><code>Depends()</code> 是 FastAPI 中<strong>手動宣告</strong>依賴的方式——你在每個路由函式的參數中明確寫出需要注入什麼。Spring 的 <code>@Service</code> + 建構子注入則是<strong>自動解析</strong>——你只在建構子中宣告參數型別，框架自動從 IoC 容器中找到對應的 Bean 傳入。Spring 的方式在大型專案中減少了大量重複的依賴管理程式碼。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>IoC 容器是 Spring 的大腦</strong>——它管理所有物件的生命週期和依賴關係</li>
+    <li><strong>Annotation 是你的宣告</strong>——<code>@Service</code> 說「這是一個 Bean」，<code>@GetMapping</code> 說「這是一條路由」</li>
+    <li><strong>三層架構是鐵律</strong>——Controller → Service → Repository，單向依賴</li>
+    <li><strong>Spring Boot = Spring + 自動配置 + 內嵌伺服器</strong>——讓你一行 <code>run()</code> 就能啟動整個應用</li>
+    <li><strong>Convention over Configuration</strong>——照慣例放，框架幫你處理；不照慣例才需要寫設定</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P04：start.spring.io 建立專案 + 第一個 GET/POST endpoint</strong>。你會在 IntelliJ 中建立真正的 Spring Boot 專案（這次要用 Gradle），寫出第一個 Controller，並親眼看到 IoC 容器啟動的過程。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://docs.spring.io/spring-boot/tutorial/first-application/index.html" target="_blank" rel="noopener">Spring Boot 官方入門：第一個應用</a></li>
+  <li>📖 <a href="https://spring.io/guides/gs/spring-boot/" target="_blank" rel="noopener">Spring 官方 Quickstart Guide</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-boot-start" target="_blank" rel="noopener">Baeldung: Spring Boot 入門</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>IoC 還是有點抽象？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">正常。IoC 是那種「做了才會懂」的概念。P04 實作中你會親眼看到 Spring 如何自動建立 Controller 和 Service，那個瞬間就會豁然開朗。當然，也可以現在就問我。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0006-P-stream-practice.html" class="nav-prev">← P03 Stream 實戰練習</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0008-P-first-spring-boot-app.html" class="nav-next">P04 第一個 Spring Boot 應用 →</a>
+</nav>
+
+</body>
+</html>

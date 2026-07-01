@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T07 — Spring Data JPA 概念</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T07</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🗄️ 進入資料庫</span>
+</div>
+
+<h1>Spring Data JPA 概念：ORM 與 Repository 模式</h1>
+
+<p>你在 P05 中用 <code>ConcurrentHashMap</code> 模擬了一個 Repository。現在要把它換成真正的資料庫——但<strong>不用寫一行 SQL</strong>。這就是 JPA（Java Persistence API）的威力。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「JPA、Hibernate、Spring Data JPA 三者的關係？」「@Entity 和 @Table 的作用？」「JpaRepository 如何自動產生查詢？」「衍生查詢方法（derived query）的命名規則是什麼？」
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 名詞澄清：JPA vs Hibernate vs Spring Data JPA</h2>
+
+<p>這三個詞在你 Google 的時候會反覆出現。它們的關係是：</p>
+
+<div class="card">
+  <table style="font-size:0.9rem">
+    <tr>
+      <td style="padding:0.4rem 0.8rem;white-space:nowrap;color:var(--accent)">JPA</td>
+      <td style="padding:0.4rem 0.8rem"><strong>規格（Specification）</strong>——一份文件，定義了 ORM 應該怎麼做。只是一個標準（像 ECMAScript 定義 JS 應該有什麼語法），不是可以執行的程式庫。<br>全名：Jakarta Persistence API（以前叫 Java Persistence API）</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.8rem;color:var(--accent)">Hibernate</td>
+      <td style="padding:0.4rem 0.8rem"><strong>實作（Implementation）</strong>——真正做事的 ORM 框架，實作了 JPA 規格。你引入了 <code>spring-boot-starter-data-jpa</code>，底層就是 Hibernate 在運作。就像瀏覽器實作 ECMAScript 標準一樣。</td>
+    </tr>
+    <tr>
+      <td style="padding:0.4rem 0.8rem;color:var(--accent)">Spring Data JPA</td>
+      <td style="padding:0.4rem 0.8rem"><strong>Spring 的包裝層</strong>——在 Hibernate 之上再加一層，提供 Repository 介面自動實作、衍生查詢方法、分頁排序等便利功能。是你在程式碼中直接使用的東西。</td>
+    </tr>
+  </table>
+</div>
+
+<pre><code class="language-text">你的程式碼
+  → Spring Data JPA（Repository 自動實作）
+    → Hibernate（ORM 引擎，管理 Entity 生命週期）
+      → JDBC（Java 資料庫連線）
+        → MySQL / PostgreSQL / H2</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 FastAPI 對照</span>
+  JPA ≈ SQLAlchemy ORM 的介面定義<br>
+  Hibernate ≈ SQLAlchemy 的 ORM engine<br>
+  Spring Data JPA ≈ FastAPI 的 <code>Depends(get_db)</code> + session 管理的自動化版本<br>
+  如果你用過 SQLAlchemy 的 <code>session.query(User).filter(...)</code>，JPA 的 <code>entityManager.find(...)</code> 是類似概念——但 Spring Data JPA 更進一步，連查詢都可以靠方法名稱自動產生。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. @Entity：把 Java Class 變成資料表</h2>
+
+<p>這是整個 JPA 的起點。一個最簡單的 Entity：</p>
+
+<pre><code class="language-java">import jakarta.persistence.*;
+
+@Entity                     // ← 宣告這是一個 JPA Entity
+@Table(name = "users")      // ← 對應到資料表 users（不寫則預設用 class 名小寫）
+public class User {
+
+    @Id                     // ← 主鍵
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // ← 資料庫自動遞增
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = "created_at")  // ← Java 用 camelCase，資料表用 snake_case
+    private LocalDateTime createdAt;
+
+    // JPA 要求一個無參建構子（可以是 protected，不一定要 public）
+    protected User() { }
+
+    // 你用的建構子
+    public User(String email, String name) {
+        this.email = email;
+        this.name = name;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // getters...
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ JPA Entity 三條鐵律</span>
+  ① <strong>必須有 @Id</strong>（主鍵）。② <strong>必須有無參建構子</strong>（JPA 從資料庫讀取資料時需要先用無參建構子建立物件，再用 setter/field 注入值）。③ <strong>不要用 record</strong>（record 是不可變的，和 JPA 的運作方式衝突——JPA 需要能修改 Entity 的狀態來反映資料庫變更）。
+</div>
+
+<!-- ============================================================ -->
+<h2>3. JpaRepository：你定義介面，Spring 寫實作</h2>
+
+<p>這是 Spring Data JPA 最神奇的部分。你只需要定義一個 interface，<strong>不需要寫實作類別</strong>：</p>
+
+<pre><code class="language-java">import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.Optional;
+
+// JpaRepository&lt;Entity型別, 主鍵型別&gt;
+public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+
+    // 已經自動擁有的方法（不用寫）：
+    //   findAll(), findById(Long id), save(User), deleteById(Long id), count()...
+
+    // === 衍生查詢：靠方法名稱自動產生 SQL ===
+
+    // SELECT * FROM users WHERE email = ?
+    Optional&lt;User&gt; findByEmail(String email);
+
+    // SELECT * FROM users WHERE name LIKE ? ORDER BY created_at DESC
+    List&lt;User&gt; findByNameContainingOrderByCreatedAtDesc(String keyword);
+
+    // SELECT * FROM users WHERE email = ? AND name = ?
+    Optional&lt;User&gt; findByEmailAndName(String email, String name);
+
+    // SELECT COUNT(*) FROM users WHERE created_at > ?
+    long countByCreatedAtAfter(LocalDateTime date);
+}
+</code></pre>
+
+<p>對比你在 P05 手寫的 Repository：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>P05（手寫）</th><th>JpaRepository（自動）</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="white-space:pre-wrap"><code>public class InMemoryTaskRepository
+    implements TaskRepository {
+    // 50+ 行實作
+}</code></td>
+      <td style="white-space:pre-wrap"><code>public interface UserRepository
+    extends JpaRepository&lt;User, Long&gt; {
+    // 一行實作都不用寫
+}</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試必考：衍生查詢命名規則</span>
+  <code>findBy[屬性][條件][連結詞][排序]</code><br>
+  關鍵字對照：<br>
+  <code>findBy</code> / <code>readBy</code> / <code>queryBy</code> → SELECT<br>
+  <code>And</code> / <code>Or</code> → 連接條件<br>
+  <code>Containing</code> → LIKE %?%<br>
+  <code>After</code> / <code>Before</code> → &gt; / &lt;<br>
+  <code>OrderBy...Desc/Asc</code> → ORDER BY<br>
+  <code>Top5</code> / <code>First10</code> → LIMIT<br>
+  完整列表：<a href="https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html" target="_blank" rel="noopener">官方文件</a>
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 關聯映射：Entity 之間的關係</h2>
+
+<p>就像 SQL 有 FOREIGN KEY，JPA 有關聯 annotation：</p>
+
+<pre><code class="language-java">// 一個 User 有多個 Order
+@Entity
+@Table(name = "users")
+public class User {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // mappedBy = "user" 指向 Order.java 中的 user 欄位
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List&lt;Order&gt; orders = new ArrayList&lt;&gt;();
+}
+
+// 多個 Order 屬於一個 User
+@Entity
+@Table(name = "orders")
+public class Order {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)   // LAZY = 延遲載入（推薦）
+    @JoinColumn(name = "user_id")        // 外鍵欄位名稱
+    private User user;
+}
+</code></pre>
+
+<div class="card warn">
+  <h3 style="font-size:1rem">⚠️ FetchType：EAGER vs LAZY</h3>
+  <ul style="font-size:0.9rem">
+    <li><strong>EAGER（預設 @OneToOne 和 @ManyToOne）</strong>：查詢時自動 JOIN 關聯表，一條 SQL 全部載入</li>
+    <li><strong>LAZY（預設 @OneToMany 和 @ManyToMany）</strong>：查詢時不載入關聯，等到你真正呼叫 <code>getOrders()</code> 時才發第二條 SQL</li>
+    <li><strong>實務建議</strong>：幾乎永遠用 LAZY。EAGER 容易造成 N+1 查詢問題和意外的大量資料載入</li>
+    <li>@ManyToOne 預設是 EAGER，建議手動改成 <code>fetch = FetchType.LAZY</code></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>5. 對比：FastAPI + SQLAlchemy</h2>
+
+<p>把兩邊的 ORM 程式碼並排，結構驚人地相似：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>Spring Data JPA</th><th>FastAPI + SQLAlchemy</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="white-space:pre-wrap"><code>@Entity
+class User {
+    @Id
+    Long id;
+    String name;
+}</code></td>
+      <td style="white-space:pre-wrap"><code>class User(Base):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+</code></td>
+    </tr>
+    <tr>
+      <td style="white-space:pre-wrap"><code>interface UserRepository
+    extends JpaRepository&lt;User, Long&gt; {
+    List&lt;User&gt; findByName(String n);
+}</code></td>
+      <td style="white-space:pre-wrap"><code>def get_users(db: Session, name: str):
+    return db.query(User).filter(User.name == name).all()
+</code></td>
+    </tr>
+    <tr>
+      <td style="white-space:pre-wrap"><code>userRepo.save(new User("Alice"));</code></td>
+      <td style="white-space:pre-wrap"><code>db.add(User(name="Alice"))
+db.commit()</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>關鍵差異：Spring Data JPA 讓你<strong>不用寫 SQL 也不用寫查詢邏輯</strong>——方法名稱就等於查詢。這是 Java 生態系特有的「約定大於配置」極致體現。</p>
+
+<!-- ============================================================ -->
+<h2>6. 實務中最常用的 JPA 功能</h2>
+
+<pre><code class="language-java">// 1. 分頁查詢
+Page&lt;User&gt; page = userRepo.findAll(PageRequest.of(0, 20, Sort.by("name")));
+
+// 2. 自訂 @Query（方法名稱太複雜時）
+@Query("SELECT u FROM User u WHERE u.email LIKE %:domain")
+List&lt;User&gt; findByEmailDomain(@Param("domain") String domain);
+
+// 3. 原生 SQL（極少用，但必要時可用）
+@Query(value = "SELECT * FROM users WHERE age > ?1", nativeQuery = true)
+List&lt;User&gt; findByAgeGreaterThan(int age);
+
+// 4. @Transactional（確保多個操作在同一筆交易中）
+@Transactional
+public void transferPoints(Long fromId, Long toId, int amount) {
+    // 多個 repository 操作在同一交易中，失敗自動 rollback
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: JPA、Hibernate、Spring Data JPA 三者的關係是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">JPA 是<strong>規格</strong>（一份 API 標準文件），Hibernate 是 JPA 的<strong>實作</strong>（真正做 ORM 的框架），Spring Data JPA 是 Spring 在 Hibernate 之上的<strong>包裝層</strong>（提供 Repository 自動產生、衍生查詢等便利功能）。你用 Spring Data JPA 的 interface → 它委派給 Hibernate → Hibernate 產生 SQL → 透過 JDBC 執行。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: Entity 的 @OneToMany 和 @ManyToOne 的 fetch 預設值分別是什麼？為什麼建議改用 LAZY？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">@OneToMany 和 @ManyToMany 預設 <strong>LAZY</strong>。@OneToOne 和 @ManyToOne 預設 <strong>EAGER</strong>。建議幾乎永遠用 LAZY，因為 EAGER 會在不必要的時候 JOIN 關聯表，造成① N+1 查詢問題（查 10 個 User 卻產生了 11 條 SQL）② 載入大量不需要的資料 ③ 序列化時可能造成無限迴圈。所以 @ManyToOne 要手動加上 <code>fetch = FetchType.LAZY</code>。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: Spring Data JPA 的衍生查詢方法，寫出一個查詢「email 包含某字串且建立時間在指定日期之後，依 id 降冪排列的前 5 筆」的方法簽章。</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">List&lt;User&gt; findTop5ByEmailContainingAndCreatedAtAfterOrderByIdDesc(
+    String emailKeyword, LocalDateTime after
+);</code></pre>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>JPA 是規格，Hibernate 是實作，Spring Data JPA 是便利層</strong></li>
+    <li><strong>@Entity + @Id</strong> 是 JPA 的起手式；Entity 不能用 record（必須可變）</li>
+    <li><strong>JpaRepository 讓你只定義 interface，實作由 Spring 自動產生</strong>——對比 P05 的手寫 Repository，這是質的飛躍</li>
+    <li><strong>衍生查詢</strong>靠方法命名自動產生 SQL（findBy + 屬性 + 條件 + 排序）</li>
+    <li><strong>@ManyToOne 預設 EAGER，務必手動改成 LAZY</strong></li>
+    <li><strong>Entity 必須有無參建構子</strong>——JPA 需要它來從資料庫結果集重建物件</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P07：Entity 設計 + JPA Repository CRUD 實作</strong>。你會把 P05 的記憶體 Repository 換成真正的 H2 資料庫，定義 Entity 關聯，並用 JpaRepository 自動產生完整 CRUD。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://spring.io/guides/gs/accessing-data-jpa/" target="_blank" rel="noopener">Spring 官方：Accessing Data with JPA</a></li>
+  <li>📖 <a href="https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html" target="_blank" rel="noopener">Spring Data JPA 查詢方法官方文件</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-data-jpa-query" target="_blank" rel="noopener">Baeldung: Spring Data JPA 衍生查詢</a></li>
+  <li>📖 <a href="https://vladmihalcea.com/" target="_blank" rel="noopener">Vlad Mihalcea 的 Hibernate 部落格（JPA/Hibernate 權威）</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>JPA 概念很抽象？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">正常。P07 實作中你會親眼看到只定義一個 interface，Spring 就幫你生出完整的 save/findAll/delete——那個瞬間 JPA 的價值就會具象化。當然，現在就可以問我任何疑問。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0012-P-bean-lifecycle-lab.html" class="nav-prev">← P06 Bean 生命週期實驗</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0014-P-jpa-entity-crud.html" class="nav-next">P07 JPA Entity CRUD →</a>
+</nav>
+
+</body>
+</html>

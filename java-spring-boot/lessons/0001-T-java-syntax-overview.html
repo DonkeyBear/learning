@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T01 — Java 語法速覽：以 JS/TS/Python 為對照</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T01</span>
+  <span>/</span>
+  <span>~25 分鐘</span>
+</div>
+
+<h1>Java 語法速覽：以 JS/TS/Python 為對照</h1>
+
+<p>你不是程式新手。你已經會 JS、TS、Python，也寫過 FastAPI。這堂課的目標是把 Java 語法<b>映射到你的既有知識</b>上——不是從零學程式設計，而是學會「用 Java 說你已經會的事」。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的定位</span>
+  這是整個課程的<b>語法生存包</b>。只挑你進入 Spring Boot 前必須懂的 Java 語法。更深的 OOP、Stream API、執行緒等會在後續獨立的理論課中展開。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 型別系統：宣告在左，型別在前</h2>
+
+<p>三種語言的變數宣告放在一起看：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>String name = "Alice";</code></td>
+      <td><code>let name: string = "Alice";</code></td>
+      <td><code>name: str = "Alice"</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>核心差異：</p>
+<ul>
+  <li><strong>Java 把型別寫在變數前面</strong>，不是後面（`String name` vs `name: string`）</li>
+  <li>Java 是<strong>強靜態型別</strong>——型別在編譯期就鎖死，不像 Python 可以隨時換型別</li>
+  <li>如果你用過 TypeScript 的 strict mode，那個感覺很接近——只是 Java 沒有 `any` 可以逃</li>
+</ul>
+
+<div class="callout tip">
+  <span class="callout-label">💡 順帶一提：Java 的 var</span>
+  Java 10 引入了 <code>var</code> 關鍵字做區域變數型別推斷。你可以寫 <code>var name = "Alice";</code>，編譯器自動推斷為 <code>String</code>。<strong>但和 JS 的 var 完全不同</strong>——它仍然是強型別，推斷後就不能換型別。在 Spring Boot 程式碼中你會經常看到 <code>var</code>。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 基本型別 vs 物件型別：大小寫有差</h2>
+
+<p>Java 把資料分成兩大陣營。這是 TS/Python 開發者最容易踩的坑：</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>🔹 基本型別（Primitives）</h3>
+    <p style="margin-top:0.4rem"><strong>小寫開頭</strong>，存的是「值本身」</p>
+    <ul>
+      <li><code>int</code> — 整數</li>
+      <li><code>double</code> — 浮點數</li>
+      <li><code>boolean</code> — true/false</li>
+      <li><code>char</code> — 單一字元</li>
+      <li><code>long</code> — 長整數</li>
+    </ul>
+    <p style="font-size:0.85rem;color:var(--muted)">效能高，<strong>不可為 null</strong></p>
+  </div>
+  <div class="card">
+    <h3>🔸 物件型別（Objects）</h3>
+    <p style="margin-top:0.4rem"><strong>大寫開頭</strong>，存的是「參考（reference）」</p>
+    <ul>
+      <li><code>String</code> — 字串（注意大寫！）</li>
+      <li><code>Integer</code> — 整數的包裝</li>
+      <li><code>Double</code> — 浮點數的包裝</li>
+      <li><code>Boolean</code> — 布林的包裝</li>
+      <li><code>List&lt;T&gt;</code> — 列表</li>
+    </ul>
+    <p style="font-size:0.85rem;color:var(--muted)"><strong>可以為 null</strong>，有方法可呼叫</p>
+  </div>
+</div>
+
+<p>實務上在 Spring Boot 中，Entity 的欄位通常用物件型別（如 <code>Long id</code> 而不是 <code>long id</code>），因為資料庫欄位可能為 null。</p>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 常見陷阱</span>
+  <code>String</code> 不是基本型別！它是正牌的 class。所以你可以寫 <code>"hello".length()</code>。另外，<code>int</code> 不能放進 <code>List&lt;int&gt;</code>，必須寫 <code>List&lt;Integer&gt;</code>。
+</div>
+
+<!-- ============================================================ -->
+<h2>3. 類別與方法：一切都在 class 裡</h2>
+
+<p>Java 是<strong>純物件導向語言</strong>。沒有游離在 class 外的函式或變數。每個 <code>.java</code> 檔案通常包含一個 public class，且<strong>檔名必須和 public class 名稱一致</strong>。</p>
+
+<p>以一個 Spring Boot 中常見的 Service 類別為例：</p>
+
+<pre><code class="language-java">// 檔名必須是 UserService.java
+public class UserService {
+
+    // 屬性 (fields) —— 通常宣告為 private
+    private String defaultStatus;
+
+    // 建構子 (constructor) —— 名稱和 class 一樣，沒有回傳型別
+    public UserService(String defaultStatus) {
+        this.defaultStatus = defaultStatus;
+    }
+
+    // 方法 —— 回傳型別寫在方法名稱前面
+    public String getStatus(Long userId) {
+        return this.defaultStatus;
+    }
+
+    // void 表示不回傳任何值
+    public void setDefaultStatus(String status) {
+        this.defaultStatus = status;
+    }
+}
+</code></pre>
+
+<p>對比你熟悉的寫法：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>概念</th><th>Java</th><th>TypeScript</th><th>Python</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>建構子</td><td><code>public UserService() { }</code></td><td><code>constructor() { }</code></td><td><code>def __init__(self):</code></td></tr>
+    <tr><td>方法簽章</td><td><code>public String getName()</code></td><td><code>getName(): string</code></td><td><code>def get_name(self) -> str:</code></td></tr>
+    <tr><td>this</td><td><code>this.field</code>（多數情況可省略）</td><td><code>this.field</code>（不可省略）</td><td><code>self.field</code></td></tr>
+    <tr><td>new 實例化</td><td><code>new UserService()</code></td><td><code>new UserService()</code></td><td><code>UserService()</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip">
+  <span class="callout-label">💡 順帶一提：封裝與 Getter/Setter</span>
+  在 Java 中，屬性通常宣告為 <code>private</code>，並提供 <code>public</code> 的 getter/setter 方法來存取。這和 Python/JS 可以直接 <code>obj.field = value</code> 的文化不同。Spring Boot 大量依賴這個慣例——框架透過 getter/setter 來完成 DI（依賴注入）和序列化。在 IntelliJ 中，你可以用 <code>Alt+Insert</code> 自動生成它們。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 陣列 vs 列表：固定 vs 可變</h2>
+
+<p><strong>這是 TS/Python 開發者最大的認知轉換之一。</strong></p>
+
+<p>在 JS 和 Python 中，Array/List 天生就是動態大小的。但在 Java 中：</p>
+
+<pre><code class="language-java">// ❌ 原生陣列：大小在建立時就鎖死，永遠不能改變！
+String[] items = new String[3];
+items[0] = "Sword";
+// items[3] = "Shield"; // → ArrayIndexOutOfBoundsException！</code></pre>
+
+<p>如果你要可以動態增減的容器（就像 JS Array 或 Python list），必須用 <strong><code>ArrayList</code></strong>：</p>
+
+<pre><code class="language-java">import java.util.List;
+import java.util.ArrayList;
+
+// ✅ 動態列表 —— 這才是你在 Spring Boot 中幾乎永遠會用的
+List&lt;String&gt; items = new ArrayList&lt;&gt;();
+items.add("Sword");      // 相當於 JS 的 push() / Python 的 append()
+items.add("Shield");
+items.add("Potion");
+
+String first = items.get(0);   // 相當於 items[0]
+int count = items.size();      // 相當於 items.length / len(items)
+items.remove(1);               // 移除 index 1 的元素
+</code></pre>
+
+<p>注意 <code>List</code>（介面）vs <code>ArrayList</code>（實作）的宣告習慣——這是 Java 「針對介面寫程式」的慣例，和 TS 的 <code>interface</code> 思維類似。Spring Boot 的所有集合型返回值也都是宣告為 <code>List&lt;T&gt;</code>。</p>
+
+<!-- ============================================================ -->
+<h2>5. 控制流程：與 JS 幾乎一樣</h2>
+
+<p>好消息：Java 的大括號、if/else、for/while 語法和 JS 幾乎完全相同——因為 JS 的語法本來就是從 Java 借來的。</p>
+
+<pre><code class="language-java">// if-else —— 和 JS 一模一樣
+if (score >= 60) {
+    System.out.println("Pass");
+} else {
+    System.out.println("Fail");
+}
+
+// for-each —— Java 用冒號（:），不是 of/in
+for (String item : items) {
+    System.out.println(item);
+}
+
+// 傳統 for —— 和 JS/C 完全一樣
+for (int i = 0; i < items.size(); i++) {
+    System.out.println(i + ": " + items.get(i));
+}
+
+// while —— 一樣
+while (items.size() < 10) {
+    items.add("filler");
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>6. 字串比較：用 equals()，不是 ==</h2>
+
+<p><strong>頭號新手陷阱。</strong>在 Java 中：</p>
+
+<pre><code class="language-java">String a = "hello";
+String b = new String("hello");
+
+a == b;          // false！因為 == 比較的是「記憶體參考」，不是內容
+a.equals(b);     // true  —— 這才是比較字串內容的正確方法
+</code></pre>
+
+<p>這是因為 String 是物件型別，<code>==</code> 對物件比較的是參考位址。Spring Boot 程式碼中到處都是 <code>.equals()</code>。</p>
+
+<!-- ============================================================ -->
+<h2>7. 進入點：main 方法</h2>
+
+<p>每個 Java 程式都需要一個起點。Spring Boot 會自動生成它，但你需要認識它的樣子：</p>
+
+<pre><code class="language-java">public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, Spring Boot!");
+    }
+}
+</code></pre>
+
+<ul>
+  <li><code>public static void main(String[] args)</code> — 這個簽章是固定的，一個字都不能改</li>
+  <li><code>System.out.println()</code> — Java 版的 <code>console.log()</code></li>
+  <li><code>static</code> 表示這是類別層級的方法，不需要先 new 物件就能呼叫</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<p>試著不看答案，在心裡回答以下問題。這是 retrieval practice——自己從記憶中提取答案，比直接重讀更有效。</p>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: Java 中哪兩種型別類別的大小寫規則不同？為什麼 <code>int</code> 不能是 null 但 <code>Integer</code> 可以？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>Primitives</strong>（小寫：<code>int</code>, <code>double</code>, <code>boolean</code>）存的是值本身，所以不能為 null。<strong>物件型別</strong>（大寫：<code>Integer</code>, <code>String</code>）存的是參考（reference），可以指向 null。在 Spring Boot 的 Entity 欄位中通常用 <code>Long</code>、<code>Integer</code> 等包裝型別，因為資料庫欄位可能為空。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: 你想建立一個可以動態增減的字串列表，該用 <code>String[]</code> 還是 <code>ArrayList&lt;String&gt;</code>？為什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">用 <code>ArrayList&lt;String&gt;</code>（通常宣告為 <code>List&lt;String&gt;</code>）。Java 原生陣列 <code>String[]</code> 在建立後大小固定，無法 <code>add()</code> 或 <code>remove()</code>。Spring Boot 中處理集合幾乎都用 <code>List</code>。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: Java 中比較兩個字串的內容，該用 <code>==</code> 還是 <code>.equals()</code>？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">用 <code>.equals()</code>。<code>==</code> 比較的是物件的記憶體參考（reference），不是內容。兩個內容相同但不同實例的字串，<code>==</code> 會回傳 false。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CHEATSHEET -->
+<h2>📋 速查表</h2>
+<p>這堂課對應的語法速查表在這裡，建議開在另一個分頁隨時對照：</p>
+<p style="font-size:1.1rem"><a href="../reference/0001-java-syntax-cheatsheet.html">→ Java / TS / Python 語法速查表（完整對照）</a></p>
+
+<!-- ============================================================ -->
+<!-- NEXT -->
+<div class="summary-box">
+  <h3>📌 關鍵 takeaway</h3>
+  <ol>
+    <li><strong>型別寫在變數前面</strong>（<code>String name</code>），和 TS 相反</li>
+    <li><strong>基本型別小寫開頭</strong>（<code>int</code>）不能 null；<strong>物件型別大寫開頭</strong>（<code>String</code>）可以 null</li>
+    <li><strong>一個檔案一個 public class</strong>，檔名 = 類別名</li>
+    <li><strong>動態陣列 = <code>List&lt;T&gt;</code></strong>（不是 <code>T[]</code>）</li>
+    <li><strong>字串比較 = <code>.equals()</code></strong>（不是 <code>==</code>）</li>
+    <li><strong>for-each = <code>for (T item : list)</code></strong></li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P01：IntelliJ 環境設定 + 第一個 Java 專案</strong>。你會在實機上安裝 IntelliJ Community Edition，建立專案，並實際跑一次今天學的語法。</p>
+
+<p style="margin-top:1rem">
+  <a href="../reference/0001-java-syntax-cheatsheet.html">📋 語法速查表（列印友善）</a>
+</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://dev.java/learn/language-basics/" target="_blank" rel="noopener">Java 官方語言基礎教學</a> — Oracle 出品，權威但易讀</li>
+  <li>📖 <a href="https://docs.oracle.com/javase/tutorial/java/nutsandbolts/index.html" target="_blank" rel="noopener">The Java Tutorials: Language Basics</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-string-equals" target="_blank" rel="noopener">Baeldung: Java String == vs equals()</a></li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>有疑問嗎？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">在對話中直接問我！Java 語法有什麼你不確定的、想對比 TS/Python 的、或是想知道某個寫法在 Spring Boot 中常見與否——我都可以即時回答。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0002-P-intellij-first-project.html" class="nav-next">P01 IntelliJ + 第一個專案 →</a>
+</nav>
+
+</body>
+</html>

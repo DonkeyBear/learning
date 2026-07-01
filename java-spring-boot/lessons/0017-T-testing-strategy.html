@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T09 — Spring Boot 測試策略概論</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T09</span>
+  <span>/</span>
+  <span>~25 分鐘</span>
+</div>
+
+<h1>Spring Boot 測試策略：JUnit、Mock、MockMvc</h1>
+
+<p>你寫過前端的測試（Jest、Vitest、React Testing Library）。Spring Boot 的測試生態有對應的工具，但分層更細——因為後端的三層架構需要不同層級的測試策略。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「Spring Boot 有哪些測試層級？」「@WebMvcTest 和 @SpringBootTest 的差異？」「何時用 Mock、何時用真實資料庫？」「MockMvc 是做什麼的？」
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 測試金字塔（Spring Boot 版）</h2>
+
+<pre><code class="language-text">        ┌──────┐
+        │ E2E  │  @SpringBootTest + TestRestTemplate（少）
+        ├──────┤
+       ┌┤ 整合 │┐ @SpringBootTest / @DataJpaTest（中）
+       │├──────┤│
+      ┌┤│ Web  │├┐ @WebMvcTest + MockMvc（多）
+      │├──────┤│
+     ┌┤││ 單元│├│┐ JUnit 5 + Mockito（最多）
+     └┴┴──────┴┴┘
+</code></pre>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>層級</th><th>Annotation</th><th>啟動什麼</th><th>速度</th><th>JS 對應</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>單元測試</td><td>（無，純 JUnit）</td><td>不啟動 Spring</td><td>⚡ 毫秒</td><td>Jest 單元測試</td></tr>
+    <tr><td>Web 層</td><td><code>@WebMvcTest</code></td><td>只啟動 Controller 層</td><td>⚡ 幾百毫秒</td><td>Supertest</td></tr>
+    <tr><td>資料層</td><td><code>@DataJpaTest</code></td><td>只啟動 JPA 層</td><td>⚡ 幾百毫秒</td><td>無直接對應</td></tr>
+    <tr><td>整合測試</td><td><code>@SpringBootTest</code></td><td>啟動整個容器</td><td>🐢 數秒</td><td>E2E (Playwright)</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>2. Service 層單元測試（JUnit 5 + Mockito）</h2>
+
+<p>最快速、最基礎的測試——<strong>不啟動 Spring 容器</strong>，用 Mockito 模擬依賴：</p>
+
+<pre><code class="language-java">import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)   // ← 啟用 Mockito
+class UserServiceTest {
+
+    @Mock                              // ← 自動建立 mock 物件
+    private UserRepository userRepo;
+
+    @InjectMocks                       // ← 自動將 mocks 注入到被測對象
+    private UserService userService;
+
+    @Test
+    void shouldReturnUserByName() {
+        // Arrange
+        var user = new User("Alice", "alice@example.com");
+        when(userRepo.findByEmail("alice@example.com"))
+            .thenReturn(Optional.of(user));
+
+        // Act
+        var result = userService.findByEmail("alice@example.com");
+
+        // Assert
+        assertThat(result).isPresent();
+        assertThat(result.get().getName()).isEqualTo("Alice");
+        verify(userRepo).findByEmail("alice@example.com");  // 驗證有被呼叫
+    }
+
+    @Test
+    void shouldThrowWhenUserNotFound() {
+        when(userRepo.findByEmail("nobody@example.com"))
+            .thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () ->
+            userService.findByEmail("nobody@example.com")
+        );
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 Jest 對照</span>
+  <table style="font-size:0.85rem;margin-top:0.3rem">
+    <tr><td style="padding:0.2rem 0.5rem"><code>@Mock</code></td><td>↔ <code>jest.fn()</code></td></tr>
+    <tr><td style="padding:0.2rem 0.5rem"><code>when(...).thenReturn(...)</code></td><td>↔ <code>mock.mockReturnValue(...)</code></td></tr>
+    <tr><td style="padding:0.2rem 0.5rem"><code>verify()</code></td><td>↔ <code>expect(mock).toHaveBeenCalled()</code></td></tr>
+    <tr><td style="padding:0.2rem 0.5rem"><code>@InjectMocks</code></td><td>↔ 無——Mockito 自動根據型別注入</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>3. Controller 層測試（@WebMvcTest + MockMvc）</h2>
+
+<p>只啟動 Controller 層，不啟動 Service 和資料庫——快速驗證 HTTP 層的行為：</p>
+
+<pre><code class="language-java">import org.springframework.test.web.servlet.MockMvc;
+
+@WebMvcTest(UserController.class)  // ← 只載入這個 Controller
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;           // ← 模擬 HTTP 請求
+
+    @MockitoBean                        // ← Mock 掉 Service（Spring Boot 3.4+）
+    private UserService userService;    //    舊版用 @MockBean
+
+    @Test
+    void shouldReturnUser() throws Exception {
+        var user = new User("Alice", "alice@example.com");
+        when(userService.getUser(1L)).thenReturn(Optional.of(user));
+
+        mockMvc.perform(get("/api/users/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Alice"))
+            .andExpect(jsonPath("$.email").value("alice@example.com"));
+    }
+
+    @Test
+    void shouldCreateUser() throws Exception {
+        var request = new UserRequest("Bob", "bob@example.com");
+        when(userService.createUser(any())).thenReturn(new User("Bob", "bob@example.com"));
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"name":"Bob","email":"bob@example.com"}
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.name").value("Bob"));
+    }
+
+    @Test
+    void shouldReturn404WhenUserNotFound() throws Exception {
+        when(userService.getUser(999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/users/999"))
+            .andExpect(status().isNotFound());
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試關鍵：@WebMvcTest 載入了什麼？</span>
+  @WebMvcTest <strong>只載入 Controller 和 MVC 基礎設施</strong>（Jackson、Validator、ExceptionHandler 等）。不載入 @Service、@Repository、完整的 ApplicationContext。這表示 Controller 測試中你必須 mock 掉所有 Service 依賴。好處是啟動極快（< 1 秒），適合 TDD 循環。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. Repository 層測試（@DataJpaTest）</h2>
+
+<p>只啟動 JPA 層，用嵌入資料庫驗證查詢：</p>
+
+<pre><code class="language-java">@DataJpaTest   // ← 只載入 JPA Entity、Repository；預設使用 H2
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Test
+    void shouldFindByEmail() {
+        userRepo.save(new User("Alice", "alice@example.com"));
+
+        var result = userRepo.findByEmail("alice@example.com");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getName()).isEqualTo("Alice");
+    }
+
+    @Test
+    void shouldExecuteDerivedQuery() {
+        userRepo.save(new User("Alice", "alice@example.com"));
+        userRepo.save(new User("Bob",   "bob@example.com"));
+        userRepo.save(new User("Alex",  "alex@example.com"));
+
+        var result = userRepo.findByNameContainingOrderByNameAsc("Al");
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getName()).isEqualTo("Alex");  // 排序驗證
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 @DataJpaTest 的細節</span>
+  <ul style="font-size:0.9rem">
+    <li>預設使用 H2 記憶體資料庫（即使你真的用 MySQL）——適合測試衍生查詢的語意是否正確</li>
+    <li>每個 @Test 預設 rollback——測試之間不互相汙染</li>
+    <li>如果需要用真實資料庫測試（例如 MySQL 特有的 SQL 語法），加 <code>@AutoConfigureTestDatabase(replace = NONE)</code></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>5. 整合測試（@SpringBootTest）</h2>
+
+<p>啟動完整的 Spring 容器，適合測試跨層的真實流程：</p>
+
+<pre><code class="language-java">@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+class UserApiIntegrationTest {
+
+    @Autowired
+    private TestRestTemplate restTemplate;  // ← 真實 HTTP client
+
+    @Test
+    void shouldCreateAndRetrieveUser() {
+        // Create
+        var request = new UserRequest("Alice", "alice@example.com");
+        var createResp = restTemplate.postForEntity("/api/users", request, User.class);
+        assertThat(createResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // Retrieve
+        var getResp = restTemplate.getForEntity("/api/users/{id}", User.class, 1L);
+        assertThat(getResp.getBody().getName()).isEqualTo("Alice");
+    }
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ @SpringBootTest 很慢</span>
+  每次啟動完整容器需要數秒。在大型專案中整合測試只佔測試總數的 10-20%。<strong>面試中說「整合測試貴但必要」「用 Testcontainers 取代 H2 做真實資料庫測試」會加分。</strong>
+</div>
+
+<!-- ============================================================ -->
+<h2>6. 何時用哪種測試？</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>你要測的是...</th><th>用...</th><th>因為...</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>複雜的業務邏輯</td><td>JUnit + Mockito</td><td>最快、最純粹、不依賴框架</td></tr>
+    <tr><td>Controller 的參數驗證/HTTP 狀態碼</td><td>@WebMvcTest + MockMvc</td><td>只測 HTTP 層，mock 掉 Service</td></tr>
+    <tr><td>衍生查詢方法是否正確</td><td>@DataJpaTest</td><td>只測 JPA，用 H2 快速驗證</td></tr>
+    <tr><td>整個流程：Controller→Service→DB</td><td>@SpringBootTest</td><td>真實的完整流程</td></tr>
+    <tr><td>交易 rollback、並行鎖行為</td><td>@SpringBootTest</td><td>需要完整容器才能測交易</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: @WebMvcTest 和 @SpringBootTest 的核心差異是什麼？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">@WebMvcTest 只載入 Controller 和 MVC 基礎設施（不載入 Service、Repository），用 MockMvc 模擬 HTTP 請求，啟動 < 1 秒。@SpringBootTest 載入完整的 ApplicationContext（所有 Bean、資料庫連線等），適合真實流程測試，但啟動需數秒。前者測「Controller 收到請求後的行為」，後者測「整個系統的真實行為」。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: Service 層的單元測試為什麼不建議啟動 Spring 容器？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">Service 層的單元測試只測業務邏輯，不需要 HTTP 或資料庫。用 Mockito mock 掉依賴（Repository），測試可以在毫秒內完成，且完全獨立於框架。如果每個 Service 測試都啟動 Spring 容器，一個專案的測試可能要跑好幾分鐘——這會讓開發者不願意跑測試。TDD 的基本要求就是測試必須快到可以隨手執行。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 什麼時候該用 @SpringBootTest 而非 @WebMvcTest？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">① 需要測試 Controller → Service → Repository 的真實串接 ② 需要測試 @Transactional 的交易行為（rollback、隔離級別）③ 需要測試並行鎖（@Version、@Lock）④ 需要測試自訂的異常處理和過濾器鏈。簡單說：當你需要驗證「整個系統組裝起來後的行為」時，才用 @SpringBootTest。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>單元測試（Mockito）→ Service 層</strong>：最快，mock 所有依賴</li>
+    <li><strong>@WebMvcTest → Controller 層</strong>：只載入 MVC，mock Service</li>
+    <li><strong>@DataJpaTest → Repository 層</strong>：只載入 JPA，用 H2 驗證查詢</li>
+    <li><strong>@SpringBootTest → 整合測試</strong>：完整容器，測真實串接，少而精</li>
+    <li><strong>MockMvc</strong> 是 Spring MVC 的測試工具，不需要啟動真實 HTTP server</li>
+    <li><strong>TestRestTemplate</strong> 是 @SpringBootTest 中的真實 HTTP client</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P09：單元測試與整合測試實作</strong>——你會為 P05 的 TaskController 寫 @WebMvcTest，為 TaskService 寫 Mockito 單元測試，為 TaskRepository 寫 @DataJpaTest。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://spring.io/guides/gs/testing-web/" target="_blank" rel="noopener">Spring 官方：Testing the Web Layer</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-boot-testing" target="_blank" rel="noopener">Baeldung: Spring Boot Testing 完整指南</a></li>
+  <li>📖 <a href="https://www.baeldung.com/mockito-series" target="_blank" rel="noopener">Baeldung: Mockito 系列教學</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>測試的 mock 概念和前端一樣嗎？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">概念完全一樣——隔離被測單元、控制依賴的行為、驗證互動。如果你用過 Jest 的 mock，Mockito 的 when/verify 應該很快上手。P09 實作中會讓你親手寫，有任何卡住就直接問。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0016-P-concurrency-lab.html" class="nav-prev">← P08 並行問題模擬</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0018-P-testing-practice.html" class="nav-next">P09 測試實作 →</a>
+</nav>
+
+</body>
+</html>

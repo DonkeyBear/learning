@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P07 — JPA Entity 設計 + Repository CRUD 實作</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P07</span>
+  <span>/</span>
+  <span>~60 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>JPA Entity 設計 + Repository CRUD 實作</h1>
+
+<p>這堂課會把 P05 的記憶體資料層換成真正的資料庫。你會親眼看到——<strong>只定義一個 interface，Spring 就自動幫你生出完整的 save/findAll/findById/delete</strong>。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  整合 H2 記憶體資料庫 → 把 Task 改成真正的 @Entity → 定義一對多關聯（Category ↔ Task）→ 用 JpaRepository 取代手寫 Repository → 透過 H2 Console 親眼看到資料表。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：加入 JPA 依賴與設定</h2>
+
+<p><strong>build.gradle</strong> 的 dependencies 區塊加入三行：</p>
+
+<pre><code class="language-java">dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'  // JPA
+    runtimeOnly 'com.h2database:h2'                    // H2 資料庫
+    // 不需要 spring-boot-starter-test（本來就有了）
+}
+</code></pre>
+
+<p>在 <strong>application.properties</strong>（<code>src/main/resources/</code>）加入：</p>
+
+<pre><code class="language-properties"># H2 記憶體資料庫
+spring.datasource.url=jdbc:h2:mem:taskdb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# H2 Web Console（讓你用瀏覽器查看資料表）
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# JPA 自動建表（開發階段用，正式環境應關閉）
+spring.jpa.hibernate.ddl-auto=create-drop
+
+# 在 Console 顯示 SQL（開發除錯用）
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 這些設定的意義</span>
+  <ul style="font-size:0.9rem">
+    <li><strong>H2</strong>：Java 寫的嵌入式資料庫，存在記憶體中，重啟就消失——適合開發和學習，不需要安裝 MySQL</li>
+    <li><strong>ddl-auto=create-drop</strong>：啟動時根據 @Entity 自動建立資料表，關閉時刪除。開發用 create-drop，正式環境用 validate 或 none</li>
+    <li><strong>show-sql=true</strong>：在 Console 印出 Hibernate 產生的 SQL，學習 JPA 的絕佳工具</li>
+  </ul>
+</div>
+
+<p>Reload Gradle（IntelliJ 右下角會彈出提示，或點 Gradle 面板的刷新圖示 🔄）。</p>
+
+<!-- ============================================================ -->
+<h2>Step 2：改造 Task 為 JPA Entity</h2>
+
+<p>把 <code>model/Task.java</code> 改寫為 JPA Entity：</p>
+
+<pre><code class="language-java">package com.example.demo.model;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "tasks")
+public class Task {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;                        // ← 改用 Long，資料庫自動遞增
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(nullable = false)
+    private boolean completed = false;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)      // ← 關聯到 Category
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    // === JPA 要求的無參建構子 ===
+    protected Task() { }
+
+    // === 你用的建構子 ===
+    public Task(String title) {
+        this.title = title;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // === Getters & Setters（JPA 需要 setter 來設定欄位值） ===
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public boolean isCompleted() { return completed; }
+    public void setCompleted(boolean completed) { this.completed = completed; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 3：建立 Category Entity（一對多）</h2>
+
+<p>建立 <code>model/Category.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.model;
+
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "categories")
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    // 一對多：一個 Category 有多個 Task
+    // mappedBy = "category" → 指向 Task.java 中的 category 欄位
+    // cascade = ALL → 刪除 Category 時連帶刪除其下所有 Task
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List&lt;Task&gt; tasks = new ArrayList&lt;&gt;();
+
+    protected Category() { }
+
+    public Category(String name) {
+        this.name = name;
+    }
+
+    // === Getters ===
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public List&lt;Task&gt; getTasks() { return tasks; }
+
+    // === 雙向關聯 helper ===
+    public void addTask(Task task) {
+        tasks.add(task);
+        task.setCategory(this);
+    }
+
+    public void removeTask(Task task) {
+        tasks.remove(task);
+        task.setCategory(null);
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 雙向關聯的 addTask/removeTask helper</span>
+  當你設定 <code>task.setCategory(category)</code> 時，JPA 會更新外鍵，但 <code>category.getTasks()</code> 不會自動新增。addTask() helper 確保兩邊同步——這不是 JPA 強制的，但能避免許多難以追蹤的 bug。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 4：用 JpaRepository 取代手寫 Repository</h2>
+
+<p>刪掉舊的 <code>InMemoryTaskRepository.java</code> 和 <code>FileTaskRepository.java</code>。建立新的 JPA Repository：</p>
+
+<p><code>repository/TaskRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Task;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface TaskRepository extends JpaRepository&lt;Task, Long&gt; {
+    // JpaRepository 已自動提供：findAll, findById, save, deleteById, count...
+
+    // 查詢未完成的任務
+    List&lt;Task&gt; findByCompletedFalse();
+
+    // 依分類 ID 查詢
+    List&lt;Task&gt; findByCategoryId(Long categoryId);
+
+    // 搜尋標題（LIKE %keyword%），依建立時間降冪
+    List&lt;Task&gt; findByTitleContainingIgnoreCaseOrderByCreatedAtDesc(String keyword);
+}
+</code></pre>
+
+<p><code>repository/CategoryRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.repository;
+
+import com.example.demo.model.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface CategoryRepository extends JpaRepository&lt;Category, Long&gt; {
+    Optional&lt;Category&gt; findByName(String name);
+}
+</code></pre>
+
+<p><strong>注意</strong>：你沒有建立任何實作類別。只有兩個 interface。Spring Data JPA 會在執行時自動產生實作。</p>
+
+<!-- ============================================================ -->
+<h2>Step 5：改寫 Service 層</h2>
+
+<p>修改 <code>TaskServiceImpl.java</code>，改用真實的 JPA Repository：</p>
+
+<pre><code class="language-java">package com.example.demo.service;
+
+import com.example.demo.model.Category;
+import com.example.demo.model.Task;
+import com.example.demo.repository.CategoryRepository;
+import com.example.demo.repository.TaskRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@Transactional(readOnly = true)  // ← 預設 readOnly，寫入方法單獨標記
+public class TaskServiceImpl implements TaskService {
+
+    private final TaskRepository taskRepo;
+    private final CategoryRepository categoryRepo;
+
+    public TaskServiceImpl(TaskRepository taskRepo, CategoryRepository categoryRepo) {
+        this.taskRepo = taskRepo;
+        this.categoryRepo = categoryRepo;
+    }
+
+    @Override
+    public List&lt;Task&gt; getAllTasks() {
+        return taskRepo.findAll();
+    }
+
+    @Override
+    public Optional&lt;Task&gt; getTask(Long id) {   // ← 改成 Long
+        return taskRepo.findById(id);
+    }
+
+    @Override
+    @Transactional  // ← 標記為寫入交易
+    public Task createTask(String title, String categoryName) {
+        var category = categoryRepo.findByName(categoryName)
+            .orElseGet(() -> categoryRepo.save(new Category(categoryName)));
+
+        var task = new Task(title);
+        category.addTask(task);        // 雙向關聯 helper
+        return taskRepo.save(task);    // ← JPA 的 save()
+    }
+
+    @Override
+    @Transactional
+    public Task updateTask(Long id, String title, Boolean completed) {
+        var task = taskRepo.findById(id)
+            .orElseThrow(() -> new RuntimeException("Task not found: " + id));
+        if (title != null) task.setTitle(title);
+        if (completed != null) task.setCompleted(completed);
+        return taskRepo.save(task);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTask(Long id) {
+        taskRepo.deleteById(id);
+    }
+
+    // 新增：查詢特定分類的任務
+    public List&lt;Task&gt; getTasksByCategory(Long categoryId) {
+        return taskRepo.findByCategoryId(categoryId);
+    }
+
+    // 新增：搜尋任務
+    public List&lt;Task&gt; searchTasks(String keyword) {
+        return taskRepo.findByTitleContainingIgnoreCaseOrderByCreatedAtDesc(keyword);
+    }
+}
+</code></pre>
+
+<p>同步更新 <code>TaskService</code> interface 的方法簽章（String id → Long id）。</p>
+
+<!-- ============================================================ -->
+<h2>Step 6：更新 Controller</h2>
+
+<p>修改 <code>TaskController.java</code>，改為 Long id、支援分類：</p>
+
+<pre><code class="language-java">// TaskRequest 更新為可選分類
+public record TaskRequest(String title, String category) {
+    public TaskRequest {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("標題不能為空");
+        }
+    }
+}
+
+// POST /api/tasks
+@PostMapping
+@ResponseStatus(HttpStatus.CREATED)
+public Task create(@RequestBody TaskRequest request) {
+    String cat = request.category() != null ? request.category() : "預設";
+    return taskService.createTask(request.title(), cat);
+}
+
+// GET /api/tasks/search?q=關鍵字
+@GetMapping("/search")
+public List&lt;Task&gt; search(@RequestParam String q) {
+    return taskService.searchTasks(q);
+}
+
+// GET /api/tasks?completed=false
+@GetMapping
+public List&lt;Task&gt; getAll(@RequestParam(defaultValue = "all") String filter) {
+    // 依 filter 參數決定回傳全部或未完成
+    return switch (filter) {
+        case "active" -> taskService.getActiveTasks();
+        default -> taskService.getAllTasks();
+    };
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 7：啟動 + 測試 + H2 Console</h2>
+
+<p>啟動！Console 中會看到 Hibernate 自動產生的 CREATE TABLE SQL：</p>
+
+<pre><code class="language-sql">Hibernate:
+    create table categories (
+        id bigint generated by default as identity,
+        name varchar(50) not null unique,
+        primary key (id)
+    )
+Hibernate:
+    create table tasks (
+        id bigint generated by default as identity,
+        completed boolean not null,
+        created_at timestamp(6) not null,
+        title varchar(200) not null,
+        category_id bigint,
+        primary key (id)
+    )
+</code></pre>
+
+<p>然後用 PowerShell 測試 API：</p>
+
+<pre><code class="language-bash"># 建立任務（自動建立分類）
+Invoke-RestMethod http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"學 JPA","category":"學習"}' -ContentType "application/json"
+
+Invoke-RestMethod http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"準備面試","category":"職涯"}' -ContentType "application/json"
+
+Invoke-RestMethod http://localhost:8080/api/tasks -Method Post `
+  -Body '{"title":"讀 Spring 文件","category":"學習"}' -ContentType "application/json"
+
+# 查詢全部
+Invoke-RestMethod http://localhost:8080/api/tasks
+
+# 搜尋
+Invoke-RestMethod http://localhost:8080/api/tasks/search?q=Spring
+</code></pre>
+
+<h3>查看 H2 Console</h3>
+
+<p>打開瀏覽器 → <strong><code>http://localhost:8080/h2-console</code></strong></p>
+<p>JDBC URL 填入 <code>jdbc:h2:mem:taskdb</code> → Connect</p>
+<p>你會看到 <code>TASKS</code> 和 <code>CATEGORIES</code> 兩張表——JPA 根據你的 @Entity 自動建立的。可以執行 <code>SELECT * FROM TASKS</code> 親眼看到剛才 POST 進去的資料。</p>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>build.gradle 正確加入 JPA + H2 依賴</li>
+  <li>application.properties 中 H2 console 和 show-sql 已啟用</li>
+  <li>Task 和 Category 改為 @Entity，含 @Id, @GeneratedValue, @ManyToOne, @OneToMany</li>
+  <li>舊的 InMemoryTaskRepository 已刪除，換成 JpaRepository interface</li>
+  <li>Service 改用 JPA Repository，@Transactional 正確標記</li>
+  <li>啟動時 Console 顯示 Hibernate 自動建表的 SQL</li>
+  <li>POST/GET API 正常運作，資料在重啟之間持久化（H2 是記憶體，所以重啟會消失——這是預期的）</li>
+  <li>H2 Console 能連上並看到資料表結構和數據</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 P05 手寫 Repository vs P07 JPA Repository</h3>
+  <table style="font-size:0.85rem">
+    <tr>
+      <td style="padding:0.3rem 0.6rem;width:50%">
+        <strong style="color:var(--danger)">P05：手寫</strong><br>
+        <span style="font-size:0.8rem">50+ 行實作<br>ConcurrentHashMap<br>沒有關聯<br>沒有查詢<br>沒有交易</span>
+      </td>
+      <td style="padding:0.3rem 0.6rem">
+        <strong style="color:var(--success)">P07：JPA</strong><br>
+        <span style="font-size:0.8rem">0 行實作（只有 interface）<br>真實資料庫<br>一對多關聯<br>衍生查詢<br>@Transactional</span>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>🔥 T08：執行緒安全與 Spring 並行模型</strong>——面試必考。你會學到為什麼 singleton Bean 需要執行緒安全、@Transactional 如何管理交易、以及樂觀鎖/悲觀鎖的實務應用。</p>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>JpaRepository 報錯？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">常見原因：① Entity 缺無參建構子 ② @Id 型別和 JpaRepository&lt;T, ID&gt; 的 ID 不一致 ③ 衍生查詢方法名稱拼錯（欄位名必須和 Entity 屬性完全一致）。把錯誤訊息貼上來。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0013-T-jpa-concepts.html" class="nav-prev">← T07 JPA 概念</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0015-T-thread-safety.html" class="nav-next">T08 執行緒安全 →</a>
+</nav>
+
+</body>
+</html>

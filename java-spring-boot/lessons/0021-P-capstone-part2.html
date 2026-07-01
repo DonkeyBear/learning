@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P11 — 整合專案 Part 2：文章 CRUD + 分類 + 分頁</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P11</span>
+  <span>/</span>
+  <span>~60 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+  <span>/</span>
+  <span>🏗️ 整合專案</span>
+</div>
+
+<h1>整合專案 Part 2：文章 CRUD + 分類 + 分頁</h1>
+
+<p>在 Part 1 的 blog-api 專案上疊加文章與分類模組。這堂課會涵蓋 Entity 關聯、slug 自動產生、分頁查詢、以及請求驗證——<strong>把 Phase 1~3 學到的所有技能一次串起來</strong>。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 Part 2 目標</span>
+  Post + Category Entity（雙向關聯）→ Repository 衍生查詢 → Service 業務邏輯（含 slug）→ Controller 完整 CRUD + 分頁 → 全部 API 包在 ApiResponse 中。
+</div>
+
+<!-- ============================================================ -->
+<h2>Part 2 新增結構</h2>
+
+<pre><code class="language-text">src/main/java/com/blogapi/
+├── ... (Part 1 的檔案)
+├── post/
+│   ├── Post.java
+│   ├── PostRepository.java
+│   ├── PostService.java
+│   ├── PostController.java
+│   └── dto/
+│       ├── CreatePostRequest.java
+│       ├── UpdatePostRequest.java
+│       └── PostSummaryResponse.java
+└── category/
+    ├── Category.java
+    ├── CategoryRepository.java
+    └── CategoryService.java</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 1：Category Entity（一的一方）</h2>
+
+<p><code>category/Category.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.category;
+
+import com.blogapi.post.Post;
+import jakarta.persistence.*;
+import java.util.*;
+
+@Entity
+@Table(name = "categories")
+public class Category {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(unique = true, length = 60)
+    private String slug;   // URL-friendly name
+
+    @OneToMany(mappedBy = "category")
+    private List&lt;Post&gt; posts = new ArrayList&lt;&gt;();
+
+    protected Category() { }
+
+    public Category(String name, String slug) {
+        this.name = name;
+        this.slug = slug;
+    }
+
+    public Long getId() { return id; }
+    public String getName() { return name; }
+    public String getSlug() { return slug; }
+    public List&lt;Post&gt; getPosts() { return posts; }
+}
+</code></pre>
+
+<p><code>category/CategoryRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.category;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface CategoryRepository extends JpaRepository&lt;Category, Long&gt; {
+    Optional&lt;Category&gt; findBySlug(String slug);
+    Optional&lt;Category&gt; findByName(String name);
+    boolean existsByName(String name);
+}
+</code></pre>
+
+<p><code>category/CategoryService.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.category;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class CategoryService {
+    private final CategoryRepository categoryRepo;
+
+    public CategoryService(CategoryRepository categoryRepo) {
+        this.categoryRepo = categoryRepo;
+    }
+
+    public Category getOrCreate(String name) {
+        return categoryRepo.findByName(name)
+            .orElseGet(() -> categoryRepo.save(
+                new Category(name, toSlug(name))));
+    }
+
+    public Category getBySlug(String slug) {
+        return categoryRepo.findBySlug(slug)
+            .orElseThrow(() -> new IllegalArgumentException("分類不存在: " + slug));
+    }
+
+    private String toSlug(String name) {
+        return name.toLowerCase().replaceAll("[^a-z0-9\\u4e00-\\u9fff]+", "-")
+            .replaceAll("^-|-$", "");
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：Post Entity（多的一方）</h2>
+
+<p><code>post/Post.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post;
+
+import com.blogapi.category.Category;
+import com.blogapi.user.User;
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "posts")
+public class Post {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(unique = true, length = 250)
+    private String slug;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(length = 500)
+    private String summary;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PostStatus status = PostStatus.DRAFT;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    public enum PostStatus { DRAFT, PUBLISHED }
+
+    protected Post() { }
+
+    public Post(String title, String content, User author, Category category) {
+        this.title = title;
+        this.slug = generateSlug(title);
+        this.content = content;
+        this.author = author;
+        this.category = category;
+        this.status = PostStatus.DRAFT;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // === 業務方法 ===
+    public void publish() {
+        this.status = PostStatus.PUBLISHED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void update(String title, String content, String summary, Category category) {
+        if (title != null) { this.title = title; this.slug = generateSlug(title); }
+        if (content != null) this.content = content;
+        if (summary != null) this.summary = summary;
+        if (category != null) this.category = category;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // === Getters ===
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public String getSlug() { return slug; }
+    public String getContent() { return content; }
+    public String getSummary() { return summary; }
+    public PostStatus getStatus() { return status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public User getAuthor() { return author; }
+    public Category getCategory() { return category; }
+
+    // === Slug 產生（簡單版：title + 時間戳） ===
+    private String generateSlug(String title) {
+        String base = title.toLowerCase()
+            .replaceAll("[^a-z0-9\\u4e00-\\u9fff]+", "-")
+            .replaceAll("^-|-$", "");
+        return base + "-" + System.currentTimeMillis() % 100000;
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 @Enumerated(EnumType.STRING)</span>
+  這告訴 JPA 把 enum 存成字串（<code>DRAFT</code> / <code>PUBLISHED</code>）而非數字。數字（ORDINAL）在 enum 順序改變時會造成資料錯亂——永遠用 STRING。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 3：DTOs</h2>
+
+<p><code>post/dto/CreatePostRequest.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post.dto;
+
+import jakarta.validation.constraints.*;
+
+public record CreatePostRequest(
+    @NotBlank @Size(min = 1, max = 200) String title,
+    @NotBlank String content,
+    @Size(max = 500) String summary,
+    String category,          // ← 分類名稱（不是 ID）
+    @NotNull Long authorId
+) { }
+</code></pre>
+
+<p><code>post/dto/UpdatePostRequest.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post.dto;
+
+import jakarta.validation.constraints.Size;
+
+public record UpdatePostRequest(
+    @Size(min = 1, max = 200) String title,
+    String content,
+    @Size(max = 500) String summary,
+    String category
+) { }
+</code></pre>
+
+<p><code>post/dto/PostResponse.java</code>（含巢狀 author + category 摘要）：</p>
+
+<pre><code class="language-java">package com.blogapi.post.dto;
+
+import com.blogapi.post.Post;
+import java.time.LocalDateTime;
+
+public record PostResponse(
+    Long id, String title, String slug, String content,
+    String summary, String status, LocalDateTime createdAt,
+    LocalDateTime updatedAt,
+    AuthorInfo author, CategoryInfo category
+) {
+    public record AuthorInfo(Long id, String username, String displayName) { }
+    public record CategoryInfo(Long id, String name, String slug) { }
+
+    public static PostResponse from(Post post) {
+        var author = new AuthorInfo(
+            post.getAuthor().getId(), post.getAuthor().getUsername(),
+            post.getAuthor().getDisplayName());
+        var cat = post.getCategory() != null
+            ? new CategoryInfo(post.getCategory().getId(),
+                post.getCategory().getName(), post.getCategory().getSlug())
+            : null;
+        return new PostResponse(post.getId(), post.getTitle(), post.getSlug(),
+            post.getContent(), post.getSummary(),
+            post.getStatus().name(), post.getCreatedAt(),
+            post.getUpdatedAt(), author, cat);
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 4：Repository + Service</h2>
+
+<p><code>post/PostRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post;
+
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface PostRepository extends JpaRepository&lt;Post, Long&gt; {
+    Optional&lt;Post&gt; findBySlug(String slug);
+
+    Page&lt;Post&gt; findByStatus(Post.PostStatus status, Pageable pageable);
+
+    Page&lt;Post&gt; findByCategoryId(Long categoryId, Pageable pageable);
+
+    Page&lt;Post&gt; findByAuthorId(Long authorId, Pageable pageable);
+
+    // 標題搜尋（LIKE）
+    Page&lt;Post&gt; findByTitleContainingIgnoreCase(String keyword, Pageable pageable);
+}
+</code></pre>
+
+<p><code>post/PostService.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post;
+
+import com.blogapi.category.CategoryService;
+import com.blogapi.post.dto.*;
+import com.blogapi.user.UserRepository;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class PostService {
+    private final PostRepository postRepo;
+    private final UserRepository userRepo;
+    private final CategoryService categoryService;
+
+    public PostService(PostRepository postRepo, UserRepository userRepo,
+                       CategoryService categoryService) {
+        this.postRepo = postRepo;
+        this.userRepo = userRepo;
+        this.categoryService = categoryService;
+    }
+
+    @Transactional
+    public PostResponse create(CreatePostRequest req) {
+        var author = userRepo.findById(req.authorId())
+            .orElseThrow(() -> new IllegalArgumentException("作者不存在: " + req.authorId()));
+
+        var category = req.category() != null
+            ? categoryService.getOrCreate(req.category()) : null;
+
+        var post = new Post(req.title(), req.content(), author, category);
+        if (req.summary() != null) post.update(null, null, req.summary(), null);
+
+        return PostResponse.from(postRepo.save(post));
+    }
+
+    @Transactional
+    public PostResponse publish(Long postId) {
+        var post = postRepo.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("文章不存在: " + postId));
+        post.publish();
+        return PostResponse.from(postRepo.save(post));
+    }
+
+    @Transactional
+    public PostResponse update(Long postId, UpdatePostRequest req) {
+        var post = postRepo.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("文章不存在: " + postId));
+
+        var category = req.category() != null
+            ? categoryService.getOrCreate(req.category()) : null;
+
+        post.update(req.title(), req.content(), req.summary(), category);
+        return PostResponse.from(postRepo.save(post));
+    }
+
+    public PostResponse getBySlug(String slug) {
+        return PostResponse.from(
+            postRepo.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("文章不存在: " + slug))
+        );
+    }
+
+    public PostResponse getById(Long id) {
+        return PostResponse.from(
+            postRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("文章不存在: " + id))
+        );
+    }
+
+    public Page&lt;PostResponse&gt; listPublished(int page, int size) {
+        return postRepo.findByStatus(Post.PostStatus.PUBLISHED,
+                PageRequest.of(page, size, Sort.by("createdAt").descending()))
+            .map(PostResponse::from);
+    }
+
+    public Page&lt;PostResponse&gt; search(String keyword, int page, int size) {
+        return postRepo.findByTitleContainingIgnoreCase(keyword,
+                PageRequest.of(page, size, Sort.by("createdAt").descending()))
+            .map(PostResponse::from);
+    }
+
+    @Transactional
+    public void delete(Long postId) {
+        postRepo.deleteById(postId);
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 設計觀察</span>
+  PostService 依賴 CategoryService 來處理分類——<code>getOrCreate()</code> 自動建立不存在的分類。這展示了 Service 之間的正確協作方式：PostService 不直接碰 CategoryRepository，而是透過 CategoryService 的公共介面。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 5：Controller</h2>
+
+<p><code>post/PostController.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.post;
+
+import com.blogapi.common.ApiResponse;
+import com.blogapi.post.dto.*;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/posts")
+public class PostController {
+    private final PostService postService;
+
+    public PostController(PostService postService) {
+        this.postService = postService;
+    }
+
+    // 公開：已發佈文章列表（分頁）
+    @GetMapping
+    public ApiResponse&lt;Page&lt;PostResponse&gt;&gt; list(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(postService.listPublished(page, size));
+    }
+
+    // 搜尋
+    @GetMapping("/search")
+    public ApiResponse&lt;Page&lt;PostResponse&gt;&gt; search(
+        @RequestParam String q,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(postService.search(q, page, size));
+    }
+
+    // 依 slug 查詢
+    @GetMapping("/slug/{slug}")
+    public ApiResponse&lt;PostResponse&gt; getBySlug(@PathVariable String slug) {
+        return ApiResponse.ok(postService.getBySlug(slug));
+    }
+
+    // 依 ID 查詢
+    @GetMapping("/{id}")
+    public ApiResponse&lt;PostResponse&gt; getById(@PathVariable Long id) {
+        return ApiResponse.ok(postService.getById(id));
+    }
+
+    // 建立
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse&lt;PostResponse&gt; create(@Valid @RequestBody CreatePostRequest req) {
+        return ApiResponse.ok(postService.create(req));
+    }
+
+    // 發佈
+    @PatchMapping("/{id}/publish")
+    public ApiResponse&lt;PostResponse&gt; publish(@PathVariable Long id) {
+        return ApiResponse.ok(postService.publish(id));
+    }
+
+    // 更新
+    @PutMapping("/{id}")
+    public ApiResponse&lt;PostResponse&gt; update(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdatePostRequest req
+    ) {
+        return ApiResponse.ok(postService.update(id, req));
+    }
+
+    // 刪除
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        postService.delete(id);
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 6：測試</h2>
+
+<pre><code class="language-bash"># 先建立使用者
+$user = Invoke-RestMethod -Uri http://localhost:8080/api/users/register -Method Post `
+  -ContentType "application/json" `
+  -Body '{"username":"bob","email":"bob@test.com","password":"secret123","displayName":"Bob"}'
+$authorId = $user.data.id
+
+# 建立文章
+Invoke-RestMethod -Uri http://localhost:8080/api/posts -Method Post `
+  -ContentType "application/json" `
+  -Body "{`"title`":`"Spring Boot 入門`",`"content`":`"這是一篇教學文章...`",`"category`":`"Java`",`"authorId`":$authorId}"
+
+# 建立更多文章
+Invoke-RestMethod -Uri http://localhost:8080/api/posts -Method Post `
+  -ContentType "application/json" `
+  -Body "{`"title`":`"JPA 關聯映射詳解`",`"content`":`"詳解 @OneToMany...`",`"category`":`"Java`",`"authorId`":$authorId}"
+
+# 發佈（把 {id} 換成實際的 id）
+Invoke-RestMethod -Uri http://localhost:8080/api/posts/1/publish -Method Patch
+
+# 查詢已發佈文章（分頁）
+Invoke-RestMethod http://localhost:8080/api/posts?page=0&size=5
+
+# 依 slug 查詢
+Invoke-RestMethod http://localhost:8080/api/posts/slug/spring-boot-ru-men-12345
+
+# 搜尋
+Invoke-RestMethod "http://localhost:8080/api/posts/search?q=JPA&page=0&size=5"
+
+# 刪除
+Invoke-RestMethod -Uri http://localhost:8080/api/posts/1 -Method Delete
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>Part 2 檢查清單</h2>
+
+<ul class="checklist">
+  <li>Category Entity + Repository + Service，支援 getOrCreate</li>
+  <li>Post Entity 含 @ManyToOne（author + category）+ @Enumerated(STRING)</li>
+  <li>CreatePostRequest + UpdatePostRequest 含 @Valid 驗證</li>
+  <li>PostResponse 含巢狀 AuthorInfo + CategoryInfo（不含密碼）</li>
+  <li>PostRepository 含分頁 + 搜尋 + 依 slug/status/authorId/categoryId 查詢</li>
+  <li>PostController 完整 CRUD：GET list / GET by slug / POST / PUT / PATCH publish / DELETE</li>
+  <li>分頁 JSON 含 content + totalElements + totalPages</li>
+  <li>所有 API 回應包在 ApiResponse 中</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 API 端點總覽（Part 1+2）</h3>
+  <pre><code class="language-text">POST   /api/users/register     註冊
+POST   /api/users/login        登入
+GET    /api/users/{id}         查詢使用者
+
+GET    /api/posts              已發佈文章（分頁）
+GET    /api/posts/search?q=... 搜尋（分頁）
+GET    /api/posts/slug/{slug}  依 slug 查詢
+GET    /api/posts/{id}         依 ID 查詢
+POST   /api/posts              建立文章
+PUT    /api/posts/{id}         更新文章
+PATCH  /api/posts/{id}/publish 發佈
+DELETE /api/posts/{id}         刪除</code></pre>
+</div>
+
+<h2>下一步</h2>
+<p><strong>P12：整合專案 Part 3</strong> — 最後一堂！加入 Comment（巢狀關聯）、解決 N+1 查詢問題、整合 Swagger/OpenAPI 文件。</p>
+
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>JSON 序列化報錯？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">通常是 LAZY 載入的關聯欄位在序列化時觸發了額外查詢。確認你的 Response DTO 只有基本欄位、沒有直接暴露 Entity。如果看到 LazyInitializationException，貼上來我幫你解。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0020-P-capstone-part1.html" class="nav-prev">← P10 整合專案 Part 1</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0022-P-capstone-part3.html" class="nav-next">P12 整合專案 Part 3 →</a>
+</nav>
+
+</body>
+</html>

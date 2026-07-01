@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P03 — Stream API 實戰練習</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P03</span>
+  <span>/</span>
+  <span>~50 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>Stream API 實戰練習</h1>
+
+<p>這堂課你會拿到一份模擬的員工資料集，用 <a href="0005-T-collections-stream.html">T03</a> 學到的 Stream API 完成 10 道練習題。題目從簡單到進階，涵蓋日常開發和面試中常見的資料處理模式。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 練習方式</span>
+  每道題目給你「需求描述」和「預期輸出」，你要在 IntelliJ 中自己寫出 Stream 管線。建議先自己嘗試，卡住了再看答案。每題的答案區用 <code>&lt;details&gt;</code> 摺疊，不要偷看。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立練習環境</h2>
+
+<p>在 IntelliJ 的 <code>java-practice</code> 專案中，建立 <code>practice/StreamLab.java</code>：</p>
+
+<pre><code class="language-java">package practice;
+
+import java.util.*;
+import java.util.stream.*;
+
+public class StreamLab {
+
+    // ====== 資料集：員工列表 ======
+    public static final List&lt;Employee&gt; EMPLOYEES = List.of(
+        new Employee("Alice",   "Engineering", 95000,  List.of("Java", "Spring", "AWS")),
+        new Employee("Bob",     "Engineering", 82000,  List.of("Python", "Django", "Docker")),
+        new Employee("Charlie", "Engineering", 78000,  List.of("Java", "Kotlin")),
+        new Employee("Diana",   "Product",     88000,  List.of("SQL", "Excel", "Tableau")),
+        new Employee("Eve",     "Product",     92000,  List.of("SQL", "Python", "Figma")),
+        new Employee("Frank",   "HR",          65000,  List.of("Excel", "Communication")),
+        new Employee("Grace",   "HR",          67000,  List.of("Excel", "Payroll")),
+        new Employee("Henry",   "Engineering", 105000, List.of("Java", "Spring", "Kubernetes", "AWS")),
+        new Employee("Ivy",     "Product",     91000,  List.of("SQL", "A/B Testing", "Figma")),
+        new Employee("Jack",    "Engineering", 72000,  List.of("Java", "React"))
+    );
+
+    // ====== Employee Record ======
+    public record Employee(
+        String name,
+        String department,
+        int salary,
+        List&lt;String&gt; skills
+    ) {
+        public String summary() {
+            return name + " | " + department + " | $" + salary;
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println("=== Stream API 練習 ===\n");
+
+        // 在下面逐題寫你的 Stream 答案
+        // ex1_filterHighEarners();
+        // ex2_getNames();
+        // ...
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 快速鍵提醒</span>
+  在 <code>main</code> 中寫練習時，用 <code>sout</code> + Tab → <code>System.out.println()</code>；用 <code>EMPLOYEES.stream()</code> 開頭，IntelliJ 會自動提示 Stream 方法。
+</div>
+
+<!-- ============================================================ -->
+<h2>練習題</h2>
+
+<!-- Q1 -->
+<div class="card">
+<h3>練習 1：過濾高薪者 🔹</h3>
+<p>找出薪水 ≥ 90000 的員工，印出他們的 <code>summary()</code>。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">EMPLOYEES.stream()
+    .filter(e -> e.salary() >= 90000)
+    .map(Employee::summary)
+    .forEach(System.out::println);
+
+// 輸出：
+// Alice | Engineering | $95000
+// Eve | Product | $92000
+// Henry | Engineering | $105000
+// Ivy | Product | $91000</code></pre>
+</details>
+</div>
+
+<!-- Q2 -->
+<div class="card">
+<h3>練習 2：取出不重複的部門 🔹</h3>
+<p>列出所有部門名稱（不重複），按字母排序。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">var depts = EMPLOYEES.stream()
+    .map(Employee::department)
+    .distinct()
+    .sorted()
+    .toList();
+
+System.out.println(depts);
+// [Engineering, HR, Product]</code></pre>
+</details>
+</div>
+
+<!-- Q3 -->
+<div class="card">
+<h3>練習 3：薪資統計 🔹</h3>
+<p>計算所有員工的<strong>平均薪資</strong>、<strong>最高薪資</strong>、<strong>最低薪資</strong>。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">double avg = EMPLOYEES.stream()
+    .mapToInt(Employee::salary)
+    .average().orElse(0);
+
+int max = EMPLOYEES.stream()
+    .mapToInt(Employee::salary)
+    .max().orElse(0);
+
+int min = EMPLOYEES.stream()
+    .mapToInt(Employee::salary)
+    .min().orElse(0);
+
+System.out.println("平均: $" + avg);   // 平均: $83500.0
+System.out.println("最高: $" + max);   // 最高: $105000
+System.out.println("最低: $" + min);   // 最低: $65000</code></pre>
+</details>
+</div>
+
+<!-- Q4 -->
+<div class="card">
+<h3>練習 4：按薪資排序取前 N 🔹🔹</h3>
+<p>找出薪資<strong>最高的前 3 名</strong>員工，依薪資由高到低排列。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">var top3 = EMPLOYEES.stream()
+    .sorted(Comparator.comparingInt(Employee::salary).reversed())
+    .limit(3)
+    .toList();
+
+top3.forEach(e -> System.out.println(e.summary()));
+// Henry | Engineering | $105000
+// Alice | Engineering | $95000
+// Eve | Product | $92000</code></pre>
+</details>
+</div>
+
+<!-- Q5 -->
+<div class="card">
+<h3>練習 5：分組統計 — groupingBy 🔹🔹🔥</h3>
+<p>按<strong>部門分組</strong>，計算各部門的<strong>員工人數</strong>和<strong>平均薪資</strong>。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">// 各部門人數
+var countByDept = EMPLOYEES.stream()
+    .collect(Collectors.groupingBy(
+        Employee::department,
+        Collectors.counting()
+    ));
+System.out.println("人數: " + countByDept);
+
+// 各部門平均薪資
+var avgByDept = EMPLOYEES.stream()
+    .collect(Collectors.groupingBy(
+        Employee::department,
+        Collectors.averagingInt(Employee::salary)
+    ));
+System.out.println("平均薪資: " + avgByDept);
+
+// 輸出：
+// 人數: {Product=3, HR=2, Engineering=5}
+// 平均薪資: {Product=90333.33..., HR=66000.0, Engineering=86400.0}</code></pre>
+</details>
+</div>
+
+<!-- Q6 -->
+<div class="card">
+<h3>練習 6：收集成 Map 🔹🔹</h3>
+<p>將員工列表轉成 <code>Map&lt;String, Integer&gt;</code>：Key = 姓名，Value = 薪資。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">Map&lt;String, Integer&gt; nameToSalary = EMPLOYEES.stream()
+    .collect(Collectors.toMap(
+        Employee::name,
+        Employee::salary
+    ));
+
+System.out.println(nameToSalary);
+// {Alice=95000, Bob=82000, Charlie=78000, Diana=88000,
+//  Eve=92000, Frank=65000, Grace=67000, Henry=105000,
+//  Ivy=91000, Jack=72000}</code></pre>
+</details>
+</div>
+
+<!-- Q7 -->
+<div class="card">
+<h3>练习 7：flatMap 攤平技能 🔹🔹</h3>
+<p>收集<strong>所有不重複的技能</strong>，按字母排序。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">var allSkills = EMPLOYEES.stream()
+    .flatMap(e -> e.skills().stream())
+    .distinct()
+    .sorted()
+    .toList();
+
+System.out.println(allSkills);
+// [A/B Testing, AWS, Communication, Django, Docker,
+//  Excel, Figma, Java, Kotlin, Kubernetes, Payroll,
+//  Python, React, SQL, Spring, Tableau]</code></pre>
+</details>
+</div>
+
+<!-- Q8 -->
+<div class="card">
+<h3>練習 8：anyMatch / allMatch 🔹🔹</h3>
+<p>(1) 是否有任何員工薪資超過 100000？<br>(2) 是否所有員工薪資都超過 60000？<br>(3) 工程部門中是否有人會 Kotlin？</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">boolean hasHighEarner = EMPLOYEES.stream()
+    .anyMatch(e -> e.salary() > 100000);
+System.out.println("有薪資>100k: " + hasHighEarner);  // true
+
+boolean allAbove60k = EMPLOYEES.stream()
+    .allMatch(e -> e.salary() > 60000);
+System.out.println("全員>60k: " + allAbove60k);  // true
+
+boolean engHasKotlin = EMPLOYEES.stream()
+    .filter(e -> "Engineering".equals(e.department()))
+    .flatMap(e -> e.skills().stream())
+    .anyMatch("Kotlin"::equals);
+System.out.println("工程部有人會Kotlin: " + engHasKotlin);  // true</code></pre>
+</details>
+</div>
+
+<!-- Q9 -->
+<div class="card">
+<h3>練習 9：partitioningBy 二分法 🔹🔹🔹</h3>
+<p>將員工按「薪資是否 ≥ 90000」分成兩組，並列出各組的人名。</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">var partitioned = EMPLOYEES.stream()
+    .collect(Collectors.partitioningBy(
+        e -> e.salary() >= 90000,
+        Collectors.mapping(Employee::name, Collectors.toList())
+    ));
+
+System.out.println("高薪組: " + partitioned.get(true));
+System.out.println("非高薪組: " + partitioned.get(false));
+// 高薪組: [Alice, Eve, Henry, Ivy]
+// 非高薪組: [Bob, Charlie, Diana, Frank, Grace, Jack]</code></pre>
+</details>
+</div>
+
+<!-- Q10 -->
+<div class="card">
+<h3>練習 10：綜合挑戰 🔹🔹🔹🔥</h3>
+<p>找出<strong>技能數量最多的部門</strong>中，<strong>薪資最高的那位員工</strong>的姓名和薪資。</p>
+<p style="color:var(--muted);font-size:0.85rem">（提示：先用 groupingBy 算各部門總技能數 → 找最大 → 再從該部門找薪資最高者）</p>
+
+<details>
+<summary style="cursor:pointer;color:var(--accent);margin-top:0.5rem">點擊展開答案</summary>
+<pre style="margin-top:0.5rem"><code class="language-java">// Step 1: 各部門的總技能數
+var skillCountByDept = EMPLOYEES.stream()
+    .collect(Collectors.groupingBy(
+        Employee::department,
+        Collectors.flatMapping(
+            e -> e.skills().stream(),
+            Collectors.counting()
+        )
+    ));
+System.out.println("各部門技能數: " + skillCountByDept);
+
+// Step 2: 找技能數最多的部門
+String topDept = skillCountByDept.entrySet().stream()
+    .max(Map.Entry.comparingByValue())
+    .map(Map.Entry::getKey)
+    .orElse("");
+
+System.out.println("技能最多部門: " + topDept);  // Engineering
+
+// Step 3: 該部門薪資最高的員工
+var topEarner = EMPLOYEES.stream()
+    .filter(e -> topDept.equals(e.department()))
+    .max(Comparator.comparingInt(Employee::salary))
+    .orElseThrow();
+
+System.out.println("結果: " + topEarner.name() + " $" + topEarner.salary());
+// 結果: Henry $105000</code></pre>
+</details>
+</div>
+
+<!-- ============================================================ -->
+<h2>Bonus：自己出題</h2>
+
+<p>完成 10 題後，試著自己出 2 題並實作。這比被動練習更有效——你會被迫思考 Stream 的邊界條件。</p>
+
+<p style="color:var(--muted)">例如：「每個部門中技能種類最多的員工」「把員工依技能數分三級：初階(1-2)、中階(3)、高階(4+)」</p>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>filter + map + toList 基本管線流暢</li>
+  <li>sorted + limit 取前 N 名無誤</li>
+  <li>groupingBy 搭配 counting / averaging 能寫出來</li>
+  <li>flatMap 攤平巢狀集合熟練</li>
+  <li>anyMatch / allMatch / noneMatch 語意清楚</li>
+  <li>partitioningBy 二分法會用</li>
+  <li>練習 10 綜合挑戰能不看答案獨立完成</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 這堂課的 Stream 操作地圖</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.3rem 0.6rem"><code>filter → map → toList</code></td><td style="color:var(--muted)">最常見的基本管線</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>sorted + limit</code></td><td style="color:var(--muted)">Top-N 查詢</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>groupingBy + averaging/counting</code></td><td style="color:var(--muted)">分組聚合 = SQL GROUP BY</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>flatMap + distinct</code></td><td style="color:var(--muted)">攤平巢狀 + 去重</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>collect(toMap)</code></td><td style="color:var(--muted)">List → Map 轉換</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>anyMatch / allMatch</code></td><td style="color:var(--muted)">條件判斷 = JS some/every</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem"><code>partitioningBy</code></td><td style="color:var(--muted)">二分法分組</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T04：Spring Boot 概論</strong>——我們終於要進入 Spring Boot 了！會從 FastAPI 的視角來理解 Spring Boot 的設計哲學，並介紹 Controller / Service / Repository 三層架構。</p>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>某題卡住？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">Stream 的錯誤訊息有時候非常難讀。把 stack trace 貼上來，我幫你翻譯成白話文。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0005-T-collections-stream.html" class="nav-prev">← T03 Collections + Stream</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0007-T-spring-boot-overview.html" class="nav-next">T04 Spring Boot 概論 →</a>
+</nav>
+
+</body>
+</html>

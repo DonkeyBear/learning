@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P12 — 整合專案 Part 3：Comment + N+1 + Swagger</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P12</span>
+  <span>/</span>
+  <span>~50 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+  <span>/</span>
+  <span>🏗️ 整合專案</span>
+</div>
+
+<h1>整合專案 Part 3：Comment + N+1 查詢 + Swagger</h1>
+
+<p>最後一堂整合實作課。加入 Comment 巢狀關聯、解決 JPA 經典的 N+1 查詢問題、並整合 Swagger 自動產生 API 文件——讓你的專案在面試中看起來更專業。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 Part 3 目標</span>
+  Comment Entity（自參照巢狀回覆）→ 解決 N+1 問題（@EntityGraph）→ Swagger/SpringDoc 整合 → 專案完工。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：Comment Entity（自參照巢狀結構）</h2>
+
+<p><code>comment/Comment.java</code>——Comment 可以回覆另一個 Comment：</p>
+
+<pre><code class="language-java">package com.blogapi.comment;
+
+import com.blogapi.post.Post;
+import com.blogapi.user.User;
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Entity
+@Table(name = "comments")
+public class Comment {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    // 屬於哪篇文章
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private Post post;
+
+    // 誰寫的
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
+
+    // 自參照：回覆哪個 comment（null = 頂層留言）
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Comment parent;
+
+    // 這則留言的所有回覆
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    @OrderBy("createdAt ASC")
+    private List&lt;Comment&gt; replies = new ArrayList&lt;&gt;();
+
+    protected Comment() { }
+
+    public Comment(String content, Post post, User author, Comment parent) {
+        this.content = content;
+        this.post = post;
+        this.author = author;
+        this.parent = parent;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Long getId() { return id; }
+    public String getContent() { return content; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public Post getPost() { return post; }
+    public User getAuthor() { return author; }
+    public Comment getParent() { return parent; }
+    public List&lt;Comment&gt; getReplies() { return replies; }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：Comment Repository + DTO</h2>
+
+<p><code>comment/CommentRepository.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.comment;
+
+import org.springframework.data.jpa.repository.*;
+import java.util.List;
+
+public interface CommentRepository extends JpaRepository&lt;Comment, Long&gt; {
+
+    // 查文章的頂層留言（parent = null），並預載 author
+    @EntityGraph(attributePaths = {"author", "replies", "replies.author"})
+    List&lt;Comment&gt; findByPostIdAndParentIsNullOrderByCreatedAtDesc(Long postId);
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 @EntityGraph 解決 N+1 問題</span>
+  如果沒有 @EntityGraph，JPA 會：先查 Comment（1 條 SQL），然後對每個 Comment 的 author 各發一條 SQL（N 條），對每個 Comment 的 replies 再發 N 條——這就是 N+1 問題。<br><br>
+  @EntityGraph 告訴 JPA：「這條查詢中順便 JOIN 這些關聯欄位」，用一條 SQL 全部載入。這是面試中最常見的 JPA 效能問題解法。
+</div>
+
+<p><code>comment/dto/CommentResponse.java</code>（遞迴巢狀）：</p>
+
+<pre><code class="language-java">package com.blogapi.comment.dto;
+
+import com.blogapi.comment.Comment;
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record CommentResponse(
+    Long id, String content, LocalDateTime createdAt,
+    String authorName, String authorUsername,
+    Long parentId,
+    List&lt;CommentResponse&gt; replies
+) {
+    public static CommentResponse from(Comment comment) {
+        return new CommentResponse(
+            comment.getId(), comment.getContent(), comment.getCreatedAt(),
+            comment.getAuthor().getDisplayName(),
+            comment.getAuthor().getUsername(),
+            comment.getParent() != null ? comment.getParent().getId() : null,
+            comment.getReplies().stream()
+                .map(CommentResponse::from)   // ← 遞迴轉換
+                .toList()
+        );
+    }
+}
+</code></pre>
+
+<p><code>comment/dto/CreateCommentRequest.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.comment.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record CreateCommentRequest(
+    @NotBlank String content,
+    @NotBlank Long authorId,
+    Long parentId    // null = 頂層留言
+) { }
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 3：Comment Service + Controller</h2>
+
+<p><code>comment/CommentService.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.comment;
+
+import com.blogapi.comment.dto.*;
+import com.blogapi.post.PostRepository;
+import com.blogapi.user.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+
+@Service
+public class CommentService {
+    private final CommentRepository commentRepo;
+    private final PostRepository postRepo;
+    private final UserRepository userRepo;
+
+    public CommentService(CommentRepository commentRepo,
+                          PostRepository postRepo, UserRepository userRepo) {
+        this.commentRepo = commentRepo;
+        this.postRepo = postRepo;
+        this.userRepo = userRepo;
+    }
+
+    @Transactional
+    public CommentResponse create(Long postId, CreateCommentRequest req) {
+        var post = postRepo.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("文章不存在"));
+        var author = userRepo.findById(req.authorId())
+            .orElseThrow(() -> new IllegalArgumentException("使用者不存在"));
+
+        Comment parent = null;
+        if (req.parentId() != null) {
+            parent = commentRepo.findById(req.parentId())
+                .orElseThrow(() -> new IllegalArgumentException("父留言不存在"));
+        }
+
+        return CommentResponse.from(
+            commentRepo.save(new Comment(req.content(), post, author, parent)));
+    }
+
+    public List&lt;CommentResponse&gt; getByPost(Long postId) {
+        return commentRepo.findByPostIdAndParentIsNullOrderByCreatedAtDesc(postId)
+            .stream().map(CommentResponse::from).toList();
+    }
+}
+</code></pre>
+
+<p><code>comment/CommentController.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.comment;
+
+import com.blogapi.comment.dto.*;
+import com.blogapi.common.ApiResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/posts/{postId}/comments")
+public class CommentController {
+    private final CommentService commentService;
+
+    public CommentController(CommentService commentService) {
+        this.commentService = commentService;
+    }
+
+    @GetMapping
+    public ApiResponse&lt;List&lt;CommentResponse&gt;&gt; list(@PathVariable Long postId) {
+        return ApiResponse.ok(commentService.getByPost(postId));
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse&lt;CommentResponse&gt; create(
+        @PathVariable Long postId,
+        @Valid @RequestBody CreateCommentRequest req
+    ) {
+        return ApiResponse.ok(commentService.create(postId, req));
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 4：Swagger / OpenAPI 文件</h2>
+
+<p><strong>build.gradle</strong> 加入依賴：</p>
+
+<pre><code class="language-java">dependencies {
+    // ... 原有的 ...
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+}
+</code></pre>
+
+<p>Reload Gradle，重啟應用，打開瀏覽器 → <strong><code>http://localhost:8080/swagger-ui.html</code></strong></p>
+
+<p>你會看到自動產生的 API 文件——所有 Controller、endpoint、request body schema、response schema 都已經在裡面。</p>
+
+<p>可選：在 <code>application.properties</code> 加入自訂資訊：</p>
+
+<pre><code class="language-properties">springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.info.title=Blog API
+springdoc.info.description=部落格後端 REST API — Spring Boot 學習專案
+springdoc.info.version=1.0.0
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 5：效能驗證 — 觀察 N+1 的消失</h2>
+
+<p>在 <code>application.properties</code> 中確認 SQL logging 已開啟：</p>
+
+<pre><code class="language-properties">spring.jpa.show-sql=true
+</code></pre>
+
+<p>訪問 <code>GET /api/posts/1/comments</code>，觀察 Console 的 SQL 數量：</p>
+<ul>
+  <li><strong>有 @EntityGraph</strong>：1 條 SQL（JOIN author + replies）</li>
+  <li><strong>若移除 @EntityGraph</strong>：1 + N 條 SQL（這就是 N+1）</li>
+</ul>
+
+<p>你可以試著把 @EntityGraph 註解掉，重啟，再訪問同一條 API——親眼看到 SQL 暴增。</p>
+
+<!-- ============================================================ -->
+<h2>Step 6：完整 API 端點總覽</h2>
+
+<pre><code class="language-text">=== Users ===
+POST   /api/users/register        註冊
+POST   /api/users/login           登入
+GET    /api/users/{id}            查詢
+
+=== Posts ===
+GET    /api/posts                 已發佈列表（分頁）
+GET    /api/posts/search?q=...    搜尋（分頁）
+GET    /api/posts/slug/{slug}     依 slug 查詢
+GET    /api/posts/{id}            依 ID 查詢
+POST   /api/posts                 建立
+PUT    /api/posts/{id}            更新
+PATCH  /api/posts/{id}/publish    發佈
+DELETE /api/posts/{id}            刪除
+
+=== Comments ===
+GET    /api/posts/{id}/comments   文章留言（巢狀）
+POST   /api/posts/{id}/comments   新增留言/回覆
+
+=== Docs ===
+GET    /swagger-ui.html           Swagger UI
+GET    /api-docs                  OpenAPI JSON
+</code></pre>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>Part 3 檢查清單 + 專案完工驗收</h2>
+
+<ul class="checklist">
+  <li>Comment Entity 含自參照 @ManyToOne(parent) + @OneToMany(replies)</li>
+  <li>CommentResponse 遞迴巢狀轉換正確</li>
+  <li>@EntityGraph 解決 N+1（Console 中 SQL 只有一條）</li>
+  <li>Swagger UI 可訪問，自動列出所有端點</li>
+  <li>全部 API 回應格式一致（ApiResponse wrapper）</li>
+  <li>錯誤處理統一（GlobalExceptionHandler）</li>
+  <li>密碼 BCrypt 加密、response 不含密碼</li>
+  <li>分頁含 totalElements / totalPages</li>
+  <li>H2 Console 可查看完整資料表結構</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>🏆 專案技術棧總覽</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.2rem 0.6rem">框架</td><td>Spring Boot 3.4 + Gradle</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">資料層</td><td>Spring Data JPA + Hibernate + H2</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">認證</td><td>Spring Security + BCrypt</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">驗證</td><td>Jakarta Bean Validation (@Valid)</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">文件</td><td>SpringDoc OpenAPI (Swagger)</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">測試</td><td>JUnit 5 + Mockito + MockMvc + @DataJpaTest</td></tr>
+    <tr><td style="padding:0.2rem 0.6rem">架構</td><td>Controller → Service → Repository 三層 + DTO</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>最後一堂課：<strong>🔥 T11：面試重點總複習</strong>——將 22 堂課學到的 DI/IOC、Bean 生命週期、Stream、執行緒安全、JPA 等所有面試重點濃縮為一課。</p>
+
+<!-- ============================================================ -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🎉 <strong>整合專案完工！</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">你現在有一個可以放上 GitHub 的完整 Spring Boot 後端專案。把 Swagger 截圖放進 README，在面試中展示會非常有說服力。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0021-P-capstone-part2.html" class="nav-prev">← P11 整合專案 Part 2</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0023-T-interview-review.html" class="nav-next">T11 面試總複習 →</a>
+</nav>
+
+</body>
+</html>

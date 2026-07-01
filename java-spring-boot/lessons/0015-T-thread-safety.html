@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T08 — 執行緒安全與 Spring 並行模型</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T08</span>
+  <span>/</span>
+  <span>~35 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試必考</span>
+</div>
+
+<h1>執行緒安全與 Spring 並行模型</h1>
+
+<p>Spring Boot 的 Service 預設是 singleton——<strong>整個應用只有一個實例，所有 HTTP 請求共享它</strong>。這表示每秒可能有幾十個執行緒同時呼叫同一個 Service 的方法。如果 Service 中有共享的可變狀態，就會發生 race condition。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「Spring Boot 如何處理多執行緒？」「為什麼 singleton Bean 需要是無狀態的？」「@Transactional 如何保證交易隔離？」「樂觀鎖和悲觀鎖的差異？何時用哪個？」「HashMap 和 ConcurrentHashMap 的差異？」
+</div>
+
+<!-- ============================================================ -->
+<h2>1. Spring 的執行緒模型</h2>
+
+<p>Spring Boot 內嵌的 Tomcat 使用<strong>執行緒池（thread pool）</strong>處理請求：</p>
+
+<pre><code class="language-text">請求 1 ──→ [Thread-1] ──→ TaskService.getTask(1)
+請求 2 ──→ [Thread-2] ──→ TaskService.getTask(2)    ← 同一個 singleton！
+請求 3 ──→ [Thread-3] ──→ TaskService.createTask(...) ← 同一個 singleton！
+請求 4 ──→ [Thread-1] ──→ TaskService.deleteTask(5)   ← Thread-1 處理完請求 1 後被重用
+</code></pre>
+
+<p>關鍵事實：</p>
+<ul>
+  <li>Tomcat 預設約 200 個執行緒，每個請求分配一個</li>
+  <li><strong>所有執行緒共享同一個 Service singleton</strong></li>
+  <li>如果 Service 沒有任何共享的<strong>可變欄位</strong>，就是執行緒安全的</li>
+</ul>
+
+<div class="callout tip">
+  <span class="callout-label">💡 FastAPI 對比</span>
+  FastAPI 使用 async/await + 事件迴圈（單執行緒），天然避免了多執行緒競爭問題（但仍有 async 的並行問題）。Spring Boot 是<strong>多執行緒模型</strong>——一個請求一個執行緒，所以執行緒安全是必須面對的課題。JavaScript/TypeScript 的單執行緒經驗在這裡不適用。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 惡魔在狀態裡：Race Condition 實例</h2>
+
+<p>以下是一個<strong>不安全的</strong> Service——這是面試中常考的負面案例：</p>
+
+<pre><code class="language-java">@Service
+public class CounterService {
+    private int count = 0;    // ⚠️ 共享的可變狀態！
+
+    public int increment() {
+        return ++count;       // ⚠️ ++ 不是原子操作！（讀-改-寫 三步驟）
+    }
+}
+</code></pre>
+
+<p>兩個執行緒同時呼叫 <code>increment()</code>：</p>
+
+<pre><code class="language-text">Thread-1 讀取 count = 0
+Thread-2 讀取 count = 0    ← 在 Thread-1 寫回之前讀到舊值
+Thread-1 寫回 count = 1
+Thread-2 寫回 count = 1    ← 覆蓋了 Thread-1 的結果！
+
+預期：2
+實際：1（遺失了一次遞增）
+</code></pre>
+
+<h3>解法有三層，選對很重要：</h3>
+
+<pre><code class="language-java">// 解法 1：用原子類別（單一變數的遞增遞減 → AtomicInteger）
+@Service
+public class CounterService {
+    private final AtomicInteger count = new AtomicInteger(0);
+    public int increment() { return count.incrementAndGet(); }
+}
+
+// 解法 2：用 synchronized（多個變數需要原子操作）
+@Service
+public class TransferService {
+    public synchronized void transfer(Account a, Account b, int amount) { ... }
+}
+
+// 解法 3：消除狀態（最推薦）——把狀態移到資料庫
+@Service
+public class CounterService {
+    private final CounterRepository repo;
+    // 沒有實例欄位！每次請求狀態都在資料庫中
+    public int increment() { ... }  // UPDATE counters SET value = value + 1
+}
+</code></pre>
+
+<div class="callout warn">
+  <span class="callout-label">🔥 面試黃金法則</span>
+  <strong>stateless Service = 執行緒安全的 Service</strong>。Spring 的最佳實踐是讓 Service 和 Controller <strong>不持有可變的實例欄位</strong>，所有狀態都存在資料庫或外部快取中。如果有必須持有的共享狀態，用 ConcurrentHashMap、AtomicInteger 等並行安全容器，或用 synchronized / Lock 保護。
+</div>
+
+<!-- ============================================================ -->
+<h2>3. 常用並行安全容器</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>不安全（❌ Singleton 中禁用）</th><th>安全（✅ 可以用）</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>HashMap</code></td><td><code>ConcurrentHashMap</code></td></tr>
+    <tr><td><code>ArrayList</code></td><td><code>CopyOnWriteArrayList</code>（讀多寫少）<br>或用 <code>Collections.synchronizedList()</code></td></tr>
+    <tr><td><code>HashSet</code></td><td><code>ConcurrentHashMap.newKeySet()</code></td></tr>
+    <tr><td><code>int count</code></td><td><code>AtomicInteger</code></td></tr>
+    <tr><td><code>StringBuilder</code></td><td><code>StringBuffer</code>（或直接用 <code>String</code> 不可變）</td></tr>
+    <tr><td><code>SimpleDateFormat</code></td><td><code>DateTimeFormatter</code>（Java 8+ 不可變）</td></tr>
+  </tbody>
+</table>
+
+<p>你在 P05 的 InMemoryTaskRepository 中用了 <code>ConcurrentHashMap</code>——這就是實務上正確的做法。</p>
+
+<!-- ============================================================ -->
+<h2>4. @Transactional：資料庫層的並行控制</h2>
+
+<p>大多數 Spring Boot 的並行問題不是發生在 Java 程式碼中，而是<strong>資料庫層級</strong>——兩個請求同時修改同一筆資料。</p>
+
+<h3>交易隔離級別（Isolation Level）</h3>
+
+<pre><code class="language-java">@Transactional(isolation = Isolation.READ_COMMITTED)  // Spring 預設
+public void updateTask(Long id, String title) {
+    // ...
+}
+</code></pre>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>隔離級別</th><th>Dirty Read</th><th>Non-repeatable</th><th>Phantom</th><th>效能</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>READ_UNCOMMITTED</td><td>✅ 可能</td><td>✅</td><td>✅</td><td>最快</td></tr>
+    <tr><td>READ_COMMITTED</td><td>❌</td><td>✅</td><td>✅</td><td>↑</td></tr>
+    <tr><td>REPEATABLE_READ</td><td>❌</td><td>❌</td><td>✅</td><td>↑</td></tr>
+    <tr><td>SERIALIZABLE</td><td>❌</td><td>❌</td><td>❌</td><td>最慢</td></tr>
+  </tbody>
+</table>
+
+<p><strong>實務建議</strong>：READ_COMMITTED 是大多數情況的最佳平衡。面試中要能說出每個級別防止什麼問題。</p>
+
+<!-- ============================================================ -->
+<h2>5. 悲觀鎖 vs 樂觀鎖</h2>
+
+<p><strong>這題後端面試中出現率極高。</strong></p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>🔒 悲觀鎖（Pessimistic）</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">「我假設一定會有人跟我搶，所以先鎖住。」</p>
+    <p style="font-size:0.85rem;color:var(--muted)">用 SELECT ... FOR UPDATE 鎖定該列，其他交易必須等待。適合衝突頻繁的場景（例如扣庫存）。</p>
+<pre style="font-size:0.78rem"><code class="language-java">@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT p FROM Product p WHERE p.id=:id")
+Optional&lt;Product&gt; findByIdWithLock(Long id);</code></pre>
+  </div>
+  <div class="card">
+    <h3>📝 樂觀鎖（Optimistic）</h3>
+    <p style="margin-top:0.3rem;font-size:0.9rem">「我假設不太會有人跟我搶，如果真的衝突了再處理。」</p>
+    <p style="font-size:0.85rem;color:var(--muted)">用 version 欄位檢查：更新時比對 version，如果不符表示被別人改過，拋出 OptimisticLockException。適合衝突少的場景。</p>
+<pre style="font-size:0.78rem"><code class="language-java">@Entity
+public class Product {
+    @Version  // ← JPA 自動管理版本
+    private Long version;
+}</code></pre>
+  </div>
+</div>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>維度</th><th>悲觀鎖</th><th>樂觀鎖</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>機制</td><td>資料庫層級鎖定</td><td>應用層版本號比對</td></tr>
+    <tr><td>適用場景</td><td>高衝突（搶票、限時秒殺）</td><td>低衝突（一般 CRUD）</td></tr>
+    <tr><td>效能衝擊</td><td>等待/阻塞</td><td>重試（無等待）</td></tr>
+    <tr><td>Deadlock 風險</td><td>有</td><td>無</td></tr>
+    <tr><td>Spring 實現</td><td><code>@Lock(PESSIMISTIC_WRITE)</code></td><td><code>@Version</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試標準答案</span>
+  <strong>Q: 悲觀鎖和樂觀鎖的差異？</strong><br>
+  A: 悲觀鎖假設衝突會發生，在讀取時就鎖定資料列（SELECT FOR UPDATE），其他交易必須等待。適合高衝突場景（如秒殺庫存扣減），但有 deadlock 風險。樂觀鎖假設衝突不常發生，只在更新時比對版本號——如果版本號變了表示被別人改過，拋出異常由應用層處理（通常是重試）。適合一般 CRUD，無鎖等待、無 deadlock。Spring Data JPA 用 <code>@Lock</code> 和 <code>@Version</code> 分別實現兩者。
+</div>
+
+<!-- ============================================================ -->
+<h2>6. Spring 內建的並行陷阱</h2>
+
+<h3>陷阱 1：@Transactional 的自呼叫失效</h3>
+
+<pre><code class="language-java">@Service
+public class OrderService {
+
+    // ❌ 從同一個 class 的其他方法呼叫 @Transactional 方法不會觸發交易！
+    public void processOrder() {
+        this.saveOrder();  // ← 不是透過代理呼叫，@Transactional 不生效
+    }
+
+    @Transactional
+    public void saveOrder() { ... }
+}
+</code></pre>
+
+<p>原因：@Transactional 是透過 AOP 代理實現的（T06 學過），類別內部呼叫繞過了代理。解法：把 @Transactional 方法抽到另一個 Service。</p>
+
+<h3>陷阱 2：Spring Bean 的 @Scope("prototype") 不是執行緒安全的保證</h3>
+
+<p>Prototype 只是讓你每次取得新實例，不保證內部狀態的執行緒安全。如果你在同一個執行緒中多次操作 prototype Bean 的內部狀態，仍然需要自行處理並行。</p>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: 為什麼 Spring Boot 的 Service 預設 singleton 需要考慮執行緒安全？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">因為 Tomcat 使用多執行緒處理請求，所有執行緒共享同一個 singleton Service 實例。如果 Service 有可變的實例欄位（例如 <code>private int count</code>），多個執行緒同時讀寫會造成 race condition。解決方案：① 讓 Service 無狀態（最佳）② 使用並行安全容器（ConcurrentHashMap、AtomicInteger）③ 用 synchronized 保護關鍵區段。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: 悲觀鎖和樂觀鎖的核心差異？各適用什麼場景？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">悲觀鎖在<strong>讀取時</strong>就鎖定資料，其他交易等待（SELECT FOR UPDATE）。樂觀鎖只在<strong>更新時</strong>比對版本號，衝突時拋異常由應用層重試。悲觀鎖適合高衝突場景（秒殺），但有等待和 deadlock 風險。樂觀鎖適合低衝突場景（一般 CRUD），無鎖等待。Spring 用 <code>@Lock(PESSIMISTIC_WRITE)</code> 和 <code>@Version</code>。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 為什麼 @Transactional 方法從同一個 class 內部呼叫會失效？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">@Transactional 透過 AOP 代理實現——Spring 為你的 Service 建立一個 proxy，外部呼叫透過 proxy 才會觸發交易攔截器。但 class 內部用 <code>this.method()</code> 呼叫時繞過了 proxy，直接呼叫原始物件的方法，因此攔截器不觸發。解法：將 @Transactional 方法移到另一個 Service，或注入自己的 proxy（不推薦）。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>Stateless = Thread-safe</strong>：Service 不持有可變欄位，是最根本的執行緒安全策略</li>
+    <li><strong>Spring 多執行緒，FastAPI 單執行緒</strong>——這是兩個框架最根本的並行模型差異</li>
+    <li><strong>HashMap → ConcurrentHashMap</strong>：Singleton 中的集合必須用並行安全版本</li>
+    <li><strong>悲觀鎖 = 先鎖再讀</strong>（SELECT FOR UPDATE）；<strong>樂觀鎖 = 更新時比對版本</strong>（@Version）</li>
+    <li><strong>@Transactional 靠 AOP proxy</strong>——內部呼叫會繞過，必須跨 class 呼叫</li>
+    <li><strong>READ_COMMITTED</strong> 是大多數場景的最佳隔離級別</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>P08：並行問題模擬實作</strong>——你會用 JMeter 或平行請求模擬 race condition，親眼看到不加鎖的後果，並實作 @Version 樂觀鎖和 @Lock 悲觀鎖的解決方案。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <strong>主要讀物：</strong><a href="https://docs.spring.io/spring-framework/reference/data-access/transaction.html" target="_blank" rel="noopener">Spring 官方：交易管理</a></li>
+  <li>📖 <a href="https://www.baeldung.com/java-concurrency" target="_blank" rel="noopener">Baeldung: Java Concurrency 完整指南</a></li>
+  <li>📖 <a href="https://www.baeldung.com/jpa-optimistic-locking" target="_blank" rel="noopener">Baeldung: JPA 樂觀鎖實作</a></li>
+  <li>📖 <a href="https://www.baeldung.com/jpa-pessimistic-locking" target="_blank" rel="noopener">Baeldung: JPA 悲觀鎖實作</a></li>
+</ul>
+
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>交易隔離級別搞不清楚？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">正常，這需要資料庫基礎。大部分 Spring Boot 開發者日常只用 READ_COMMITTED。面試重點是能說出四種級別和它們防止的問題——把上面的表格記下來就夠了。要我補充資料庫基礎也可以直接說。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0014-P-jpa-entity-crud.html" class="nav-prev">← P07 JPA Entity CRUD</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0016-P-concurrency-lab.html" class="nav-next">P08 並行問題模擬 →</a>
+</nav>
+
+</body>
+</html>

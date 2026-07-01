@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P06 — Bean 生命週期觀察實驗</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-p">實作課</span>
+  <span>P06</span>
+  <span>/</span>
+  <span>~40 分鐘</span>
+  <span>/</span>
+  <span>🖥️ 需要電腦</span>
+</div>
+
+<h1>Bean 生命週期觀察實驗</h1>
+
+<p>這堂課你會用 log 和斷點親眼觀察 <a href="0011-T-bean-lifecycle.html">T06</a> 學到的生命週期階段。在 P05 的 demo 專案中加入診斷程式碼，實際看到 Bean 何時被建立、初始化、注入、和銷毀。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  用實驗驗證生命週期順序（建構子 → @PostConstruct → 就緒 → @PreDestroy）、觀察 singleton vs prototype 的行為差異、重現「singleton 注入 prototype」的陷阱。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 1：建立生命週期觀察用的 Bean</h2>
+
+<p>在 demo 專案中建立 <code>lifecycle/LifecycleDemo.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.lifecycle;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.stereotype.Component;
+
+@Component
+public class LifecycleDemo {
+
+    public LifecycleDemo() {
+        System.out.println("🏗️  [1] LifecycleDemo 建構子執行");
+    }
+
+    @PostConstruct
+    public void init() {
+        System.out.println("🔧 [3] LifecycleDemo @PostConstruct 執行");
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("🧹 LifecycleDemo @PreDestroy 執行");
+    }
+
+    // 注意：這個方法由 TaskService 呼叫，我們用它來追蹤注入順序
+    public void selfCheck() {
+        System.out.println("✅ LifecycleDemo 已經就緒");
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 2：加入 BeanPostProcessor 觀察</h2>
+
+<p>建立 <code>lifecycle/LifecycleLogger.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.lifecycle;
+
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.stereotype.Component;
+
+@Component
+public class LifecycleLogger implements BeanPostProcessor {
+
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) {
+        if (beanName.contains("lifecycle") || beanName.contains("Lifecycle")) {
+            System.out.println("  ↳ [2] BeanPostProcessor: BEFORE init — " + beanName);
+        }
+        return bean;
+    }
+
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) {
+        if (beanName.contains("lifecycle") || beanName.contains("Lifecycle")) {
+            System.out.println("  ↳ [4] BeanPostProcessor: AFTER init — " + beanName);
+        }
+        return bean;
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 3：把 LifecycleDemo 注入到 TaskService</h2>
+
+<p>修改 <code>TaskServiceImpl.java</code>，注入 LifecycleDemo 並在 Service 建構子中紀錄順序：</p>
+
+<pre><code class="language-java">// 在 TaskServiceImpl 中新增：
+private final LifecycleDemo lifecycleDemo;
+
+public TaskServiceImpl(TaskRepository taskRepository, LifecycleDemo lifecycleDemo) {
+    this.taskRepository = taskRepository;
+    this.lifecycleDemo = lifecycleDemo;
+    System.out.println("  🏗️ TaskServiceImpl 建構子執行（LifecycleDemo 已被注入）");
+    lifecycleDemo.selfCheck();  // 確認依賴已就緒
+}
+</code></pre>
+
+<p>啟動應用，觀察 Console 輸出順序：</p>
+
+<pre><code class="language-text">🏗️  [1] LifecycleDemo 建構子執行
+  ↳ [2] BeanPostProcessor: BEFORE init — lifecycleDemo
+🔧 [3] LifecycleDemo @PostConstruct 執行
+  ↳ [4] BeanPostProcessor: AFTER init — lifecycleDemo
+  🏗️ TaskServiceImpl 建構子執行（LifecycleDemo 已被注入）
+✅ LifecycleDemo 已經就緒
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔍 觀察重點</span>
+  BeanPostProcessor 的 before/after 分別在 @PostConstruct <strong>前後</strong>執行。TaskServiceImpl 的建構子在 @PostConstruct <strong>之後</strong>才被呼叫——因為 Spring 必須先建好 LifecycleDemo 才能注入它。這證明了 T06 的順序：建構子 → before → @PostConstruct → after → 才能被注入到其他 Bean。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 4：實驗 Singleton vs Prototype Scope</h2>
+
+<p>建立 <code>lifecycle/ScopeDemo.java</code> 來對比：</p>
+
+<pre><code class="language-java">package com.example.demo.lifecycle;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
+@Component
+@Scope("singleton")  // 預設值，明確寫出來做對比
+public class ScopeDemo {
+    private static int singletonCount = 0;
+    private final int instanceId;
+
+    public ScopeDemo() {
+        instanceId = ++singletonCount;
+        System.out.println("🟢 [Singleton] ScopeDemo #" + instanceId + " 建構");
+    }
+
+    @PostConstruct
+    public void init() {
+        System.out.println("🟢 [Singleton] ScopeDemo #" + instanceId + " @PostConstruct");
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("🟢 [Singleton] ScopeDemo #" + instanceId + " @PreDestroy");
+    }
+}
+</code></pre>
+
+<pre><code class="language-java">package com.example.demo.lifecycle;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
+@Component
+@Scope("prototype")
+public class PrototypeDemo {
+    private static int protoCount = 0;
+    private final int instanceId;
+
+    public PrototypeDemo() {
+        instanceId = ++protoCount;
+        System.out.println("🟡 [Prototype] PrototypeDemo #" + instanceId + " 建構");
+    }
+
+    @PostConstruct
+    public void init() {
+        System.out.println("🟡 [Prototype] PrototypeDemo #" + instanceId + " @PostConstruct");
+    }
+
+    // ⚠️ prototype Bean 的 @PreDestroy 不會被 Spring 呼叫！
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("🟡 [Prototype] PrototypeDemo #" + instanceId + " @PreDestroy（不會出現！）");
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>Step 5：建立 Controller 來觸發 prototype</h2>
+
+<p>singleton Bean 在啟動時就建立一次。prototype Bean 需要主動觸發。建立 <code>controller/ScopeTestController.java</code>：</p>
+
+<pre><code class="language-java">package com.example.demo.controller;
+
+import com.example.demo.lifecycle.PrototypeDemo;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/scope")
+public class ScopeTestController {
+    private final PrototypeDemo singletonPrototype;   // ← 陷阱！
+    private final ObjectProvider&lt;PrototypeDemo&gt; provider;  // ← 正確做法
+
+    public ScopeTestController(
+        PrototypeDemo singletonPrototype,
+        ObjectProvider&lt;PrototypeDemo&gt; provider
+    ) {
+        this.singletonPrototype = singletonPrototype;
+        this.provider = provider;
+    }
+
+    @GetMapping("/trap")
+    public String trapTest() {
+        // 連續呼叫兩次，會是同一個 instance 還是兩個？
+        return "singleton 中注入的 prototype: " + singletonPrototype.hashCode();
+    }
+
+    @GetMapping("/correct")
+    public String correctTest() {
+        // 用 ObjectProvider 每次都取新的
+        var p1 = provider.getObject();
+        var p2 = provider.getObject();
+        return "p1: " + p1.hashCode() + " | p2: " + p2.hashCode()
+            + " | 相同? " + (p1 == p2);
+    }
+}
+</code></pre>
+
+<p>啟動後，觀察 Console：</p>
+<ul>
+  <li>singleton ScopeDemo 在<strong>啟動時</strong>就被建立（一行）</li>
+  <li>prototype PrototypeDemo 因為被注入到 Controller（singleton），所以<strong>啟動時</strong>也被建立一行——但只有一行！</li>
+</ul>
+
+<p>然後用瀏覽器連續訪問兩次 <code>/api/scope/trap</code>，hashCode 相同——證明 prototype 只被建立了一次。</p>
+
+<p>再訪問 <code>/api/scope/correct</code>，兩個 hashCode 不同——ObjectProvider 每次 getObject() 都建立新實例。</p>
+
+<div class="callout warn">
+  <span class="callout-label">🔥 親眼見證：singleton 注入 prototype 陷阱</span>
+  你在 ScopeTestController 中直接注入的 <code>PrototypeDemo</code>——因為 Controller 是 singleton，只在啟動時建立一次，所以 <code>PrototypeDemo</code> 也只被注入<strong>一次</strong>。之後每次請求用的都是同一個 instance。這就是 T06 說的面試陷阱題。<br><br>
+  解決方案 <code>ObjectProvider&lt;T&gt;</code> 每次呼叫 <code>getObject()</code> 都會從容器取得新的 prototype 實例。
+</div>
+
+<!-- ============================================================ -->
+<h2>Step 6：觀察 @PreDestroy</h2>
+
+<p>優雅關閉 Spring Boot 應用（按 IntelliJ 的紅色 ■ 停止按鈕，或 Ctrl+F2）。觀察 Console 最後幾行輸出：</p>
+
+<pre><code class="language-text">🧹 LifecycleDemo @PreDestroy 執行
+🟢 [Singleton] ScopeDemo #1 @PreDestroy
+（PrototypeDemo 的 @PreDestroy 不會出現！）
+</code></pre>
+
+<p>驗證：<strong>prototype Bean 的 @PreDestroy 不會被呼叫</strong>。</p>
+
+<!-- ============================================================ -->
+<!-- CHECKLIST -->
+<h2>課後檢查清單</h2>
+
+<ul class="checklist">
+  <li>啟動 log 中看到建構子 → BeanPostProcessor:before → @PostConstruct → BeanPostProcessor:after 的正確順序</li>
+  <li>singleton Bean 只在啟動時建立一次</li>
+  <li>prototype Bean 直接注入到 singleton 時也只建立一次（陷阱確認）</li>
+  <li>ObjectProvider.getObject() 每次回傳新的 prototype 實例</li>
+  <li>優雅關閉時 singleton 的 @PreDestroy 被觸發</li>
+  <li>prototype 的 @PreDestroy 不會被觸發</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 實驗結論</h3>
+  <table style="font-size:0.85rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">生命週期順序</td><td>建構子 → BeanPostProcessor:before → @PostConstruct → BeanPostProcessor:after → 就緒</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Singleton 特徵</td><td>啟動時建立一次、@PreDestroy 正常觸發</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">Prototype 特徵</td><td>每次 getObject() 建立新實例、@PreDestroy 不觸發</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">注入陷阱解法</td><td>ObjectProvider&lt;T&gt; 或 @Lookup 方法注入</td></tr>
+  </table>
+</div>
+
+<h2>下一步</h2>
+<p>下一堂是 <strong>T07：Spring Data JPA 概念</strong>——進入 Phase 3，開始整合真正的資料庫。你會學到 ORM、Entity、Repository 介面如何自動產生 SQL。</p>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK -->
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>Console 輸出和預期不同？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">Bean 的建立順序可能因為依賴關係而略有不同，這沒關係。重點是單一 Bean 內部的順序（建構子 → @PostConstruct）和 singleton vs prototype 的行為差異。有疑問直接貼 log 給我。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0011-T-bean-lifecycle.html" class="nav-prev">← T06 Bean 生命週期</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0013-T-jpa-concepts.html" class="nav-next">T07 JPA 概念 →</a>
+</nav>
+
+</body>
+</html>

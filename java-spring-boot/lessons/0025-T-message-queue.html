@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>補充課 — Message Queue：非同步訊息與 Spring Boot 整合</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>補充課</span>
+  <span>/</span>
+  <span>~30 分鐘</span>
+  <span>/</span>
+  <span>🔥 面試常見</span>
+</div>
+
+<h1>Message Queue：非同步訊息與 Spring Boot 整合</h1>
+
+<p>目前你的 blog-api 專案中，所有操作都是<strong>同步的</strong>——使用者註冊後立即回傳、文章建立後馬上寫入資料庫。但真實世界的後端有很多事<strong>不需要立即完成</strong>：發送 Email、產生報表、更新搜尋索引。Message Queue（MQ）就是用來處理這類場景的核心工具。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 學完這堂課你要能回答</span>
+  「什麼是 Message Queue？解決什麼問題？」「RabbitMQ 和 Kafka 的差異？」「Spring Boot 如何整合 RabbitMQ？」「何時該用同步 REST、何時該用非同步 MQ？」
+</div>
+
+<!-- ============================================================ -->
+<h2>1. 為什麼需要 Message Queue？</h2>
+
+<h3>沒有 MQ 的世界（你的 blog-api 現狀）</h3>
+
+<pre><code class="language-java">// 使用者註冊後的同步處理
+@PostMapping("/register")
+public ApiResponse&lt;UserResponse&gt; register(@Valid @RequestBody RegisterRequest req) {
+    var user = userService.register(req);   // 1. 寫入資料庫
+    emailService.sendWelcome(user);          // 2. 發送歡迎信（等 2 秒）
+    searchService.indexUser(user);           // 3. 更新搜尋索引（等 1 秒）
+    analyticsService.track("signup");        // 4. 追蹤事件（等 0.5 秒）
+    return ApiResponse.ok(user);             // 5. 3.5 秒後才回傳給使用者！
+}
+</code></pre>
+
+<h3>有 MQ 的世界</h3>
+
+<pre><code class="language-java">@PostMapping("/register")
+public ApiResponse&lt;UserResponse&gt; register(@Valid @RequestBody RegisterRequest req) {
+    var user = userService.register(req);   // 1. 寫入資料庫
+    eventPublisher.publish(new UserRegisteredEvent(user));  // 2. 發送訊息到 Queue
+    return ApiResponse.ok(user);             // 3. 立即回傳（< 100ms）
+}
+// Email、搜尋、分析各自在自己的 consumer 中非同步處理
+</code></pre>
+
+<div class="card">
+  <h3 style="font-size:1rem">MQ 解決的核心問題</h3>
+  <table style="font-size:0.9rem">
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">非同步處理</td><td>耗時操作不阻塞主流程，使用者立即得到回應</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">服務解耦</td><td>Producer 不知道 Consumer 的存在——新增 Consumer 不改 Producer</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">流量削峰</td><td>瞬間大量請求先進 Queue 排隊，Consumer 依自身速度消化</td></tr>
+    <tr><td style="padding:0.3rem 0.6rem;color:var(--accent)">可靠性</td><td>Consumer 掛了？訊息留在 Queue 中，重啟後繼續處理</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 核心概念：Producer、Queue、Consumer</h2>
+
+<pre><code class="language-text">Producer                    Broker                     Consumer
+(你的 App)                 (RabbitMQ)                 (背景服務)
+
+UserService ──→ [Queue: email] ──→ EmailConsumer（發送歡迎信）
+  註冊成功  ──→ [Queue: search] ──→ SearchConsumer（更新索引）
+            ──→ [Queue: analytics] ──→ AnalyticsConsumer（追蹤事件）</code></pre>
+
+<table class="compare-table">
+  <thead><tr><th>術語</th><th>解釋</th><th>對應你的程式碼</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Producer</strong></td><td>發送訊息的一方</td><td>UserService 或 PostService</td></tr>
+    <tr><td><strong>Queue</strong></td><td>存放訊息的地方（FIFO）</td><td>email-queue、search-queue</td></tr>
+    <tr><td><strong>Consumer</strong></td><td>接收並處理訊息的一方</td><td>EmailConsumer class</td></tr>
+    <tr><td><strong>Exchange</strong></td><td>RabbitMQ 的路由中心</td><td>決定訊息該送到哪個 Queue</td></tr>
+    <tr><td><strong>Binding</strong></td><td>Exchange 和 Queue 的連線規則</td><td>「所有 user.registered 送到 email-queue」</td></tr>
+    <tr><td><strong>Broker</strong></td><td>MQ 伺服器本身</td><td>RabbitMQ Server</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>3. RabbitMQ vs Kafka：面試必問題</h2>
+
+<table class="compare-table">
+  <thead><tr><th></th><th>RabbitMQ</th><th>Apache Kafka</th></tr></thead>
+  <tbody>
+    <tr><td><strong>核心模型</strong></td><td>訊息 Queue（FIFO）</td><td>分散式日誌（Log）</td></tr>
+    <tr><td><strong>訊息刪除</strong></td><td>Consumer 確認後刪除</td><td>保留一段時間（如 7 天），可重複讀取</td></tr>
+    <tr><td><strong>吞吐量</strong></td><td>數萬/秒</td><td><strong>百萬/秒</strong></td></tr>
+    <tr><td><strong>Routing</strong></td><td>Exchange + Routing Key（靈活）</td><td>Topic + Partition（簡單）</td></tr>
+    <tr><td><strong>適用場景</strong></td><td>指令型（發 Email、通知）</td><td>事件型（點擊流、日誌、跨服務通訊）</td></tr>
+    <tr><td><strong>延遲</strong></td><td>毫秒級</td><td>毫秒～秒級</td></tr>
+    <tr><td><strong>Spring 支援</strong></td><td>spring-boot-starter-amqp</td><td>spring-kafka</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="callout-label">🔥 面試一句話總結</span>
+  RabbitMQ 是<b>聰明 broker、笨 consumer</b>（broker 負責路由），適合業務指令的非同步處理。Kafka 是<b>笨 broker、聰明 consumer</b>（consumer 自己追蹤進度），適合大規模事件串流和跨服務資料同步。中小型專案用 RabbitMQ，微服務大資料用 Kafka。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. Spring Boot 整合 RabbitMQ</h2>
+
+<h3>4.1 依賴與設定</h3>
+
+<p><strong>build.gradle</strong>：</p>
+
+<pre><code class="language-java">dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+}
+</code></pre>
+
+<p><strong>application.properties</strong>（本機 Docker RabbitMQ）：</p>
+
+<pre><code class="language-properties">spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+</code></pre>
+
+<h3>4.2 宣告 Queue、Exchange、Binding</h3>
+
+<p><code>config/RabbitMQConfig.java</code>：</p>
+
+<pre><code class="language-java">package com.blogapi.config;
+
+import org.springframework.amqp.core.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitMQConfig {
+
+    // 定義 Queue
+    @Bean
+    public Queue emailQueue() {
+        return QueueBuilder.durable("email-queue").build();
+        // durable：RabbitMQ 重啟後 Queue 還在
+    }
+
+    // 定義 Exchange（Topic 類型最常用）
+    @Bean
+    public TopicExchange blogExchange() {
+        return new TopicExchange("blog-exchange");
+    }
+
+    // 綁定：routing key 符合 "user.registered" 的訊息送到 email-queue
+    @Bean
+    public Binding emailBinding(Queue emailQueue, TopicExchange blogExchange) {
+        return BindingBuilder.bind(emailQueue)
+            .to(blogExchange)
+            .with("user.registered");
+    }
+}
+</code></pre>
+
+<h3>4.3 Producer：發送訊息</h3>
+
+<pre><code class="language-java">package com.blogapi.event;
+
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Component;
+
+@Component
+public class EventPublisher {
+    private final RabbitTemplate rabbitTemplate;
+
+    public EventPublisher(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    public void publishUserRegistered(Long userId, String email, String displayName) {
+        var event = new UserRegisteredEvent(userId, email, displayName);
+        rabbitTemplate.convertAndSend(
+            "blog-exchange",      // exchange
+            "user.registered",     // routing key
+            event                  // 訊息本體（自動 JSON 序列化）
+        );
+    }
+}
+
+// 訊息 DTO（用 record！）
+public record UserRegisteredEvent(
+    Long userId, String email, String displayName
+) { }
+</code></pre>
+
+<h3>4.4 Consumer：接收並處理訊息</h3>
+
+<pre><code class="language-java">package com.blogapi.event;
+
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class EmailConsumer {
+
+    @RabbitListener(queues = "email-queue")
+    public void handleUserRegistered(UserRegisteredEvent event) {
+        System.out.println("📧 發送歡迎信給: " + event.email());
+        // 實際發送 Email 的邏輯
+        // 如果丟出例外，RabbitMQ 會自動重試（預設 3 次）
+    }
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 @RabbitListener 背後是 Observer 模式</span>
+  還記得補充課學的 Observer 模式嗎？@RabbitListener 就是 Observer 在 MQ 世界的實現——Producer 發佈事件到 Queue，Consumer 透過 @RabbitListener 自動接收。和 Spring Events（@EventListener）的差異：MQ 是<b>跨服務、跨 JVM</b> 的；Spring Events 只在同一個 JVM 內。
+</div>
+
+<!-- ============================================================ -->
+<h2>5. 何時用同步 REST vs 非同步 MQ？</h2>
+
+<table class="compare-table">
+  <thead><tr><th>場景</th><th>用什麼</th><th>原因</th></tr></thead>
+  <tbody>
+    <tr><td>查詢使用者資料</td><td>同步 REST</td><td>使用者需要立即看到結果</td></tr>
+    <tr><td>建立文章</td><td>同步 REST</td><td>需要確認寫入成功</td></tr>
+    <tr><td>發送歡迎信</td><td>MQ</td><td>不需立即完成，失敗可重試</td></tr>
+    <tr><td>產生月報表</td><td>MQ</td><td>耗時長（幾分鐘），不該阻塞 HTTP 請求</td></tr>
+    <tr><td>更新搜尋索引</td><td>MQ</td><td>次要操作，不影響使用者體驗</td></tr>
+    <tr><td>庫存扣減</td><td>同步 REST</td><td>必須立即確認（防止超賣）</td></tr>
+    <tr><td>跨服務通知</td><td>MQ</td><td>解耦；發送方不該知道誰在接收</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ 不要用 MQ 替代所有同步呼叫</span>
+  MQ 引入了<b>最終一致性</b>——訊息可能延遲、可能重複、可能失敗。如果你的場景需要立即確認結果（如扣庫存、確認付款），同步 REST + 資料庫交易才是正確選擇。MQ 適合「做了很好，但不做也不會世界末日」的操作。
+</div>
+
+<!-- ============================================================ -->
+<h2>6. MQ 的常見陷阱與面試加分題</h2>
+
+<div class="card">
+  <h3 style="font-size:1rem">陷阱 1：重複消費</h3>
+  <p style="font-size:0.9rem">Consumer 處理成功但 ACK 遺失 → MQ 重送 → 同一訊息被處理兩次。<br>
+  <strong>解法</strong>：Consumer 實作冪等性（idempotent）——用 messageId 或業務 ID 檢查是否已處理過。</p>
+</div>
+
+<div class="card">
+  <h3 style="font-size:1rem">陷阱 2：訊息遺失</h3>
+  <p style="font-size:0.9rem">Producer 發送後 Broker 還沒寫入磁碟就掛了。<br>
+  <strong>解法</strong>：Publisher Confirm（RabbitMQ 確認寫入後才回 ACK）+ Queue 宣告為 durable + 訊息標記 persistent。</p>
+</div>
+
+<div class="card">
+  <h3 style="font-size:1rem">陷阱 3：死信 Queue（DLQ）</h3>
+  <p style="font-size:0.9rem">訊息重試 N 次後仍然失敗 → 不能無限重試。<br>
+  <strong>解法</strong>：設定 x-dead-letter-exchange，失敗 N 次的訊息自動轉到 DLQ，由人工或排程處理。</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: 使用者註冊後要發送 Email、更新搜尋索引、記錄分析事件——這些用同步 REST 還是 MQ？為什麼？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">用 <strong>MQ</strong>。這三個操作都不需要立即回傳結果給使用者，失敗可以重試，不影響核心業務（註冊本身）。用 MQ 可以：① 讓註冊 API 快速回傳 ② 三者獨立處理，互不影響 ③ 某個 Consumer 掛了不影響其他 Consumer 和主流程。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: RabbitMQ 和 Kafka 的核心差異？各適合什麼場景？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">RabbitMQ 是<b>訊息 Queue 模型</b>：訊息處理完即刪除、broker 負責路由、毫秒級延遲。適合業務指令（發 Email、通知）。Kafka 是<b>分散式日誌模型</b>：訊息保留一段時間、consumer 自行追蹤進度、百萬級吞吐。適合大規模事件串流（點擊流、跨服務資料同步）。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: 什麼是死信 Queue（DLQ）？解決什麼問題？</p>
+    <details style="margin-top:0.6rem"><summary style="cursor:pointer;color:var(--accent)">答案</summary>
+      <p style="margin-top:0.5rem">DLQ 是一個特殊的 Queue，用來接收「正常處理多次後仍然失敗」的訊息。解決的問題：訊息不能無限重試（會阻塞後續訊息），也不能直接丟棄（會遺失資料）。DLQ 將失敗訊息隔離，由人工或排程任務單獨處理，確保正常訊息能繼續流動。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+  <h3>📌 關鍵 Takeaway</h3>
+  <ol>
+    <li><strong>MQ 解決非同步、解耦、削峰、可靠性</strong>——讓慢操作不阻塞快操作</li>
+    <li><strong>Producer → Exchange → Queue → Consumer</strong>：RabbitMQ 的核心資料流</li>
+    <li><strong>RabbitMQ 適合業務指令，Kafka 適合事件串流</strong></li>
+    <li><strong>Spring 整合極簡</strong>：RabbitTemplate 發送、@RabbitListener 接收</li>
+    <li><strong>MQ 不是銀彈</strong>：需要立即回應的場景用同步 REST + 交易</li>
+    <li><strong>必須處理重複消費和訊息遺失</strong>：idempotent + publisher confirm + DLQ</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <a href="https://spring.io/guides/gs/messaging-rabbitmq/" target="_blank" rel="noopener">Spring 官方：Messaging with RabbitMQ</a></li>
+  <li>📖 <a href="https://www.rabbitmq.com/tutorials/tutorial-one-spring-amqp" target="_blank" rel="noopener">RabbitMQ 官方：Spring AMQP 教學</a></li>
+  <li>📖 <a href="https://www.baeldung.com/rabbitmq" target="_blank" rel="noopener">Baeldung: RabbitMQ 完整指南</a></li>
+</ul>
+
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>想在 blog-api 中實際加入 RabbitMQ？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">我可以帶你把註冊成功事件改成 MQ 發送、加入 EmailConsumer、用 Docker 啟動 RabbitMQ。跟我說一聲。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0024-T-solid-design-patterns.html" class="nav-prev">← SOLID + Design Patterns</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0026-T-interview-faq.html" class="nav-next">面試八股文 →</a>
+</nav>
+
+</body>
+</html>

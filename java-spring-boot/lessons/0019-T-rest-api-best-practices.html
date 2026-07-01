@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T10 — REST API 設計最佳實踐</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="badge badge-t">理論課</span>
+  <span>T10</span>
+  <span>/</span>
+  <span>~25 分鐘</span>
+  <span>/</span>
+  <span>🏗️ Phase 4</span>
+</div>
+
+<h1>REST API 設計最佳實踐</h1>
+
+<p>你已經寫過 FastAPI 後端，對 REST 的基本概念不陌生。這堂課聚焦在 Spring Boot 生態中特有的設計慣例——全域例外處理、回應格式統一、分頁標準、Bean Validation——這些都是你在整合專案中會立刻用到的技能。</p>
+
+<div class="callout">
+  <span class="callout-label">🎯 這堂課的目標</span>
+  學會 Spring Boot 中打造「專業級 API」的關鍵技術：@ControllerAdvice 全域例外處理、ResponseEntity 回應控制、@Valid 請求驗證、Spring 分頁標準。這些也是面試中「你有沒有寫過生產環境 API」的判斷標準。
+</div>
+
+<!-- ============================================================ -->
+<h2>1. HTTP 狀態碼：說正確的語言</h2>
+
+<p>FastAPI 和 Spring Boot 對 HTTP 狀態碼的支援都很完善。重點不是「能不能設」，而是「有沒有養成習慣設對」：</p>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>場景</th><th>正確碼</th><th>Spring Boot</th><th>FastAPI</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GET 成功</td><td>200</td><td><code>@GetMapping</code> 預設</td><td>預設</td></tr>
+    <tr><td>POST 建立</td><td>201</td><td><code>@ResponseStatus(CREATED)</code></td><td><code>status_code=201</code></td></tr>
+    <tr><td>PUT/PATCH 成功</td><td>200</td><td>預設</td><td>預設</td></tr>
+    <tr><td>DELETE 成功</td><td><strong>204</strong></td><td><code>@ResponseStatus(NO_CONTENT)</code></td><td><code>status_code=204</code></td></tr>
+    <tr><td>資源不存在</td><td>404</td><td><code>ResponseStatusException</code></td><td><code>HTTPException(404)</code></td></tr>
+    <tr><td>參數驗證失敗</td><td>400</td><td>@Valid 自動（需 handler）</td><td>Pydantic 自動 422</td></tr>
+    <tr><td>未授權</td><td>401</td><td>Spring Security</td><td>Depends</td></tr>
+    <tr><td>伺服器錯誤</td><td>500</td><td>未捕捉例外預設</td><td>未捕捉例外預設</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <span class="callout-label">⚠️ FastAPI vs Spring Boot 差異</span>
+  FastAPI + Pydantic 驗證失敗預設回 <strong>422</strong>（Unprocessable Entity）。Spring Boot 的 @Valid 驗證失敗預設回 <strong>400</strong>（Bad Request），但錯誤格式不太好看——你需要自訂 handler（本章第 4 節）。
+</div>
+
+<!-- ============================================================ -->
+<h2>2. 統一回應格式（Response Envelope）</h2>
+
+<p>實務上大多數 API 不會直接回傳裸 Entity，而是包一層固定的外殼：</p>
+
+<pre><code class="language-java">// ❌ 裸回傳——每個 endpoint 格式可能不同
+{"id": 1, "title": "Task 1"}
+
+// ✅ 統一回傳格式——前端可以寫通用的錯誤處理
+{
+  "success": true,
+  "data": {"id": 1, "title": "Task 1"},
+  "timestamp": "2026-07-05T10:30:00"
+}
+
+// 錯誤時也長一樣
+{
+  "success": false,
+  "error": {"code": "NOT_FOUND", "message": "找不到任務: 99"},
+  "timestamp": "2026-07-05T10:30:00"
+}
+</code></pre>
+
+<pre><code class="language-java">// 通用回應 wrapper（用 record 定義）
+public record ApiResponse&lt;T&gt;(
+    boolean success,
+    T data,
+    Object error,
+    LocalDateTime timestamp
+) {
+    public static &lt;T&gt; ApiResponse&lt;T&gt; ok(T data) {
+        return new ApiResponse&lt;&gt;(true, data, null, LocalDateTime.now());
+    }
+
+    public static ApiResponse&lt;Void&gt; error(String code, String message) {
+        return new ApiResponse&lt;&gt;(
+            false, null,
+            Map.of("code", code, "message", message),
+            LocalDateTime.now()
+        );
+    }
+}
+</code></pre>
+
+<!-- ============================================================ -->
+<h2>3. 分頁（Pagination）：Spring 的標準做法</h2>
+
+<p>Spring Data 內建分頁支援，不需要自己算 offset/limit：</p>
+
+<pre><code class="language-java">// Controller
+@GetMapping
+public Page&lt;Task&gt; getAll(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "20") int size,
+    @RequestParam(defaultValue = "createdAt") String sort
+) {
+    return taskService.getAllPaged(
+        PageRequest.of(page, size, Sort.by(sort).descending())
+    );
+}
+
+// Service
+public Page&lt;Task&gt; getAllPaged(Pageable pageable) {
+    return taskRepo.findAll(pageable);
+}
+</code></pre>
+
+<p>Spring 的 <code>Page&lt;T&gt;</code> 回傳 JSON 自動包含分頁 meta：</p>
+
+<pre><code class="language-json">{
+  "content": [ /* 20 筆 Task */ ],
+  "pageable": { "page": 0, "size": 20 },
+  "totalElements": 156,
+  "totalPages": 8,
+  "first": true,
+  "last": false
+}
+</code></pre>
+
+<div class="callout tip">
+  <span class="callout-label">💡 FastAPI 對照</span>
+  FastAPI 的分頁通常手動處理 query params（skip/limit）或在 route 中查詢。Spring Data 的 Pageable + Page 把分頁標準化了——只要你的 Repository 繼承 JpaRepository，接收 Pageable 參數就能自動分頁。
+</div>
+
+<!-- ============================================================ -->
+<h2>4. 全域例外處理（@ControllerAdvice）</h2>
+
+<p>你在 P05 的 Controller 中手動寫了 try-catch 或 <code>ResponseStatusException</code>。更好的做法是將例外處理<strong>集中到一個 class</strong>：</p>
+
+<pre><code class="language-java">@RestControllerAdvice  // = @ControllerAdvice + @ResponseBody
+public class GlobalExceptionHandler {
+
+    // 資源不存在
+    @ExceptionHandler(NoSuchElementException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse&lt;Void&gt; handleNotFound(NoSuchElementException ex) {
+        return ApiResponse.error("NOT_FOUND", ex.getMessage());
+    }
+
+    // 參數驗證失敗（@Valid）
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleValidation(MethodArgumentNotValidException ex) {
+        var errors = ex.getBindingResult().getFieldErrors().stream()
+            .map(e -> e.getField() + ": " + e.getDefaultMessage())
+            .toList();
+        return ApiResponse.error("VALIDATION_FAILED", String.join("; ", errors));
+    }
+
+    // 請求參數不合法
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleBadRequest(IllegalArgumentException ex) {
+        return ApiResponse.error("BAD_REQUEST", ex.getMessage());
+    }
+
+    // 其他未預期的例外
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiResponse&lt;Void&gt; handleUnknown(Exception ex) {
+        log.error("Unexpected error", ex);
+        return ApiResponse.error("INTERNAL_ERROR", "伺服器內部錯誤");
+    }
+}
+</code></pre>
+
+<div class="callout">
+  <span class="callout-label">🔥 全域例外處理的好處</span>
+  ① Controller 不再有 try-catch 雜訊，只寫快樂路徑 ② 錯誤格式全 API 統一 ③ 新增例外型別只需在一個地方加 handler ④ 面試中展示這種架構意識會加分——代表你寫過正式環境的 API。
+</div>
+
+<!-- ============================================================ -->
+<h2>5. 請求驗證（Bean Validation）</h2>
+
+<p>Spring Boot 內建 Jakarta Bean Validation（<code>@NotNull</code>、<code>@Size</code>、<code>@Email</code> 等），和 Pydantic 的 validator 是對應概念：</p>
+
+<pre><code class="language-java">// DTO 上宣告驗證規則
+public record TaskRequest(
+    @NotBlank(message = "標題不能為空")
+    @Size(max = 200, message = "標題最多 200 字")
+    String title,
+
+    @Size(max = 50, message = "分類最多 50 字")
+    String category
+) { }
+
+// Controller 中加 @Valid 觸發驗證
+@PostMapping
+@ResponseStatus(HttpStatus.CREATED)
+public ApiResponse&lt;Task&gt; create(@Valid @RequestBody TaskRequest request) {
+    // 如果 request 驗證失敗，MethodArgumentNotValidException 會被 @ControllerAdvice 捕捉
+    return ApiResponse.ok(taskService.createTask(...));
+}
+</code></pre>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>驗證</th><th>Spring Boot</th><th>FastAPI / Pydantic</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>必填</td><td><code>@NotNull</code> / <code>@NotBlank</code></td><td><code>field: str</code>（預設必填）</td></tr>
+    <tr><td>長度</td><td><code>@Size(min=1, max=200)</code></td><td><code>Field(max_length=200)</code></td></tr>
+    <tr><td>正數</td><td><code>@Positive</code></td><td><code>Field(gt=0)</code></td></tr>
+    <tr><td>Email</td><td><code>@Email</code></td><td><code>EmailStr</code></td></tr>
+    <tr><td>自訂</td><td>寫 custom validator</td><td><code>@validator</code> decorator</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>6. API 版本控制策略</h2>
+
+<p>實務上 API 一定會改版。三種常見做法：</p>
+
+<pre><code class="language-java">// 方式 1：URL 前綴（最常見）
+@RestController
+@RequestMapping("/api/v1/tasks")
+
+// 方式 2：Header（URL 乾淨，但除錯較難）
+@RestController
+@RequestMapping("/api/tasks")
+// 客戶端帶 header: API-Version: 1
+
+// 方式 3：Query param（最直覺但 REST 純淨派不喜歡）
+// /api/tasks?version=1
+</code></pre>
+
+<p><strong>面試建議</strong>：說「團隊偏好 URL 前綴，因為最透明、最易除錯」。</p>
+
+<!-- ============================================================ -->
+<h2>7. Spring Boot vs FastAPI 設計哲學差異</h2>
+
+<table class="compare-table">
+  <thead>
+    <tr><th>面向</th><th>Spring Boot</th><th>FastAPI</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>分層</td><td>嚴格 Controller / Service / Repository</td><td>路由函式中直接寫邏輯（可選分層）</td></tr>
+    <tr><td>例外處理</td><td>@ControllerAdvice 集中管理</td><td>exception_handler 註冊</td></tr>
+    <tr><td>驗證</td><td>@Valid + Bean Validation（手動觸發）</td><td>Pydantic 自動驗證</td></tr>
+    <tr><td>序列化</td><td>Jackson（自動，可自訂）</td><td>Pydantic 自動</td></tr>
+    <tr><td>分頁</td><td>Pageable + Page 標準</td><td>手動 skip/limit</td></tr>
+    <tr><td>API 文件</td><td>SpringDoc / Swagger</td><td>內建 OpenAPI</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- SELF-CHECK -->
+<h2>自我檢驗 🧠</h2>
+
+<div class="quiz">
+  <div class="quiz-question">
+    <p>Q1: @ControllerAdvice 解決了什麼問題？為什麼比在 Controller 中寫 try-catch 更好？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">@ControllerAdvice 將所有 Controller 的例外處理<strong>集中到一個 class</strong>。好處：① Controller 只寫快樂路徑，沒有 try-catch 雜訊 ② 錯誤回應格式全 API 統一 ③ 新增例外型別只需加一個 @ExceptionHandler 方法，不需改每個 Controller ④ 符合 DRY 和單一職責原則。對比：FastAPI 中透過註冊全域 exception_handler 達到類似效果。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q2: DELETE endpoint 成功後應該回傳什麼 HTTP 狀態碼和 body？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem"><strong>204 No Content</strong>，body 為空。DELETE 成功後沒有內容需要回傳（資源已刪除），204 明確告訴客戶端「請求成功，但沒有 response body」。200 OK 也可以，但 204 語意更精確。Spring Boot 中用 <code>@ResponseStatus(HttpStatus.NO_CONTENT)</code> 且方法回傳 void。</p>
+    </details>
+  </div>
+
+  <div class="quiz-question">
+    <p>Q3: Spring Data 的分頁機制和手寫 LIMIT/OFFSET 相比有何優勢？</p>
+    <details style="margin-top:0.6rem">
+      <summary style="cursor:pointer;color:var(--accent)">點擊展開答案</summary>
+      <p style="margin-top:0.5rem">Spring Data 的 Pageable 自動處理：① 查總筆數（COUNT query）② 計算總頁數 ③ 判斷是否第一頁/最後一頁 ④ 排序。這些在手寫 LIMIT/OFFSET 時都要自己處理。Page&lt;T&gt; 的回傳 JSON 已包含所有分頁 meta（totalElements、totalPages、first、last），前端可以直接用這些資訊渲染分頁元件。</p>
+    </details>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<div class="summary-box">
+  <h3>📌 專業 API 的標配清單</h3>
+  <ol>
+    <li><strong>統一回應格式</strong>：ApiResponse&lt;T&gt; wrapper（success + data + timestamp）</li>
+    <li><strong>全域例外處理</strong>：@ControllerAdvice 集中管理所有錯誤回應</li>
+    <li><strong>正確的 HTTP 狀態碼</strong>：201 Created、204 No Content、400/404/500 語意正確</li>
+    <li><strong>Bean Validation</strong>：@Valid + Jakarta annotations 自動驗證請求參數</li>
+    <li><strong>Spring 分頁標準</strong>：Pageable + Page，不要手寫 offset/limit</li>
+  </ol>
+</div>
+
+<h2>下一步</h2>
+<p>接下來是連續三堂實作課——<strong>整合專案 Part 1~3</strong>，把這 19 堂課學到的所有技能串成一個完整的 REST API 專案。第一堂 P10 會建立專案骨架、使用者認證模組、和全域例外處理架構。</p>
+
+<!-- ============================================================ -->
+<!-- RESOURCES -->
+<h2>延伸資源</h2>
+<ul>
+  <li>📖 <a href="https://spring.io/guides/tutorials/rest/" target="_blank" rel="noopener">Spring 官方：Building REST Services</a></li>
+  <li>📖 <a href="https://www.baeldung.com/global-error-handler-in-a-spring-rest-api" target="_blank" rel="noopener">Baeldung: 全域錯誤處理完整教學</a></li>
+  <li>📖 <a href="https://www.baeldung.com/spring-data-jpa-pagination-sorting" target="_blank" rel="noopener">Baeldung: Spring Data JPA 分頁與排序</a></li>
+</ul>
+
+<div class="card" style="text-align:center;margin-top:2rem">
+  <p style="margin:0">🤔 <strong>準備好進入整合專案了嗎？</strong></p>
+  <p style="margin:0.3rem 0 0 0;color:var(--muted)">接下來的 P10~P12 會是這個課程最重要的三堂實作課——你會從零建立一個專業級的 REST API。有任何 T01~T10 中不確定的概念，現在是回頭複習的好時機。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0018-P-testing-practice.html" class="nav-prev">← P09 測試實作</a>
+  <a href="../../index.html" class="nav-index">回到課程索引</a>
+  <a href="0020-P-capstone-part1.html" class="nav-next">P10 整合專案 Part 1 →</a>
+</nav>
+
+</body>
+</html>
